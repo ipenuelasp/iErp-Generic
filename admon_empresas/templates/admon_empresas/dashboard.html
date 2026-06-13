@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Panel{% endblock %} | {{ empresa.nombre_fiscal|default:"iErp" }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                brand: {
+                  DEFAULT: '{{ brand_color|default:"#6366f1" }}',
+                  dark: '{{ brand_color_dark|default:"#4f46e5" }}',
+                }
+              }
+            }
+          }
+        }
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        /* Estilos adicionales para los mensajes */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message-animate { animation: slideIn 0.3s ease-out forwards; }
+        
+        @keyframes bounce-short {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+        .animate-bounce-short {
+            animation: bounce-short 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex h-screen overflow-hidden text-slate-900">
+
+    <aside class="w-64 bg-slate-900 text-white flex flex-col flex-shrink-0">
+        {% include 'includes/sidebar.html' %}
+    </aside>
+
+    <div class="flex-1 flex flex-col min-w-0">
+        
+        <header class="bg-white shadow-sm p-4 flex justify-between items-center px-8 sticky top-0 z-10 h-20">
+            {% include 'includes/top_bar.html' %}
+        </header>
+
+        <main class="flex-1 overflow-y-auto p-6"> {% if messages %}
+            <div class="max-w-5xl mx-auto mb-6">
+                {% for message in messages %}
+                <div class="message-animate mb-3 p-4 rounded-2xl flex items-center justify-between shadow-sm border
+                    {% if message.tags == 'error' %} 
+                        bg-rose-50 text-rose-600 border-rose-100 
+                    {% elif message.tags == 'success' %} 
+                        bg-emerald-50 text-emerald-600 border-emerald-100 
+                    {% else %} 
+                        bg-blue-50 text-blue-600 border-blue-100 
+                    {% endif %}">
+                    
+                    <div class="flex items-center space-x-3">
+                        {% if message.tags == 'error' %}
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                        {% elif message.tags == 'success' %}
+                            <i class="fa-solid fa-circle-check"></i>
+                        {% else %}
+                            <i class="fa-solid fa-circle-info"></i>
+                        {% endif %}
+                        <span class="text-[10px] font-black uppercase tracking-widest">{{ message }}</span>
+                    </div>
+
+                    <button onclick="this.parentElement.remove()" class="text-xs font-bold opacity-50 hover:opacity-100 transition-opacity px-2">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% block main_content %}
+            {% endblock %}
+        </main>
+    </div>
+
+    <script>
+        setTimeout(() => {
+            const messages = document.querySelectorAll('.message-animate');
+            messages.forEach(msg => {
+                msg.style.transition = "opacity 0.5s ease";
+                msg.style.opacity = "0";
+                setTimeout(() => msg.remove(), 500);
+            });
+        }, 6000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% block title %}Nueva Empresa{% endblock %}
+
+{% block main_content %}
+<div class="max-w-lg mx-auto">
+
+    <div class="flex items-center gap-3 mb-6">
+        <a href="{% url 'lista_clientes' %}" class="text-slate-400 hover:text-slate-600 transition-colors">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-black text-slate-800">Nueva Empresa</h1>
+            <p class="text-sm text-slate-400 mt-0.5">Cliente: <span class="font-semibold text-slate-600">{{ cliente.nombre_comercial }}</span></p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+        <form method="POST" enctype="multipart/form-data" class="space-y-5">
+            {% csrf_token %}
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Nombre fiscal *</label>
+                <input type="text" name="nombre_fiscal" required
+                       placeholder="Ej. Acuagro SA de CV"
+                       class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-brand outline-none text-sm transition-all">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1.5">RFC *</label>
+                <input type="text" name="rfc" required
+                       placeholder="PEPJ8306089R3"
+                       class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-brand outline-none text-sm transition-all uppercase">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Logo</label>
+                <input type="file" name="logo" accept="image/*"
+                       class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-brand/10 file:text-brand hover:file:bg-brand/20 transition-all">
+                <p class="text-xs text-slate-400 mt-1">Se recortará automáticamente el espacio en blanco.</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Color primario</label>
+                <select name="color_primario"
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand outline-none text-sm transition-all">
+                    <option value="indigo">Indigo Moderno</option>
+                    <option value="blue">Azul Corporativo</option>
+                    <option value="emerald">Verde Ecológico</option>
+                    <option value="rose">Rosa Elegante</option>
+                    <option value="slate">Gris Profesional</option>
+                </select>
+            </div>
+
+            <div class="border-t border-slate-100 pt-5">
+                <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Sucursal Matriz</p>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Nombre de la sucursal *</label>
+                        <input type="text" name="nombre_sucursal" required
+                               placeholder="Ej. Corporativo, Planta Principal..."
+                               class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-brand outline-none text-sm transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Código *</label>
+                        <input type="text" name="codigo_sucursal" required
+                               placeholder="Ej. MATRIZ"
+                               class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-brand outline-none text-sm transition-all uppercase">
+                    </div>
+                </div>
+            </div>
+
+            {% if messages %}
+                {% for msg in messages %}
+                <div class="p-3 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200">{{ msg }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="flex gap-3 pt-2">
+                <button type="submit"
+                        class="flex-1 bg-brand text-white font-bold py-3 rounded-xl hover:opacity-90 transition-all text-sm">
+                    Crear empresa
+                </button>
+                <a href="{% url 'lista_clientes' %}"
+                   class="flex-1 text-center border border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50 transition-all text-sm">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

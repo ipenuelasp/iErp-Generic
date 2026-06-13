@@ -1,0 +1,19 @@
+
+
+services:
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8004
+    volumes:
+      - .:/app
+    ports:
+      - "8004:8004"
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_PORT=${DB_PORT}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+    # Eliminamos 'db' y 'depends_on' porque el server es externo

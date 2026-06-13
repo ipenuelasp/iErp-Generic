@@ -1,0 +1,128 @@
+{% extends "admon_empresas/dashboard.html" %}
+
+{% block main_content %}
+<div class="max-w-6xl mx-auto p-8">
+    <div class="mb-10 text-center">
+        <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Configuración de Sistema</h1>
+        <p class="text-slate-500 mt-2 font-medium">Parámetros de <span class="text-brand">{{ empresa.nombre_fiscal }}</span></p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div class="md:col-span-1 space-y-2">
+            <button onclick="switchTab('empresa')" id="btn-empresa" 
+                class="tab-btn w-full text-left p-4 rounded-2xl bg-white border border-brand text-brand font-bold shadow-sm transition-all">
+                <i class="fa-solid fa-building mr-2"></i> Datos de Empresa
+            </button>
+            
+            <button onclick="switchTab('sucursales')" id="btn-sucursales" 
+                class="tab-btn w-full text-left p-4 rounded-2xl bg-transparent text-slate-400 font-medium hover:bg-slate-100 transition-all">
+                <i class="fa-solid fa-shop mr-2"></i> Sucursales
+            </button>
+            
+            <button onclick="switchTab('monedas')" id="btn-monedas" 
+                class="tab-btn w-full text-left p-4 rounded-2xl bg-transparent text-slate-400 font-medium hover:bg-slate-100 transition-all">
+                <i class="fa-solid fa-coins mr-2"></i> Monedas
+            </button>
+        </div>
+
+        <div class="md:col-span-3">            
+            <div id="tab-empresa" class="tab-content space-y-8">
+                {% include 'admon_empresas/tabs/_empresa.html' %}
+            </div>
+
+            <div id="tab-sucursales" class="tab-content hidden space-y-8">
+                {% include 'admon_empresas/tabs/_sucursales.html' %}
+            </div>
+
+            <div id="tab-monedas" class="tab-content hidden space-y-8">
+                {% include 'admon_empresas/tabs/_monedas.html' %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<select id="templateUbicaciones" class="hidden">
+    <option value="">--- Seleccionar Ubicación de Piso ---</option>
+    {% for u in todas_las_ubicaciones %}
+        <option value="{{ u.id }}">{{ u.almacen.nombre }} > {{ u.codigo }}</option>
+    {% endfor %}
+</select>
+
+<script>
+function switchTab(tabId) {
+    // 1. Ocultar todos los contenidos
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    
+    // 2. Mostrar el seleccionado
+    const activeContent = document.getElementById('tab-' + tabId);
+    if (activeContent) activeContent.classList.remove('hidden');
+    
+    // 3. Resetear todos los botones al estado "Inactivo"
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'border', 'border-brand', 'text-brand', 'font-bold', 'shadow-sm');
+        btn.classList.add('bg-transparent', 'text-slate-400', 'font-medium');
+    });
+    
+    // 4. Aplicar estilo "Activo" al botón clickeado
+    const activeBtn = document.getElementById('btn-' + tabId);
+    if (activeBtn) {
+        activeBtn.classList.remove('bg-transparent', 'text-slate-400', 'font-medium');
+        activeBtn.classList.add('bg-white', 'border', 'border-brand', 'text-brand', 'font-bold', 'shadow-sm');
+    }
+}
+
+// Soporte para mantener la pestaña tras guardar (POST)
+{% if active_tab %}
+    switchTab('{{ active_tab }}');
+{% else %}
+    // Por defecto abrimos empresa al cargar
+    switchTab('empresa');
+{% endif %}
+</script>
+
+<div id="modalDelete" class="fixed inset-0 z-[120] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4 text-center">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl">
+            <div class="w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fa-solid fa-trash-can text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-black text-slate-800 uppercase italic">¿Confirmar eliminación?</h3>
+            <p class="text-slate-400 text-xs font-bold mt-2 uppercase tracking-widest">Esta acción no se puede deshacer.</p>
+            
+            <form method="POST" class="mt-8 flex gap-3">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_item">
+                <input type="hidden" name="item_id" id="delete_item_id">
+                <input type="hidden" name="tipo_objeto" id="delete_tipo_objeto"> <button type="button" onclick="closeDeleteModal()" class="flex-1 py-4 text-[10px] font-black uppercase text-slate-400">Cancelar</button>
+                <button type="submit" class="flex-1 bg-rose-500 text-white py-4 rounded-2xl text-[10px] font-black uppercase shadow-lg shadow-rose-200">Eliminar</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openDeleteModal(id, tipo) {
+        document.getElementById('delete_item_id').value = id;
+        document.getElementById('delete_tipo_objeto').value = tipo;
+        document.getElementById('modalDelete').classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('modalDelete').classList.add('hidden');
+    }
+</script>
+
+<style>
+    /* Clases de utilidad para el JS */
+    .active-tab-style { @apply bg-white border border-brand text-brand font-bold shadow-sm; }
+    .inactive-tab-style { @apply bg-transparent text-slate-400 font-medium hover:bg-slate-100; }
+    
+    input, select, textarea {
+        width: 100%; padding: 1rem; background-color: #f8fafc; border: 1px solid #e2e8f0;
+        border-radius: 1.25rem; outline: none; transition: all 0.2s; font-weight: 600;
+        color: #334155; font-size: 0.875rem;
+    }
+    input:focus { border-color: var(--brand-color); background-color: white; box-shadow: 0 0 0 4px rgba(0, 171, 241, 0.1); }
+</style>
+{% endblock %}

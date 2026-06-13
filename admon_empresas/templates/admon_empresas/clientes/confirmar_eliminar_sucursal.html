@@ -1,0 +1,36 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% block title %}Eliminar Sucursal{% endblock %}
+
+{% block main_content %}
+<div class="max-w-lg mx-auto">
+
+    <div class="flex items-center gap-3 mb-6">
+        <a href="{% url 'lista_clientes' %}" class="text-slate-400 hover:text-slate-600 transition-colors">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <h1 class="text-2xl font-black text-slate-800">Eliminar Sucursal</h1>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-red-100 p-8">
+        <div class="flex items-center gap-4 mb-6">
+            <div class="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-triangle-exclamation text-red-500 text-xl"></i>
+            </div>
+            <div>
+                <p class="font-bold text-slate-800">¿Eliminar "{{ sucursal.nombre }}"?</p>
+                <p class="text-sm text-slate-400 mt-0.5">{{ sucursal.empresa.nombre_fiscal }}{% if sucursal.es_matriz %} · <span class="text-amber-500 font-semibold">Es la sucursal matriz</span>{% endif %}</p>
+            </div>
+        </div>
+
+        <form method="POST" class="flex gap-3">
+            {% csrf_token %}
+            <button type="submit" class="flex-1 bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600 transition-all text-sm">
+                Sí, eliminar sucursal
+            </button>
+            <a href="{% url 'lista_clientes' %}" class="flex-1 text-center border border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50 transition-all text-sm">
+                Cancelar
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

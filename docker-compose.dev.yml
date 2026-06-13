@@ -1,0 +1,24 @@
+version: '3.8'
+
+# Esta es la versión para DESARROLLO local
+# Usa el runserver de Django para debugging más fácil
+
+services:
+  web:
+    build: .
+    container_name: acuagro
+    command: python manage.py runserver 0.0.0.0:8006
+    volumes:
+      - .:/app
+    ports:
+      - "8006:8006"
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-admin}
+      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-admin@acuagro.com}
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-admin1234}
+    restart: unless-stopped
+
+# Para levantar en desarrollo:
+# docker-compose -f docker-compose.dev.yml up

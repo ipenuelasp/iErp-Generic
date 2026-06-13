@@ -1,0 +1,152 @@
+<div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-10">
+    <div class="flex items-center space-x-4 mb-8">
+        <div class="w-12 h-12 bg-cyan-50 rounded-2xl flex items-center justify-center text-brand">
+            <i class="fa-solid fa-plus-circle text-xl"></i>
+        </div>
+        <div>
+            <h2 class="text-xl font-bold text-slate-800">Nueva Sucursal</h2>
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Añadir Sucursal</p>
+        </div>
+    </div>
+
+    <form method="POST" class="space-y-6">
+        {% csrf_token %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {% for field in form_sucursal %}
+            <div class="space-y-2">
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<p class="text-red-500 text-[10px] font-bold mt-1">{{ field.errors.0 }}</p>{% endif %}
+            </div>
+            {% endfor %}
+
+            
+        </div>
+        <div class="pt-6 border-t border-slate-50 flex justify-end">
+            <button type="submit" name="btn_sucursal" class="bg-brand hover:bg-brand-dark text-white font-black py-4 px-10 rounded-2xl shadow-lg shadow-cyan-100 transition-all transform hover:-translate-y-1 active:scale-95 text-xs uppercase tracking-widest">
+                Registrar Sucursal
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="bg-white p-10 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+    <div class="flex justify-between items-center mb-8">
+        <h3 class="text-xl font-bold text-slate-800 flex items-center">
+            <i class="fa-solid fa-list-check mr-3 text-brand"></i> Sucursales Activas
+        </h3>
+        <span class="bg-slate-100 text-slate-600 text-[10px] font-black px-3 py-1.5 rounded-xl uppercase tracking-widest">{{ sucursales.count }} Registradas</span>
+    </div>
+
+    <div class="overflow-hidden rounded-2xl border border-slate-100">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50">
+                <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em] border-b border-slate-100">
+                    <th class="px-6 py-5 font-black">Nombre Comercial</th>
+                    <th class="px-6 py-5 font-black text-center">Código</th>
+                    <th class="px-6 py-5 font-black text-center">Punto de Recepción</th>
+                    <th class="px-6 py-5 font-black text-right">Estatus</th>
+                    <th class="px-6 py-5 font-black text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for sucursal in sucursales %}
+                <tr class="text-slate-700 hover:bg-slate-50/80 transition group">
+                    <td class="px-6 py-5">
+                        <div class="font-bold text-slate-800 group-hover:text-brand transition">{{ sucursal.nombre }}</div>
+                        {% if sucursal.es_matriz %}<div class="text-[9px] text-amber-600 font-black uppercase tracking-tighter mt-0.5">Sede Central</div>{% endif %}
+                    </td>
+                    <td class="px-6 py-5 text-center font-mono text-xs text-slate-500">{{ sucursal.codigo_sucursal }}</td>
+                    <td class="px-6 py-5 text-center">
+                        {% if sucursal.ubicacion_recepcion_defecto %}
+                            <span class="text-[9px] font-black text-brand bg-brand/5 px-2 py-1 rounded-lg border border-brand/10">
+                                {{ sucursal.ubicacion_recepcion_defecto.almacen.codigo }} / {{ sucursal.ubicacion_recepcion_defecto.codigo }}
+                            </span>
+                        {% else %}
+                            <span class="text-[9px] font-bold text-slate-300 italic">No definido</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-5 text-right">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-[9px] font-black {% if sucursal.es_matriz %}bg-amber-100 text-amber-700{% else %}bg-cyan-100 text-cyan-700{% endif %} uppercase tracking-widest">
+                            {% if sucursal.es_matriz %}Matriz{% else %}Operativa{% endif %}
+                        </span>
+                    </td>
+                    <td class="px-6 py-5 text-right space-x-2">
+                        <button onclick="abrirEditarSucursal('{{ sucursal.pk }}', '{{ sucursal.nombre|escapejs }}', '{{ sucursal.codigo_sucursal|escapejs }}', '{{ sucursal.ubicacion_recepcion_defecto.id|default:'' }}')"
+                                class="text-slate-400 hover:text-brand transition-all">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>                        
+                        <button type="button" onclick="openDeleteModal('{{ sucursal.pk }}', 'sucursal')" 
+                                class="text-slate-400 hover:text-red-500 transition-all">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="px-6 py-12 text-center text-slate-400 italic text-sm">No hay sucursales registradas.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modalEditar" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl transform transition-all">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-slate-800">Editar Sucursal</h3>
+            <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        
+        <form id="formEditarSucursal" method="POST" action="">
+            {% csrf_token %}            
+            <input type="hidden" name="sucursal_id" id="edit_sucursal_id">
+            <input type="hidden" name="btn_sucursal" value="1">
+            <div id="contenedorCamposEditar" class="space-y-4">
+                </div>
+            <div class="mt-8 flex justify-end">
+                <button type="submit" class="bg-brand text-white font-black py-4 px-8 rounded-2xl text-xs uppercase tracking-widest">
+                    Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirEditarSucursal(id, nombre, codigo, ubicacionId) {
+        const modal = document.getElementById('modalEditar');
+        const templateOptions = document.getElementById('templateUbicaciones').innerHTML;
+
+        // Asignamos el ID al campo oculto
+        document.getElementById('edit_sucursal_id').value = id;
+        
+        // Inyectamos el HTML (igual que el ejemplo anterior)
+        document.getElementById('contenedorCamposEditar').innerHTML = `
+            <div class="space-y-4 text-left">
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nombre Comercial</label>
+                    <input type="text" name="nombre" value="${nombre}" required class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-brand transition-all">
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Código Sucursal</label>
+                    <input type="text" name="codigo_sucursal" value="${codigo}" required class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-brand transition-all">
+                </div>
+                <div class="space-y-2 pt-2 border-t border-slate-50">
+                    <label class="block text-[10px] font-black text-brand uppercase tracking-widest italic ml-1">Ubicación de Recepción (Piso)</label>
+                    <select id="selectUbicacionEdit" name="ubicacion_recepcion_defecto" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-brand transition-all">
+                        ${templateOptions}
+                    </select>
+                </div>
+            </div>
+        `;
+        
+        const select = document.getElementById('selectUbicacionEdit');
+        if (ubicacionId) select.value = ubicacionId;
+        
+        modal.classList.remove('hidden');
+    }
+
+function cerrarModal() {
+    document.getElementById('modalEditar').classList.add('hidden');
+}
+</script>

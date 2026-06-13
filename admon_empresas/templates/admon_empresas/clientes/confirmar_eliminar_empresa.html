@@ -1,0 +1,44 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% block title %}Eliminar Empresa{% endblock %}
+
+{% block main_content %}
+<div class="max-w-lg mx-auto">
+
+    <div class="flex items-center gap-3 mb-6">
+        <a href="{% url 'lista_clientes' %}" class="text-slate-400 hover:text-slate-600 transition-colors">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <h1 class="text-2xl font-black text-slate-800">Eliminar Empresa</h1>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-red-100 p-8">
+        <div class="flex items-center gap-4 mb-6">
+            <div class="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-triangle-exclamation text-red-500 text-xl"></i>
+            </div>
+            <div>
+                <p class="font-bold text-slate-800">¿Eliminar "{{ empresa.nombre_fiscal }}"?</p>
+                <p class="text-sm text-slate-400 mt-0.5">Cliente: {{ empresa.cliente.nombre_comercial }}</p>
+            </div>
+        </div>
+
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-sm text-red-700 space-y-1">
+            <p class="font-bold">Se eliminarán permanentemente:</p>
+            <ul class="list-disc list-inside space-y-0.5 mt-1 font-medium">
+                <li>La empresa y sus datos fiscales</li>
+                <li>Todas sus sucursales ({{ empresa.sucursales.count }})</li>
+            </ul>
+        </div>
+
+        <form method="POST" class="flex gap-3">
+            {% csrf_token %}
+            <button type="submit" class="flex-1 bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600 transition-all text-sm">
+                Sí, eliminar empresa
+            </button>
+            <a href="{% url 'lista_clientes' %}" class="flex-1 text-center border border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50 transition-all text-sm">
+                Cancelar
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

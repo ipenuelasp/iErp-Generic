@@ -1,0 +1,87 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-[98%] mx-auto p-4 lg:p-6">
+    
+    <div class="mb-8">
+        <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Business Intelligence</h1>
+        <p class="text-slate-500 mt-2 font-medium">Resumen operativo de <span class="text-brand">{{ empresa.nombre_fiscal }}</span></p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-50">
+            <div class="flex items-center gap-4 mb-2">
+                <div class="w-10 h-10 bg-brand/10 text-brand rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-cart-shopping text-sm"></i>
+                </div>
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Compras Mes</span>
+            </div>
+            <h2 class="text-2xl font-black text-slate-800 italic">$ {{ total_mes|intcomma }}</h2>
+            <p class="text-[9px] text-emerald-500 font-bold mt-1 uppercase italic">+ 5% vs mes anterior</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-50">
+            <div class="flex items-center gap-4 mb-2">
+                <div class="w-10 h-10 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-truck-ramp-box text-sm"></i>
+                </div>
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Por Recibir</span>
+            </div>
+            <h2 class="text-2xl font-black text-slate-800 italic">{{ oc_pendientes }} <small class="text-xs">OCs</small></h2>
+            <p class="text-[9px] text-slate-400 font-bold mt-1 uppercase italic">Material en tránsito</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 bg-gradient-to-br from-white to-slate-50">
+            <div class="flex items-center gap-4 mb-2">
+                <div class="w-10 h-10 bg-slate-800 text-white rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-boxes-stacked text-sm"></i>
+                </div>
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Valor Almacén</span>
+            </div>
+            <h2 class="text-2xl font-black text-slate-800 italic">$ {{ valor_inventario|intcomma }}</h2>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-2 bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-50 p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-sm font-black text-slate-800 italic uppercase italic tracking-widest">Alertas de Reabastecimiento</h3>
+                <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+            </div>
+            <div class="space-y-4">
+                {% for prod in stock_bajo %}
+                <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-black text-slate-700 uppercase italic">{{ prod.nombre }}</span>
+                        <span class="text-[9px] text-slate-400 font-bold uppercase">{{ prod.sku }}</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs font-black text-rose-500 italic">{{ prod.stock_actual }} pza(s)</span>
+                        <p class="text-[9px] text-slate-400 font-bold uppercase italic">Mínimo: {{ prod.stock_minimo }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="bg-slate-900 rounded-[2.5rem] shadow-xl p-8 text-white">
+            <h3 class="text-sm font-black text-slate-400 italic uppercase tracking-widest mb-6">Últimas Órdenes</h3>
+            <div class="space-y-6">
+                {% for o in ultimas_oc %}
+                <div class="flex justify-between items-start border-b border-white/5 pb-4">
+                    <div>
+                        <p class="text-[10px] font-black text-brand italic uppercase">{{ o.folio }}</p>
+                        <p class="text-xs font-bold text-slate-100 uppercase">{{ o.proveedor.nombre_comercial }}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs font-black italic">$ {{ o.total|intcomma }}</p>
+                        <span class="text-[8px] px-2 py-0.5 rounded-full bg-white/10 text-slate-400 font-bold">{{ o.estado }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

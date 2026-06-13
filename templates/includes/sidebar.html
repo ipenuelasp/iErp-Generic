@@ -1,0 +1,59 @@
+{% load static %}
+<div class="border-b border-slate-800">
+    <a href="{% url 'home' %}" class="block hover:opacity-90 transition-all">
+        <div class="bg-white flex items-center justify-center px-3" style="height:80px;">
+            {% if empresa.logo %}
+                <img src="{{ empresa.logo.url }}" alt="{{ empresa.nombre_fiscal }}" class="w-full object-contain" style="max-height:56px;">
+            {% else %}
+                <img src="{% static 'img/iErp_4k_sinfondo.png' %}" alt="iErp" class="w-full object-contain" style="max-height:56px;">
+            {% endif %}
+        </div>
+        <div class="px-5 py-2 bg-[#162340] text-center">
+            <p class="text-blue-300 text-[9px] tracking-widest uppercase font-bold">Sistema de Gestión</p>
+        </div>
+    </a>
+</div>
+
+<nav class="flex-1 p-4 space-y-2 overflow-y-auto flex flex-col">
+
+    <!-- Espaciador para empujar lo siguiente al fondo -->
+    <div class="flex-1"></div>
+
+    <!-- CONFIGURACIÓN -->
+    {% if user.perfil.tipo_usuario == 'OWNER' or user.is_superuser %}
+    <div class="border-t border-slate-800 pt-4">
+        <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Configuración</p>
+        <a href="{% url 'configuracion' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'config' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-gears mr-3"></i> Ajustes Empresa
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- ADMINISTRACIÓN -->
+    {% if user.is_superuser or user.perfil.puede_gestionar_usuarios %}
+    <div class="border-t border-slate-800 pt-4 mt-2">
+        <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Administración</p>
+        {% if user.is_superuser %}
+        <a href="{% url 'lista_clientes' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'clientes' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-briefcase mr-3"></i> Clientes
+        </a>
+        {% endif %}
+        <a href="{% url 'gestion_usuarios' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'usuarios' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-users-gear mr-3"></i> Gestión de Usuarios
+        </a>
+    </div>
+    {% endif %}
+
+</nav>
+
+<div class="p-4 border-t border-slate-800">
+    <form action="{% url 'logout' %}" method="post">
+        {% csrf_token %}
+        <button type="submit" class="w-full text-left text-red-400 flex items-center p-3 hover:bg-red-500/10 rounded-xl transition-all font-bold text-sm italic">
+            <i class="fa-solid fa-power-off mr-3"></i> Cerrar Sesión
+        </button>
+    </form>
+</div>

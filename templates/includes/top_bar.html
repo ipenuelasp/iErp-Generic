@@ -1,0 +1,83 @@
+<div>
+    <h2 class="text-base font-bold text-slate-800">
+        {% if request.resolver_match.url_name == 'home' %}Panel Principal
+        {% elif request.resolver_match.url_name == 'configuracion' %}Configuración de Empresa
+        {% elif request.resolver_match.url_name == 'gestion_usuarios' %}Gestión de Usuarios
+        {% else %}Panel{% endif %}
+    </h2>
+    <p class="text-xs text-slate-400">{{ empresa.nombre_fiscal|default:"iErp" }} · Sistema de Gestión</p>
+</div>
+
+<div class="flex items-center space-x-6">
+    {% if empresa.logo %}
+        <img src="{{ empresa.logo.url }}" alt="Logo" class="h-8 w-auto object-contain border-r border-slate-200 pr-4">
+    {% endif %}
+
+    <div class="flex items-center space-x-4">
+        <div class="relative group">
+            <button class="flex items-center space-x-2 bg-slate-800 text-white px-4 py-2 rounded-xl hover:bg-slate-700 transition-all shadow-lg shadow-slate-200">
+                <i class="fa-solid fa-building text-[10px] text-brand"></i>
+                <div class="text-left">
+                    <p class="text-[7px] font-black text-slate-400 uppercase tracking-tighter leading-none">Organización</p>
+                    <p class="text-xs font-bold truncate max-w-[120px]">
+                        {{ empresa.nombre_fiscal|default:"Seleccionar..." }}
+                    </p>
+                </div>
+                <i class="fa-solid fa-chevron-down text-[10px] text-slate-500 ml-1"></i>
+            </button>
+
+            <div class="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-2 border border-slate-50">
+                <p class="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1 text-center">Mis Organizaciones</p>
+                {% for emp in mis_empresas %}
+                <a href="{% url 'cambiar_empresa' emp.id %}" class="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-brand/5 hover:text-brand transition-all text-xs font-bold {% if emp == empresa %}text-brand bg-brand/5{% else %}text-slate-600{% endif %}">
+                    {{ emp.nombre_fiscal }}
+                    {% if emp == empresa %}
+                    <i class="fa-solid fa-circle-check text-brand"></i>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="relative group">
+            <button class="flex items-center space-x-2 bg-white border-2 border-slate-100 px-4 py-2 rounded-xl hover:border-brand transition-all group/btn">
+                <i class="fa-solid fa-location-dot text-[10px] text-brand"></i>
+                <div class="text-left">
+                    <p class="text-[7px] font-black text-slate-400 uppercase tracking-tighter leading-none">Sede Actual</p>
+                    <p class="text-xs font-bold text-slate-700">
+                        {{ request.session.sucursal_nombre|default:"Sin Sede" }}
+                    </p>
+                </div>
+                <i class="fa-solid fa-chevron-down text-[10px] text-slate-300 group-hover/btn:text-brand ml-1"></i>
+            </button>
+
+            <div class="absolute top-full left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-2 border border-slate-50">
+                <p class="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1 text-center">Cambiar Sede</p>
+                {% for suc in sucursales_nav %}
+                <a href="{% url 'cambiar_contexto' suc.id %}" class="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-brand/5 hover:text-brand transition-all text-xs font-bold text-slate-600">
+                    {{ suc.nombre }}
+                    {% if suc.id|stringformat:"s" == request.session.sucursal_id|stringformat:"s" %}
+                    <i class="fa-solid fa-check text-brand"></i>
+                    {% endif %}
+                </a>
+                {% empty %}
+                <p class="text-[10px] text-slate-400 text-center py-2">Sin sucursales asignadas</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex items-center space-x-3 ml-4">
+        <div class="text-right">
+            <div class="text-sm font-bold text-slate-800">
+                {{ user.first_name }} {{ user.last_name|default:"" }}
+            </div>
+            <div class="text-[10px] font-black text-brand uppercase tracking-widest">
+                {{ empresa.nombre_fiscal }}
+            </div>
+        </div>
+        <div class="w-10 h-10 bg-brand text-white rounded-full flex items-center justify-center font-black italic shadow-lg shadow-brand/20">
+            {{ user.first_name|first|upper|default:user.username|slice:":1"|upper }}
+        </div>
+    </div>
+</div>

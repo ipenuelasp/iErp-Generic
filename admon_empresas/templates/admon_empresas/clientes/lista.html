@@ -1,0 +1,134 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% block title %}Clientes{% endblock %}
+
+{% block main_content %}
+<div class="max-w-5xl mx-auto">
+
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-black text-slate-800">Clientes</h1>
+            <p class="text-sm text-slate-400 mt-0.5">Gestión de clientes, empresas y sucursales</p>
+        </div>
+        <a href="{% url 'crear_cliente' %}"
+           class="flex items-center gap-2 bg-brand text-white font-bold px-5 py-2.5 rounded-xl hover:opacity-90 transition-all text-sm shadow-lg shadow-brand/20">
+            <i class="fa-solid fa-plus"></i> Nuevo Cliente
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for msg in messages %}
+        <div class="mb-4 p-3 rounded-xl text-sm font-medium
+            {% if msg.tags == 'error' %}bg-red-50 text-red-700 border border-red-200
+            {% elif msg.tags == 'warning' %}bg-amber-50 text-amber-700 border border-amber-200
+            {% else %}bg-green-50 text-green-700 border border-green-200{% endif %}">
+            {{ msg }}
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if clientes %}
+    <div class="space-y-4">
+        {% for cliente in clientes %}
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100">
+            <!-- Cabecera del cliente -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-50">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 bg-brand/10 rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-briefcase text-brand text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-800">{{ cliente.nombre_comercial }}</p>
+                        <p class="text-xs text-slate-400">{{ cliente.email_contacto|default:"Sin email" }} · Slug: {{ cliente.slug_instancia }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="{% url 'crear_empresa' cliente.pk %}"
+                       class="text-xs font-bold text-brand border border-brand/30 px-3 py-1.5 rounded-lg hover:bg-brand/5 transition-all">
+                        <i class="fa-solid fa-building mr-1"></i> + Empresa
+                    </a>
+                    <a href="{% url 'editar_cliente' cliente.pk %}"
+                       class="text-xs font-bold text-slate-500 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-all">
+                        <i class="fa-solid fa-pen mr-1"></i> Editar
+                    </a>
+                    <a href="{% url 'eliminar_cliente' cliente.pk %}"
+                       class="text-xs font-bold text-red-500 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-all">
+                        <i class="fa-solid fa-trash mr-1"></i> Eliminar
+                    </a>
+                </div>
+            </div>
+
+            <!-- Empresas del cliente -->
+            {% if cliente.empresas.all %}
+            <div class="divide-y divide-slate-50">
+                {% for emp in cliente.empresas.all %}
+                <div class="px-6 py-3">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center gap-3">
+                            {% if emp.logo %}
+                                <img src="{{ emp.logo.url }}" alt="{{ emp.nombre_fiscal }}" class="h-8 w-16 object-contain rounded border border-slate-100 p-0.5">
+                            {% else %}
+                                <div class="h-8 w-16 bg-slate-50 rounded border border-slate-100 flex items-center justify-center text-slate-300 text-xs">Sin logo</div>
+                            {% endif %}
+                            <div>
+                                <p class="font-semibold text-slate-700 text-sm">{{ emp.nombre_fiscal }}</p>
+                                <p class="text-xs text-slate-400">RFC: {{ emp.rfc }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <a href="{% url 'crear_sucursal_cliente' emp.pk %}"
+                               class="text-xs font-bold text-slate-500 border border-slate-200 px-3 py-1 rounded-lg hover:bg-slate-50 transition-all">
+                                <i class="fa-solid fa-location-dot mr-1"></i> + Sucursal
+                            </a>
+                            <a href="{% url 'eliminar_empresa' emp.pk %}"
+                               class="text-xs font-bold text-red-400 border border-red-200 px-3 py-1 rounded-lg hover:bg-red-50 transition-all">
+                                <i class="fa-solid fa-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <!-- Sucursales -->
+                    {% if emp.sucursales.all %}
+                    <div class="mt-2 ml-[76px] flex flex-wrap gap-2">
+                        {% for suc in emp.sucursales.all %}
+                        <span class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border
+                            {% if suc.es_matriz %}bg-brand/5 text-brand border-brand/20 font-bold
+                            {% else %}bg-slate-50 text-slate-500 border-slate-200{% endif %}">
+                            <i class="fa-solid fa-location-dot text-[10px]"></i>
+                            {{ suc.nombre }}{% if suc.es_matriz %} · Matriz{% endif %}
+                            <a href="{% url 'editar_sucursal_cliente' suc.pk %}" class="ml-1 hover:text-brand transition-colors" title="Editar">
+                                <i class="fa-solid fa-pen text-[9px]"></i>
+                            </a>
+                            <a href="{% url 'eliminar_sucursal_cliente' suc.pk %}" class="hover:text-red-500 transition-colors" title="Eliminar">
+                                <i class="fa-solid fa-xmark text-[10px]"></i>
+                            </a>
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="mt-2 ml-[76px] text-xs text-slate-300 italic">Sin sucursales</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="px-6 py-4 text-sm text-slate-300 italic">Sin empresas registradas —
+                <a href="{% url 'crear_empresa' cliente.pk %}" class="text-brand hover:underline">agregar empresa</a>
+            </p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl border border-slate-100 p-16 text-center">
+        <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-300">
+            <i class="fa-solid fa-briefcase text-3xl"></i>
+        </div>
+        <p class="text-slate-500 font-semibold">No hay clientes registrados</p>
+        <p class="text-slate-400 text-sm mt-1">Crea el primero para comenzar.</p>
+        <a href="{% url 'crear_cliente' %}" class="mt-4 inline-flex items-center gap-2 bg-brand text-white font-bold px-5 py-2.5 rounded-xl hover:opacity-90 transition-all text-sm">
+            <i class="fa-solid fa-plus"></i> Nuevo Cliente
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

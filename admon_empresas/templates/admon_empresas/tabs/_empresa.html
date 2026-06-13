@@ -1,0 +1,100 @@
+<div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-10">
+    <div class="flex items-center justify-between mb-8">
+        <div class="flex items-center space-x-4">
+            <div class="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-brand">
+                <i class="fa-solid fa-building text-xl"></i>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold text-slate-800">Perfil Corporativo</h2>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Configuración de identidad</p>
+            </div>
+        </div>
+        
+        {% if empresa.logo %}
+        <div class="flex items-center space-x-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+            <span class="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Logo Actual</span>
+            <img src="{{ empresa.logo.url }}" class="h-10 w-auto rounded-lg shadow-sm bg-white p-1">
+        </div>
+        {% endif %}
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {% for field in form_empresa %}
+                {% if field.name != 'color_primario' %} <div class="space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                        {{ field.label }}
+                    </label>
+                    
+                    {% if field.name == 'logo' %}
+                        <div class="relative h-[60px]">
+                            <input type="file" name="{{ field.name }}" id="id_{{ field.name }}" 
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                            <div class="absolute inset-0 flex items-center w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-4 hover:border-brand transition-all z-10">
+                                <i class="fa-solid fa-cloud-arrow-up text-slate-400 mr-3"></i>
+                                <span class="text-sm text-slate-500 font-medium truncate">Subir nuevo logo corporativo</span>
+                            </div>
+                        </div>
+                    
+                    {% elif field.name == 'moneda_principal' %}
+                        <div class="relative">
+                            <select name="{{ field.name }}" id="id_{{ field.name }}" 
+                                class="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-brand appearance-none transition-all">
+                                {% for choice in field.field.queryset %}
+                                    <option value="{{ choice.pk }}" {% if field.value|slugify == choice.pk|slugify %}selected{% endif %}>
+                                        {{ choice.codigo }} - {{ choice.nombre }}
+                                    </option>
+                                {% empty %}
+                                    <option value="">No hay monedas registradas</option>
+                                {% endfor %}
+                            </select>
+                            <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
+
+                    {% else %}
+                        <input type="{{ field.field.widget.input_type|default:'text' }}" 
+                               name="{{ field.name }}" 
+                               id="id_{{ field.name }}"
+                               value="{{ field.value|default:'' }}"
+                               class="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-brand transition-all"
+                               placeholder="{{ field.label }}">
+                    {% endif %}
+                    
+                    {% if field.errors %}
+                        <p class="text-[10px] text-red-500 font-bold ml-1">{{ field.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <div class="space-y-4 pt-4">
+            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Paleta de Colores del Sistema</label>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {% for val, name in form_empresa.fields.color_primario.choices %}
+                <label class="cursor-pointer group">
+                    <input type="radio" name="color_primario" value="{{ val }}" class="hidden peer" {% if form_empresa.color_primario.value == val %}checked{% endif %}>
+                    <div class="p-4 rounded-2xl border-2 border-transparent peer-checked:border-slate-800 transition-all flex flex-col items-center bg-slate-50 hover:bg-white shadow-sm">
+                        <div class="w-8 h-8 rounded-full mb-2 
+                            {% if val == 'indigo' %}bg-indigo-500{% elif val == 'blue' %}bg-blue-500{% elif val == 'emerald' %}bg-emerald-500{% elif val == 'rose' %}bg-rose-500{% elif val == 'slate' %}bg-slate-500{% endif %}">
+                        </div>
+                        <span class="text-[8px] font-bold uppercase text-slate-500">{{ name }}</span>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="pt-8 border-t border-slate-50 flex justify-end items-center space-x-6">
+            <p class="text-[10px] font-bold text-slate-400 italic">Los cambios se verán reflejados en todo el sistema.</p>
+            <button type="submit" name="btn_empresa" 
+                class="bg-brand hover:brightness-110 text-white font-black py-4 px-12 rounded-2xl shadow-lg shadow-brand/20 transition-all transform hover:-translate-y-1 active:scale-95 text-xs uppercase tracking-widest">
+                Actualizar Empresa
+            </button>
+        </div>
+    </form>
+</div>

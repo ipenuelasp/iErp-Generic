@@ -1,0 +1,376 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load usuario_tags %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase text-balance">Gestión de Personal</h1>
+            <p class="text-slate-500 text-sm font-medium italic">Administra los accesos de tu empresa y sucursales.</p>
+        </div>
+        
+        {% if user.is_superuser or user.perfil.puede_gestionar_usuarios %}
+        <button onclick="abrirCrear()" class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
+            <i class="fa-solid fa-user-plus mr-2"></i> Nuevo Usuario
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-separate border-spacing-y-3">
+                <thead>
+                    <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <th class="px-8 py-4">Usuario</th>
+                        <th class="px-8 py-4">Rol</th>
+                        <th class="px-8 py-4">Accesos</th>
+                        <th class="px-8 py-4 text-center">Invitación</th>
+                        <th class="px-8 py-4 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for empleado in empleados %}
+                    <tr class="bg-white border-b border-slate-50 hover:bg-slate-50/50 transition-all group">
+                        <td class="px-8 py-5">
+                            <div class="flex items-center">
+                                <div class="h-10 w-10 rounded-full bg-brand/10 flex items-center justify-center text-brand font-black mr-3 italic">
+                                    {{ empleado.username|slice:":1"|upper }}
+                                </div>
+                                <div>
+                                    <div class="text-sm font-black text-slate-800 leading-tight">{{ empleado.first_name|default:empleado.username }}</div>
+                                    <div class="text-[10px] text-slate-400 font-bold uppercase">{{ empleado.email }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <!-- ROL -->
+                        <td class="px-8 py-5">
+                            <span class="text-[9px] font-black uppercase text-slate-700">
+                                {% for g in empleado.groups.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% empty %}Sin Rol{% endfor %}
+                            </span>
+                        </td>
+                        <!-- ACCESOS: empresa → sucursales agrupadas -->
+                        <td class="px-8 py-5">
+                            {% with accesos=accesos_por_usuario|get_item:empleado.id %}
+                            {% if accesos %}
+                            <div class="flex flex-col gap-2 max-w-[280px]">
+                                {% for acceso in accesos %}
+                                <div>
+                                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-wide mb-1">
+                                        <i class="fa-solid fa-building mr-1"></i>{{ acceso.empresa.nombre_fiscal }}
+                                    </p>
+                                    <div class="flex flex-wrap gap-1">
+                                        {% for suc in acceso.sucursales %}
+                                        <span class="bg-brand/8 text-brand text-[8px] font-bold px-2 py-0.5 rounded-md border border-brand/20 uppercase">
+                                            {% if suc.es_matriz %}<i class="fa-solid fa-star text-[6px] mr-0.5"></i>{% endif %}{{ suc.nombre }}
+                                        </span>
+                                        {% empty %}
+                                        <span class="text-slate-300 text-[8px] italic">Sin sucursales</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <span class="text-slate-300 text-[9px] font-bold italic uppercase">Sin accesos</span>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="px-8 py-5 text-center">
+                            {% if empleado.last_login %}
+                                <span class="bg-emerald-50 text-emerald-500 text-[8px] font-black px-3 py-1 rounded-full border border-emerald-100 uppercase italic">
+                                    <i class="fa-solid fa-check-double mr-1"></i> Aceptada
+                                </span>
+                            {% else %}
+                                <span class="bg-amber-50 text-amber-600 text-[8px] font-black px-3 py-1 rounded-full border border-amber-100 uppercase italic animate-pulse">
+                                    <i class="fa-solid fa-clock mr-1"></i> Pendiente
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-8 py-5 text-right">
+                            <div class="flex justify-end gap-2">
+                                <form method="post" action="{% url 'reenviar_invitacion' empleado.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" title="Reenviar correo de acceso"
+                                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-amber-200 text-amber-500 hover:bg-amber-50 shadow-sm transition-all">
+                                        <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                                    </button>
+                                </form>
+                                <button onclick="abrirEdicion(
+                                    '{{ empleado.id }}',
+                                    '{{ empleado.first_name|escapejs }}',
+                                    '{{ empleado.email|escapejs }}',
+                                    [{% for s in empleado.perfil.sucursales.all %}'{{ s.id }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+                                    [{% for g in empleado.groups.all %}'{{ g.id }}'{% if not forloop.last %},{% endif %}{% endfor %}]
+                                )" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-brand hover:border-brand shadow-sm transition-all">
+                                    <i class="fa-solid fa-pen-to-square text-[10px]"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="modal-usuario" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="cerrarModal()"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-3xl rounded-[3rem] shadow-2xl p-10 border border-slate-100 transform transition-all">
+            
+            <div class="mb-6 border-b border-slate-50 pb-4 flex justify-between items-center">
+                <div>
+                    <h2 id="modal-titulo" class="text-2xl font-black text-slate-800 italic uppercase">Nuevo Colaborador</h2>
+                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest italic">Configuración de accesos y credenciales</p>
+                </div>
+                <button onclick="cerrarModal()" class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="flex gap-2 mb-8 bg-slate-50 p-1.5 rounded-2xl w-full">
+                <button type="button" onclick="switchTab('tab-datos')" id="btn-tab-datos" class="tab-btn active-tab flex-1">
+                    <i class="fa-solid fa-id-card mr-2"></i>Datos
+                </button>
+                <button type="button" onclick="switchTab('tab-sucursales')" id="btn-tab-sucursales" class="tab-btn flex-1">
+                    <i class="fa-solid fa-shop mr-2"></i>Sucursales
+                </button>
+                <button type="button" onclick="switchTab('tab-grupos')" id="btn-tab-grupos" class="tab-btn flex-1">
+                    <i class="fa-solid fa-users-gear mr-2"></i>Roles
+                </button>
+            </div>
+            
+            <form id="form-usuario" method="POST" action="" class="space-y-6">
+                {% csrf_token %}
+                
+                <div id="tab-datos" class="tab-content space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div id="field-username" class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-2 italic">ID de Usuario</label>
+                            <input type="text" name="username" id="input_username" class="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm focus:border-brand transition-all">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-2 italic">Nombre Completo</label>
+                            <input type="text" name="first_name" id="input_nombre" class="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm focus:border-brand transition-all">
+                        </div>
+                        <div class="space-y-1 md:col-span-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-2 italic">Correo Electrónico</label>
+                            <input type="email" name="email" id="input_email" required class="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm focus:border-brand transition-all">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-sucursales" class="tab-content hidden">
+                    <p class="text-[10px] text-slate-400 font-semibold mb-3">Selecciona a qué empresas y sucursales tendrá acceso este usuario.</p>
+                    <div class="space-y-3 max-h-60 overflow-y-auto pr-1">
+                        {% for emp in empresas_con_sucursales %}
+                        <div class="rounded-2xl border border-slate-200 overflow-hidden" id="empresa-card-{{ emp.pk }}">
+                            <!-- Cabecera empresa — clic para expandir/colapsar -->
+                            <div class="flex items-center justify-between px-4 py-3 bg-slate-50 cursor-pointer select-none"
+                                 onclick="toggleExpandEmpresa({{ emp.pk }})">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-chevron-right text-[10px] text-slate-400 transition-transform" id="chevron-{{ emp.pk }}"></i>
+                                    {% if emp.logo %}
+                                        <img src="{{ emp.logo.url }}" class="h-5 w-10 object-contain">
+                                    {% else %}
+                                        <i class="fa-solid fa-building text-slate-400 text-sm"></i>
+                                    {% endif %}
+                                    <span class="text-xs font-black text-slate-700">{{ emp.nombre_fiscal }}</span>
+                                    <span class="text-[10px] text-slate-400 font-medium" id="count-{{ emp.pk }}"></span>
+                                </div>
+                                <div class="flex gap-1" onclick="event.stopPropagation()">
+                                    <button type="button" onclick="seleccionarTodasEmpresa({{ emp.pk }}, true)"
+                                            class="text-[10px] font-bold text-brand border border-brand/30 px-2 py-1 rounded-lg hover:bg-brand/5 transition-all">
+                                        Todas
+                                    </button>
+                                    <button type="button" onclick="seleccionarTodasEmpresa({{ emp.pk }}, false)"
+                                            class="text-[10px] font-bold text-slate-400 border border-slate-200 px-2 py-1 rounded-lg hover:bg-slate-100 transition-all">
+                                        Ninguna
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Sucursales (colapsadas por default) -->
+                            <div class="hidden p-3 flex flex-wrap gap-2 bg-white" id="suc-panel-{{ emp.pk }}">
+                                {% for suc in emp.sucursales.all %}
+                                <input type="checkbox" name="sucursales" value="{{ suc.id }}"
+                                       class="suc-emp-{{ emp.pk }} hidden suc-checkbox"
+                                       id="suc_modal_{{ suc.id }}"
+                                       >
+                                <span id="chip_{{ suc.id }}"
+                                      onclick="toggleSucursal('suc_modal_{{ suc.id }}', 'chip_{{ suc.id }}', {{ emp.pk }})"
+                                      class="text-xs px-3 py-1.5 rounded-full border font-semibold cursor-pointer transition-all border-slate-200 bg-slate-50 text-slate-500 hover:border-brand hover:text-brand">
+                                    <i class="fa-solid fa-location-dot mr-1 text-[10px]"></i>
+                                    {{ suc.nombre }}{% if suc.es_matriz %} ★{% endif %}
+                                </span>
+                                {% empty %}
+                                <p class="text-xs text-slate-300 italic">Sin sucursales registradas</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div id="tab-grupos" class="tab-content hidden">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100">
+                        {% for grupo in grupos %}
+                        <label class="group flex items-center p-4 bg-white rounded-2xl border border-slate-100 cursor-pointer hover:border-brand transition-all">
+                            <input type="checkbox" name="grupos" value="{{ grupo.id }}" id="group_{{ grupo.id }}" class="hidden group-checkbox">
+                            <div class="w-5 h-5 border-2 border-slate-200 rounded-md mr-3 flex items-center justify-center transition-all checkbox-custom">
+                                <i class="fa-solid fa-check text-[10px] text-white opacity-0"></i>
+                            </div>
+                            <span class="text-xs font-black text-slate-600 uppercase">{{ grupo.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="pt-6 flex justify-end gap-4 border-t border-slate-50">
+                    <button type="button" onclick="cerrarModal()" class="text-[10px] font-black uppercase text-slate-400 px-6 hover:text-slate-600 transition-colors italic">Cancelar</button>
+                    <button type="submit" class="bg-brand text-white px-12 py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-brand/20 active:scale-95 transition-all tracking-widest">Finalizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .scroll-minimal::-webkit-scrollbar { width: 4px; }
+    .scroll-minimal::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    
+    .tab-btn {
+        padding: 0.6rem 1.2rem; font-size: 9px; font-weight: 900; text-transform: uppercase;
+        color: #94a3b8; border-radius: 1rem; transition: all 0.2s;
+    }
+    .active-tab { background: white; color: #00abf1; shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); }
+
+    .group-checkbox:checked + .checkbox-custom { background-color: #00abf1; border-color: #00abf1; }
+    .group-checkbox:checked + .checkbox-custom i { opacity: 1; }
+
+    .sucursal-card {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0.6rem 1rem; background: white; border: 1px solid #f1f5f9;
+        border-radius: 1.25rem; cursor: pointer; transition: 0.2s;
+    }
+    .sucursal-card:hover { border-color: #00abf1; transform: translateX(2px); }
+</style>
+
+<script>
+    const modal = document.getElementById('modal-usuario');
+    const form = document.getElementById('form-usuario');
+    const sucursalesOcultas = document.getElementById('sucursales-ocultas');
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab'));
+        document.getElementById(tabId).classList.remove('hidden');
+        document.getElementById('btn-' + tabId).classList.add('active-tab');
+    }
+
+    function chipOn(chip) {
+        chip.classList.remove('border-slate-200','bg-slate-50','text-slate-500');
+        chip.classList.add('border-brand','bg-brand/10','text-brand');
+    }
+    function chipOff(chip) {
+        chip.classList.remove('border-brand','bg-brand/10','text-brand');
+        chip.classList.add('border-slate-200','bg-slate-50','text-slate-500');
+    }
+
+    function toggleSucursal(cbId, chipId, empId) {
+        const cb = document.getElementById(cbId);
+        const chip = document.getElementById(chipId);
+        cb.checked = !cb.checked;
+        cb.checked ? chipOn(chip) : chipOff(chip);
+        actualizarConteo(empId);
+    }
+
+    function seleccionarTodasEmpresa(empId, marcar) {
+        // Expandir si está cerrado
+        const panel = document.getElementById(`suc-panel-${empId}`);
+        if (panel.classList.contains('hidden')) toggleExpandEmpresa(empId);
+        document.querySelectorAll(`.suc-emp-${empId}`).forEach(cb => {
+            cb.checked = marcar;
+            const chip = document.getElementById(`chip_${cb.value}`);
+            if (chip) marcar ? chipOn(chip) : chipOff(chip);
+        });
+        actualizarConteo(empId);
+    }
+
+    function toggleExpandEmpresa(empId) {
+        const panel = document.getElementById(`suc-panel-${empId}`);
+        const chevron = document.getElementById(`chevron-${empId}`);
+        panel.classList.toggle('hidden');
+        chevron.classList.toggle('rotate-90');
+    }
+
+    function actualizarConteo(empId) {
+        const total = document.querySelectorAll(`.suc-emp-${empId}`).length;
+        const checked = document.querySelectorAll(`.suc-emp-${empId}:checked`).length;
+        const el = document.getElementById(`count-${empId}`);
+        if (el) el.textContent = checked > 0 ? `(${checked}/${total})` : '';
+    }
+
+    function resetSucursales() {
+        document.querySelectorAll('.suc-checkbox').forEach(cb => {
+            cb.checked = false;
+            const chip = document.getElementById(`chip_${cb.value}`);
+            if (chip) chipOff(chip);
+        });
+        // Colapsar todos los paneles y limpiar conteos
+        document.querySelectorAll('[id^="suc-panel-"]').forEach(p => p.classList.add('hidden'));
+        document.querySelectorAll('[id^="chevron-"]').forEach(c => c.classList.remove('rotate-90'));
+        document.querySelectorAll('[id^="count-"]').forEach(c => c.textContent = '');
+    }
+
+    function marcarSucursales(sIds) {
+        resetSucursales();
+        sIds.forEach(id => {
+            const cb = document.getElementById(`suc_modal_${id}`);
+            if (!cb) return;
+            cb.checked = true;
+            const chip = document.getElementById(`chip_${id}`);
+            if (chip) chipOn(chip);
+            // Expandir la empresa de esta sucursal
+            const empClass = [...cb.classList].find(c => c.startsWith('suc-emp-'));
+            if (empClass) {
+                const empId = empClass.replace('suc-emp-', '');
+                const panel = document.getElementById(`suc-panel-${empId}`);
+                const chevron = document.getElementById(`chevron-${empId}`);
+                if (panel && panel.classList.contains('hidden')) {
+                    panel.classList.remove('hidden');
+                    chevron && chevron.classList.add('rotate-90');
+                }
+                actualizarConteo(empId);
+            }
+        });
+    }
+
+    function abrirCrear() {
+        switchTab('tab-datos');
+        document.getElementById('modal-titulo').innerText = "Nuevo Colaborador";
+        form.action = "{% url 'crear_usuario' %}";
+        form.reset();
+        document.getElementById('field-username').classList.remove('hidden');
+        resetSucursales();
+        document.querySelectorAll('input[name="grupos"]').forEach(cb => cb.checked = false);
+        modal.classList.remove('hidden');
+    }
+
+    function abrirEdicion(id, nombre, email, sIds, gIds) {
+        switchTab('tab-datos');
+        document.getElementById('modal-titulo').innerText = "Editar Colaborador";
+        form.action = `/usuarios/editar-usuario/${id}/`;
+        document.getElementById('input_nombre').value = nombre;
+        document.getElementById('input_email').value = email;
+        document.getElementById('field-username').classList.add('hidden');
+        marcarSucursales(sIds);
+        document.querySelectorAll('input[name="grupos"]').forEach(cb => {
+            cb.checked = gIds.includes(cb.value) || gIds.includes(parseInt(cb.value));
+        });
+        modal.classList.remove('hidden');
+    }
+
+    function cerrarModal() { modal.classList.add('hidden'); }
+</script>
+{% endblock %}

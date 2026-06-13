@@ -1,0 +1,36 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: ierp_ticket_manager
+    command: gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile - --error-logfile - iErp.wsgi:application
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - DB_HOST=${DB_HOST}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_PORT=${DB_PORT}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - SITE_URL=${SITE_URL}
+      - GOOGLE_CHAT_WEBHOOK=${GOOGLE_CHAT_WEBHOOK}
+      - GOOGLE_CHAT_WEBHOOK_POOL=${GOOGLE_CHAT_WEBHOOK_POOL}
+    restart: always
+    volumes:
+      - ./static:/app/static
+      - /var/www/ierp-ticket-manager/staticfiles:/app/staticfiles
+      - /var/www/ierp-ticket-manager/media:/app/media
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+

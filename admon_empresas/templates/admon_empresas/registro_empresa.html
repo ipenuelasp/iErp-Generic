@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración Inicial | iErp</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 font-sans antialiased">
+    <div class="min-h-screen flex items-center justify-center p-4 md:p-10">
+        <div class="max-w-5xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
+            
+            <div class="md:w-1/3 bg-indigo-700 p-8 text-white flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center space-x-2 mb-8">
+                        <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-indigo-700">
+                            <i class="fa-solid fa-layer-group text-xl"></i>
+                        </div>
+                        <span class="text-2xl font-bold tracking-tight">iErp</span>
+                    </div>
+                    <h1 class="text-3xl font-extrabold mb-4 leading-tight">Bienvenido a la plataforma</h1>
+                    <p class="text-indigo-100 mb-6 text-lg">Hola <strong>{{ cliente.nombre_comercial }}</strong>, estamos listos para configurar tu instancia segura en la nube.</p>
+                    
+                    <ul class="space-y-4 text-sm text-indigo-100">
+                        <li class="flex items-center"><i class="fa-solid fa-check-circle mr-3 text-green-400"></i> Base de Datos SQL Server dedicada</li>
+                        <li class="flex items-center"><i class="fa-solid fa-check-circle mr-3 text-green-400"></i> Esquema Multi-tenant activado</li>
+                        <li class="flex items-center"><i class="fa-solid fa-check-circle mr-3 text-green-400"></i> Acceso Administrador</li>
+                    </ul>
+                </div>
+                <div class="mt-8 pt-6 border-t border-indigo-500 text-xs text-indigo-300 flex items-center">
+                    <i class="fa-solid fa-shield-halved mr-2"></i> Procesamiento de datos seguro GRP-256
+                </div>
+            </div>
+
+            <div class="md:w-2/3 p-8 md:p-12">
+                <form method="POST" class="space-y-8">
+                    {% csrf_token %}
+                    
+                    <div>
+                        <div class="flex items-center space-x-2 mb-6 text-indigo-600">
+                            <i class="fa-solid fa-building"></i>
+                            <h2 class="text-xl font-bold uppercase tracking-wider">Datos de la Empresa</h2>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="col-span-2">
+                                <label class="block text-sm font-semibold text-slate-700">Nombre Fiscal / Razón Social</label>
+                                <input type="text" name="nombre_fiscal" required placeholder="Ej. InserMed Médica S.A. de C.V." 
+                                       class="mt-2 block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-3 bg-slate-50 transition-all">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700">RFC</label>
+                                <input type="text" name="rfc" required placeholder="XAXX010101000" 
+                                       class="mt-2 block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-3 bg-slate-50 uppercase font-mono">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700">Nombre Sucursal Matriz</label>
+                                <input type="text" name="nombre_sucursal" required placeholder="Ej. Corporativo México" 
+                                       class="mt-2 block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-3 bg-slate-50">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-8 border-t border-slate-100">
+                        <div class="flex items-center space-x-2 mb-6 text-indigo-600">
+                            <i class="fa-solid fa-user-shield"></i>
+                            <h2 class="text-xl font-bold uppercase tracking-wider">Cuenta de Acceso (Dueño)</h2>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700">Nombre(s)</label>
+                                <input type="text" name="first_name" required placeholder="Tu nombre" 
+                                    class="mt-2 block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-3 bg-slate-50">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700">Apellido(s)</label>
+                                <input type="text" name="last_name" required placeholder="Tu apellido" 
+                                    class="mt-2 block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-3 bg-slate-50">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700">Usuario de Acceso</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                        <i class="fa-solid fa-at"></i>
+                                    </span>
+                                    <input type="text" name="username" required value="{{ cliente.email_contacto }}" 
+                                           class="mt-2 block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-3 pl-10 bg-slate-50">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700">Contraseña Segura</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                        <i class="fa-solid fa-key"></i>
+                                    </span>
+                                    <input type="password" name="password" required placeholder="••••••••" 
+                                           class="mt-2 block w-full border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-3 pl-10 bg-slate-50">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-6">
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-4 px-6 rounded-2xl shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center space-x-3 text-lg">
+                            <span>Completar Registro</span>
+                            <i class="fa-solid fa-rocket"></i>
+                        </button>
+                        <p class="text-center text-slate-400 text-xs mt-4">Al completar el registro aceptas los términos de servicio de iErp Cloud.</p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

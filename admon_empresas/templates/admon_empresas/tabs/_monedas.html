@@ -1,0 +1,134 @@
+<div class="space-y-8">
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-10">
+        <div class="flex items-center space-x-4 mb-8">
+            <div class="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600">
+                <i class="fa-solid fa-plus-circle text-xl"></i>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold text-slate-800">Nueva Divisa</h2>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Configura una moneda de operación</p>
+            </div>
+        </div>
+
+        <form method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+            {% csrf_token %}
+            <div class="space-y-2">
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nombre</label>
+                <input type="text" name="nombre_moneda" placeholder="Ej: Dólar" required>
+            </div>
+            <div class="space-y-2">
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Código ISO</label>
+                <input type="text" name="codigo_moneda" placeholder="Ej: USD" maxlength="3" required>
+            </div>
+            <div class="space-y-2">
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Símbolo</label>
+                <input type="text" name="simbolo_moneda" placeholder="Ej: $" required>
+            </div>
+            <button type="submit" name="btn_moneda" class="bg-brand hover:bg-brand-dark text-white font-black py-4 rounded-2xl shadow-lg shadow-brand/20 transition-all text-xs uppercase tracking-widest">
+                Añadir
+            </button>
+        </form>
+    </div>
+
+    <div class="bg-white p-10 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+        <div class="overflow-hidden rounded-2xl border border-slate-100">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50">
+                    <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em] border-b border-slate-100">
+                        <th class="px-6 py-5 font-black">Moneda</th>
+                        <th class="px-6 py-5 font-black text-center">Código</th>
+                        <th class="px-6 py-5 font-black text-center">Símbolo</th>
+                        <th class="px-6 py-5 font-black text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for moneda in monedas %}
+                    <tr class="text-slate-700 hover:bg-slate-50 transition group">
+                        <td class="px-6 py-5">
+                            <div class="font-bold text-slate-800">{{ moneda.nombre }}</div>
+                            {% if moneda.es_principal %}
+                                <span class="text-[9px] text-brand font-black uppercase tracking-widest">Principal</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-5 text-center font-mono text-sm">{{ moneda.codigo }}</td>
+                        <td class="px-6 py-5 text-center font-bold">{{ moneda.simbolo }}</td>                        
+                        <td class="px-6 py-5 text-right">
+                            <button onclick="abrirEditarMoneda('{{ moneda.pk }}', '{{ moneda.nombre }}', '{{ moneda.codigo }}', '{{ moneda.simbolo }}')" 
+                                        class="text-slate-400 hover:text-brand transition-all">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>   
+                            <button type="button" onclick="openDeleteModal('{{ moneda.pk }}', 'moneda')" 
+                                    class="text-slate-400 hover:text-red-500 transition-all">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-12 text-center text-slate-400 italic text-sm">No hay monedas configuradas.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="modalEditarMoneda" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl transform transition-all">
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600">
+                    <i class="fa-solid fa-coins"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800">Editar Moneda</h3>
+            </div>
+            <button onclick="cerrarModalMoneda()" class="text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        
+        <form id="formEditarMoneda" method="POST" action="">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nombre de la Divisa</label>
+                    <input type="text" name="nombre" id="edit_nombre_moneda" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Código ISO</label>
+                        <input type="text" name="codigo" id="edit_codigo_moneda" maxlength="3" required>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Símbolo</label>
+                        <input type="text" name="simbolo" id="edit_simbolo_moneda" required>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 flex justify-end">
+                <button type="submit" class="bg-brand text-white font-black py-4 px-10 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-brand/20">
+                    Actualizar Moneda
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function abrirEditarMoneda(id, nombre, codigo, simbolo) {
+    const modal = document.getElementById('modalEditarMoneda');
+    const form = document.getElementById('formEditarMoneda');
+    
+    form.action = `/configuracion/moneda/editar/${id}/`;
+    document.getElementById('edit_nombre_moneda').value = nombre;
+    document.getElementById('edit_codigo_moneda').value = codigo;
+    document.getElementById('edit_simbolo_moneda').value = simbolo;
+    
+    modal.classList.remove('hidden');
+}
+
+function cerrarModalMoneda() {
+    document.getElementById('modalEditarMoneda').classList.add('hidden');
+}
+</script>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bienvenido a iErp</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+
+          <!-- Logo iErp -->
+          <tr>
+            <td align="center" style="padding-bottom:24px;">
+              <img src="{{ logo_url }}" alt="iErp" style="height:48px;width:auto;">
+            </td>
+          </tr>
+
+          <!-- Card principal -->
+          <tr>
+            <td style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+
+              <!-- Header azul -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background:#1e2d4f;padding:32px 40px;text-align:center;">
+                    <p style="margin:0;color:#93c5fd;font-size:11px;font-weight:800;letter-spacing:3px;text-transform:uppercase;">Bienvenido a iErp</p>
+                    <h1 style="margin:8px 0 0;color:#ffffff;font-size:24px;font-weight:900;">¡Tu cuenta está lista!</h1>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Contenido -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:36px 40px;">
+
+                    <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.6;">
+                      Hola <strong style="color:#1e293b;">{{ nombre_comercial }}</strong>,
+                    </p>
+
+                    <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+                      Se ha creado tu cuenta en <strong style="color:#1e2d4f;">iErp</strong>. Para comenzar, necesitamos que configures los datos fiscales de tu empresa y registres tu sucursal matriz.
+                    </p>
+
+                    <!-- Pasos -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                      <tr>
+                        <td style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;">
+                          <p style="margin:0 0 12px;font-size:12px;font-weight:800;color:#94a3b8;letter-spacing:2px;text-transform:uppercase;">Al hacer clic configurarás:</p>
+                          <table cellpadding="0" cellspacing="0">
+                            <tr>
+                              <td style="padding:4px 0;">
+                                <span style="display:inline-block;width:20px;height:20px;background:#1e2d4f;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:900;color:#fff;margin-right:10px;vertical-align:middle;">1</span>
+                                <span style="color:#334155;font-size:14px;font-weight:600;">Nombre fiscal y RFC de tu empresa</span>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding:4px 0;">
+                                <span style="display:inline-block;width:20px;height:20px;background:#1e2d4f;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:900;color:#fff;margin-right:10px;vertical-align:middle;">2</span>
+                                <span style="color:#334155;font-size:14px;font-weight:600;">Sucursal o sede principal</span>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding:4px 0;">
+                                <span style="display:inline-block;width:20px;height:20px;background:#1e2d4f;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:900;color:#fff;margin-right:10px;vertical-align:middle;">3</span>
+                                <span style="color:#334155;font-size:14px;font-weight:600;">Tu usuario y contraseña de acceso</span>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Botón CTA -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                      <tr>
+                        <td align="center">
+                          <a href="{{ url_registro }}"
+                             style="display:inline-block;background:#1e2d4f;color:#ffffff;font-size:15px;font-weight:800;text-decoration:none;padding:14px 36px;border-radius:12px;letter-spacing:0.3px;">
+                            Configurar mi empresa →
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.6;text-align:center;">
+                      Este enlace es personal y seguro. Si no solicitaste esta cuenta, ignora este correo.
+                    </p>
+
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Footer PhAnalytics -->
+          <tr>
+            <td style="padding:24px 0;text-align:center;">
+              <p style="margin:0;color:#94a3b8;font-size:12px;">
+                Desarrollado por <strong style="color:#64748b;">PhAnalytics</strong> ·
+                <a href="mailto:contacto@phanalytics.com.mx" style="color:#64748b;text-decoration:none;">phanalytics.com.mx</a>
+              </p>
+              <p style="margin:6px 0 0;color:#cbd5e1;font-size:11px;">
+                iErp · Sistema de Gestión Empresarial
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

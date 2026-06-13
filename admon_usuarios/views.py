@@ -1,0 +1,214 @@
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+from django.contrib import messages
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import update_session_auth_hash, logout as auth_logout
+from django.contrib.auth.models import Group
+
+from admon_empresas.models import Sucursal, PerfilUsuario
+from admon_empresas.emails import send_html
+
+
+def enviar_correo_bienvenida(user, request):
+    nombre = user.first_name if user.first_name else user.username
+    empresa_nombre = user.perfil.empresa_default.nombre_fiscal if user.perfil.empresa_default else "iErp"
+    return send_html(
+        subject=f"Bienvenido a iErp - Acceso para {nombre}",
+        template='admon_usuarios/emails/bienvenida_usuario.html',
+        context={
+            'nombre': nombre,
+            'username': user.username,
+            'url_login': request.build_absolute_uri('/'),
+            'empresa': empresa_nombre,
+        },
+        to=user.email,
+        request=request,
+    )
+
+@login_required
+def gestion_usuarios(request):
+    perfil_logueado = request.user.perfil
+
+    # 1. SEGURIDAD: Solo Superuser o Dueños autorizados
+    es_dueno_autorizado = (perfil_logueado.tipo_usuario == 'OWNER' and perfil_logueado.puede_gestionar_usuarios)
+    if not (request.user.is_superuser or es_dueno_autorizado):
+        raise PermissionDenied("No tienes autorización para gestionar personal.")
+
+    # 2. FILTRADO: ¿Qué usuarios y sucursales puede ver?
+    if request.user.is_superuser:
+        empleados = User.objects.all().select_related('perfil')
+        sucursales = Sucursal.objects.all() 
+    else:
+        empleados = User.objects.filter(
+            perfil__empresa_default=perfil_logueado.empresa_default
+        ).select_related('perfil')
+        sucursales = Sucursal.objects.filter(empresa=perfil_logueado.empresa_default)
+
+    grupos = Group.objects.all()
+
+    # Empresas con sus sucursales para el selector del modal
+    from admon_empresas.models import Empresa
+    if request.user.is_superuser:
+        empresas_con_sucursales = Empresa.objects.prefetch_related('sucursales').all()
+    else:
+        empresas_con_sucursales = perfil_logueado.empresas.prefetch_related('sucursales').all()
+
+    # Pre-calcular accesos por empresa para cada empleado: {user_id: [(empresa, [sucursales])}
+    accesos_por_usuario = {}
+    for emp in empleados:
+        p = emp.perfil
+        empresas_emp = p.empresas.all()
+        sucs_emp = list(p.sucursales.all().select_related('empresa'))
+        fila = []
+        for empresa in empresas_emp:
+            sucs_de_empresa = [s for s in sucs_emp if s.empresa_id == empresa.id]
+            fila.append({'empresa': empresa, 'sucursales': sucs_de_empresa})
+        accesos_por_usuario[emp.id] = fila
+
+    return render(request, 'admon_usuarios/gestion_usuarios.html', {
+        'empleados': empleados,
+        'sucursales': sucursales,
+        'grupos': grupos,
+        'empresas_con_sucursales': empresas_con_sucursales,
+        'accesos_por_usuario': accesos_por_usuario,
+        'titulo_pagina': "Gestión de Personal"
+    })
+
+@login_required
+def crear_usuario(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        nombre = request.POST.get('first_name')
+        sucursales_ids = request.POST.getlist('sucursales')
+
+        # 1. Validar si ya existe
+        if User.objects.filter(username=username).exists():
+            messages.error(request, f"El usuario {username} ya existe.")
+            return redirect('gestion_usuarios')
+
+        # 2. Crear objeto User
+        nuevo_user = User.objects.create_user(
+            username=username, 
+            email=email, 
+            password=username, 
+            first_name=nombre
+        )
+
+        # 3. Configurar Perfil
+        perfil = nuevo_user.perfil
+        sucursales_ids = request.POST.getlist('sucursales')
+        grupos_ids = request.POST.getlist('grupos')
+
+        if sucursales_ids:
+            perfil.sucursales.set(sucursales_ids)
+            primera = Sucursal.objects.get(id=sucursales_ids[0])
+            perfil.sucursal_defecto = primera
+            # Derivar empresas de las sucursales seleccionadas
+            from admon_empresas.models import Empresa
+            empresas_ids = Sucursal.objects.filter(id__in=sucursales_ids).values_list('empresa_id', flat=True).distinct()
+            perfil.empresas.set(empresas_ids)
+            perfil.empresa_default = Empresa.objects.get(id=list(empresas_ids)[0])
+
+        if grupos_ids:
+            nuevo_user.groups.set(grupos_ids)
+
+        perfil.save()
+
+        # 4. Enviar Invitación
+        if enviar_correo_bienvenida(nuevo_user, request):
+            messages.success(request, f"Usuario {username} creado exitosamente. Se ha enviado la invitación a {email}.")
+        else:
+            messages.warning(request, f"Usuario {username} creado, pero hubo un problema con el servidor de correo. Intenta reenviar la invitación más tarde.")
+
+        return redirect('gestion_usuarios')
+    
+    return redirect('gestion_usuarios')
+
+@login_required
+def editar_usuario(request, usuario_id):
+    empleado = get_object_or_404(User, id=usuario_id)
+    
+    if request.method == 'POST':
+        # 1. Actualizar datos básicos
+        empleado.email = request.POST.get('email')
+        empleado.first_name = request.POST.get('first_name')
+        empleado.save()
+        
+        # 2. Actualizar Accesos (ManyToMany)
+        perfil = empleado.perfil
+        sucursales_ids = request.POST.getlist('sucursales')
+        grupos_ids = request.POST.getlist('grupos')
+
+        perfil.sucursales.set(sucursales_ids)
+
+        if sucursales_ids:
+            if not perfil.sucursal_defecto or str(perfil.sucursal_defecto.id) not in sucursales_ids:
+                perfil.sucursal_defecto = Sucursal.objects.get(id=sucursales_ids[0])
+            # Sincronizar empresas desde sucursales seleccionadas
+            from admon_empresas.models import Empresa
+            empresas_ids = list(Sucursal.objects.filter(id__in=sucursales_ids).values_list('empresa_id', flat=True).distinct())
+            perfil.empresas.set(empresas_ids)
+            if not perfil.empresa_default or perfil.empresa_default.id not in empresas_ids:
+                perfil.empresa_default = Empresa.objects.get(id=empresas_ids[0])
+        else:
+            perfil.sucursal_defecto = None
+            perfil.empresa_default = None
+            perfil.empresas.clear()
+
+        if grupos_ids:
+            empleado.groups.set(grupos_ids)
+
+        perfil.save()
+        
+        messages.success(request, f"Los accesos de {empleado.username} han sido actualizados.")
+        return redirect('gestion_usuarios')
+    
+    return redirect('gestion_usuarios')
+
+@login_required
+def reenviar_invitacion(request, usuario_id):
+    """
+    Reenvía el correo de bienvenida usando la lógica que ya validamos.
+    """
+    empleado = get_object_or_404(User, id=usuario_id)
+    
+    # Usamos la función que centraliza el envío
+    if enviar_correo_bienvenida(empleado, request):
+        messages.success(request, f"¡Invitación reenviada con éxito a {empleado.email}!")
+    else:
+        messages.error(request, "Error al enviar el correo. Revisa que las credenciales del .env sean correctas.")
+        
+    return redirect('gestion_usuarios')
+
+@login_required
+def cambiar_password_obligatorio(request):
+    # Usamos request.empresa (que viene del middleware) para el texto del template
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+
+            # Marcamos la invitación como aceptada ANTES de cerrar sesión
+            perfil = user.perfil
+            perfil.invitacion_aceptada = True
+            perfil.save()
+
+            # Cerramos la sesión para que el usuario inicie con su nueva contraseña
+            auth_logout(request)
+
+            messages.success(request, "¡Cuenta activada con éxito! Inicia sesión con tu nueva contraseña.")
+            return redirect('login')
+        else:
+            # Los errores de validación (ej. contraseñas no coinciden)
+            # se manejan automáticamente en el form
+            pass
+    else:
+        form = PasswordChangeForm(request.user)
+
+    return render(request, 'admon_usuarios/cambiar_password.html', {
+        'form': form,
+        'empresa': request.empresa
+    })
