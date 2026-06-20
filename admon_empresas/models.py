@@ -31,6 +31,8 @@ class Empresa(models.Model):
     cliente = models.ForeignKey(ClienteSaaS, on_delete=models.CASCADE, related_name='empresas')
     nombre_fiscal = models.CharField(max_length=255)
     logo = models.ImageField(upload_to='logos/', null=True, blank=True)
+    isotipo = models.ImageField(upload_to='isotipos/', null=True, blank=True,
+                                help_text="Solo el emblema (cuadrado), para vistas compactas/favicon.")
     moneda_principal = models.ForeignKey('Moneda', on_delete=models.SET_NULL, null=True, blank=True, related_name='empresa_base')
     decimales_permitidos = models.PositiveIntegerField(default=2)
     rfc = models.CharField(max_length=20, unique=True)
@@ -139,7 +141,72 @@ class Moneda(models.Model):
 
     def __str__(self):
         return f"{self.nombre} ({self.codigo})"
-    
+
+
+class Impuesto(models.Model):
+    """Catálogo fiscal configurable por empresa. Lo usan compras, ventas
+    y la facturación futura. Soporta traslados (suman) y retenciones (restan)."""
+    TIPO_TASA = 'TASA'
+    TIPO_EXENTO = 'EXENTO'
+    TIPO_FACTOR_CHOICES = [
+        (TIPO_TASA, 'Tasa'),
+        (TIPO_EXENTO, 'Exento'),
+    ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='impuestos')
+    nombre = models.CharField(max_length=60, help_text="Ej: IVA 16%, Retención 6.25%, Exento")
+    tasa = models.DecimalField(max_digits=7, decimal_places=4, default=0,
+                               help_text="Porcentaje. Ej: 16, 8, 0, 6.25")
+    tipo_factor = models.CharField(max_length=10, choices=TIPO_FACTOR_CHOICES, default=TIPO_TASA)
+    es_retencion = models.BooleanField(default=False, help_text="Si se marca, resta del total en vez de sumar.")
+    # Clave SAT para CFDI futuro (002=IVA, 001=ISR, 003=IEPS)
+    clave_sat = models.CharField(max_length=10, blank=True, null=True)
+
+    es_default = models.BooleanField(default=False, help_text="Se aplica cuando un producto no tiene impuesto asignado.")
+    activo = models.BooleanField(default=True)
+    orden = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['orden', 'nombre']
+        verbose_name = "Impuesto"
+        verbose_name_plural = "Impuestos"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Solo un default por empresa
+        if self.es_default:
+            Impuesto.objects.filter(empresa=self.empresa, es_default=True).exclude(pk=self.pk).update(es_default=False)
+
+    def __str__(self):
+        return self.nombre
+
+
+class EmpresaModulo(models.Model):
+    """Módulos contratados/habilitados para una empresa (Capa 1, la define el super admin)."""
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='modulos')
+    modulo = models.CharField(max_length=30)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('empresa', 'modulo')
+
+    def __str__(self):
+        return f"{self.empresa.nombre_fiscal} · {self.modulo} ({'on' if self.activo else 'off'})"
+
+
+class AccesoModuloUsuario(models.Model):
+    """Módulos que un usuario puede ver dentro de una empresa (Capa 2, la define el dueño)."""
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='accesos_modulo')
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    modulo = models.CharField(max_length=30)
+
+    class Meta:
+        unique_together = ('usuario', 'empresa', 'modulo')
+
+    def __str__(self):
+        return f"{self.usuario.username} · {self.empresa_id} · {self.modulo}"
+
+
 @receiver(post_save, sender=User)
 def crear_perfil_usuario(sender, instance, created, **kwargs):
     if created:
@@ -185,6 +252,46 @@ def asignar_superusers_a_empresa(sender, instance, created, **kwargs):
         if not perfil.empresa_default:
             perfil.empresa_default = instance
             perfil.save()
+
+
+@receiver(post_save, sender=Empresa)
+def crear_impuestos_base(sender, instance, created, **kwargs):
+    """Siembra el catálogo fiscal mexicano básico al crear una empresa."""
+    if not created:
+        return
+    base = [
+        ('IVA 16%', 16, 'TASA', False, True, '002', 1),
+        ('IVA 8% (frontera)', 8, 'TASA', False, False, '002', 2),
+        ('Tasa 0%', 0, 'TASA', False, False, '002', 3),
+        ('Exento', 0, 'EXENTO', False, False, '002', 4),
+    ]
+    for nombre, tasa, factor, ret, default, clave, orden in base:
+        Impuesto.objects.create(
+            empresa=instance, nombre=nombre, tasa=tasa, tipo_factor=factor,
+            es_retencion=ret, es_default=default, clave_sat=clave, orden=orden)
+
+
+@receiver(post_save, sender=Empresa)
+def crear_metodos_pago_base(sender, instance, created, **kwargs):
+    """Siembra métodos de pago básicos al crear una empresa."""
+    if not created:
+        return
+    from admon_finanzas.models import MetodoPago
+    for nombre, clave in [('Efectivo', '01'), ('Transferencia', '03'),
+                          ('Cheque', '02'), ('Tarjeta', '04')]:
+        MetodoPago.objects.create(empresa=instance, nombre=nombre, clave_sat=clave)
+
+
+@receiver(post_save, sender=Empresa)
+def habilitar_modulos_base(sender, instance, created, **kwargs):
+    """Una empresa nace con todos los módulos disponibles activos.
+    El super admin desactiva los que no apliquen (ej. Insermed → Producción off)."""
+    if not created:
+        return
+    from .modulos import MODULOS_DISPONIBLES
+    for m in MODULOS_DISPONIBLES:
+        EmpresaModulo.objects.get_or_create(
+            empresa=instance, modulo=m['clave'], defaults={'activo': True})
 
 
 @receiver(post_save, sender=Sucursal)

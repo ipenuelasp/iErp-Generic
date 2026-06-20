@@ -1,0 +1,42 @@
+{% extends "admon_empresas/dashboard.html" %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10">
+        <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Liquidaciones de Cirugía</h1>
+        <p class="text-slate-500 mt-2 font-medium">Cajas retornadas pendientes de facturar (consumo capturado)</p>
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50">
+                <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-8 py-5 font-black">Salida</th>
+                    <th class="px-6 py-5 font-black">Caja / Kit</th>
+                    <th class="px-6 py-5 font-black">Hospital / Doctor</th>
+                    <th class="px-6 py-5 font-black text-center">Propiedad</th>
+                    <th class="px-8 py-5 font-black text-right">Acción</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for s in salidas %}
+                <tr class="hover:bg-slate-50/80 transition">
+                    <td class="px-8 py-4 font-black text-brand text-xs">{{ s.folio }}</td>
+                    <td class="px-6 py-4 text-xs font-bold text-slate-700">{{ s.instancia_kit.codigo_caja }} <span class="text-slate-400">· {{ s.instancia_kit.kit.nombre }}</span></td>
+                    <td class="px-6 py-4 text-[10px] font-bold text-slate-500">{{ s.hospital_cliente }}{% if s.doctor_responsable %}<br>Dr. {{ s.doctor_responsable }}{% endif %}</td>
+                    <td class="px-6 py-4 text-center">
+                        {% if s.propiedad == 'CONSIGNA' %}<span class="text-[9px] font-black bg-amber-50 text-amber-600 px-2 py-1 rounded-lg uppercase">Consigna</span>{% else %}<span class="text-[9px] font-black bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg uppercase">Propio</span>{% endif %}
+                    </td>
+                    <td class="px-8 py-4 text-right">
+                        <a href="{% url 'admon_ventas:liquidar_salida' s.id %}" class="bg-brand text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all inline-block"><i class="fa-solid fa-file-invoice-dollar mr-2"></i> Liquidar</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-8 py-14 text-center text-slate-400 italic text-sm">No hay cirugías retornadas pendientes de liquidar.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

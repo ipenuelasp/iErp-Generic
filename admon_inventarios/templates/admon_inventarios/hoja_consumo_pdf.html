@@ -1,0 +1,82 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+    @page { size: letter; margin: 1.4cm 1.5cm; }
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #334155; }
+    .muted { color: #94a3b8; font-size: 8.5px; }
+    table { width: 100%; border-collapse: collapse; } td { vertical-align: top; }
+    .empresa { font-size: 13px; font-weight: bold; color: #0f172a; }
+    .doc-title { font-size: 11px; font-weight: bold; color: #1e3a8a; letter-spacing: 1px; }
+    .doc-folio { font-size: 17px; font-weight: bold; color: #0f172a; }
+    .bar { height: 3px; background: #1e3a8a; margin: 10px 0 16px 0; font-size: 0; line-height: 0; }
+    .label { color: #1e3a8a; font-size: 8px; font-weight: bold; letter-spacing: 0.5px; }
+    .val { font-size: 9.5px; color: #1e293b; }
+    .panel { border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; }
+    .items th { background: #1e3a8a; color: #fff; padding: 7px 9px; text-align: left; font-size: 8.5px; }
+    .items td { padding: 7px 9px; border-bottom: 1px solid #eef2f7; font-size: 9.5px; }
+    .items tr.alt td { background: #f8fafc; }
+    .center { text-align: center; }
+    .usado { font-weight: bold; color: #047857; }
+</style>
+</head>
+<body>
+    <table>
+        <tr>
+            <td width="55%">
+                {% if empresa.logo %}<img src="{{ empresa.logo.path }}" style="height:34px; margin-bottom:8px;"><br>{% endif %}
+                <div class="empresa" style="margin-top:6px;">{{ empresa.nombre_fiscal }}</div>
+                <div class="muted">RFC: {{ empresa.rfc }}</div>
+            </td>
+            <td width="45%" class="right" align="right">
+                <div class="doc-title">HOJA DE CONSUMO DE CIRUGÍA</div>
+                <div class="doc-folio">{{ salida.folio }}</div>
+                <div class="muted" style="margin-top:8px;">Caja: <b style="color:#334155;">{{ salida.instancia_kit.codigo_caja }}</b></div>
+                <div class="muted">Retorno: {{ salida.fecha_retorno_real|date:"d/m/Y H:i"|default:"—" }}</div>
+            </td>
+        </tr>
+    </table>
+    <div class="bar">&nbsp;</div>
+
+    <table style="margin-bottom:16px;"><tr><td class="panel">
+        <table><tr>
+            <td width="60%"><span class="label">CIRUGÍA</span><br>
+                <span class="val" style="font-weight:bold; font-size:11px;">{{ salida.hospital_cliente }}</span><br>
+                {% if salida.doctor_responsable %}<span class="val">Dr. {{ salida.doctor_responsable }}</span>{% endif %}
+            </td>
+            <td width="40%">
+                {% if salida.numero_cirugia %}<span class="label">FOLIO</span> <span class="val">{{ salida.numero_cirugia }}</span><br>{% endif %}
+                {% if salida.paciente_referencia %}<span class="label">PACIENTE</span> <span class="val">{{ salida.paciente_referencia }}</span>{% endif %}
+            </td>
+        </tr></table>
+    </td></tr></table>
+
+    <table class="items">
+        <thead><tr>
+            <th width="42%">Producto</th><th width="22%">Lote / Serie</th>
+            <th class="center" width="12%">Enviado</th><th class="center" width="12%">Regresó</th><th class="center" width="12%">Usado</th>
+        </tr></thead>
+        <tbody>
+            {% for it in contenido %}
+            <tr class="{% cycle '' 'alt' %}">
+                <td><b>{{ it.producto.nombre }}</b>{% if it.es_retornable %} <span class="muted">(renta)</span>{% endif %}<br><span class="muted">{{ it.producto.sku }}</span></td>
+                <td>{% if it.lote %}Lote {{ it.lote.numero_lote }}{% endif %}{% if it.serie %}S/N {{ it.serie.serie }}{% endif %}{% if not it.lote and not it.serie %}—{% endif %}</td>
+                <td class="center">{{ it.cantidad_enviada|floatformat:"-2" }}</td>
+                <td class="center">{{ it.cantidad_retornada|floatformat:"-2" }}</td>
+                <td class="center usado">{{ it.cantidad_usada|floatformat:"-2" }}</td>
+            </tr>
+            {% empty %}<tr><td colspan="5" class="center muted">Sin contenido.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p class="muted" style="margin-top:16px;">Doy conformidad del material consumido en la cirugía referida.</p>
+    <div style="margin-top:55px;"><table><tr>
+        <td class="center" width="45%" style="border-top:1px solid #cbd5e1; padding-top:5px;"><span class="muted">Médico responsable</span></td>
+        <td width="10%"></td>
+        <td class="center" width="45%" style="border-top:1px solid #cbd5e1; padding-top:5px;"><span class="muted">Instrumentista · {{ empresa.nombre_fiscal }}</span></td>
+    </tr></table></div>
+</body>
+</html>

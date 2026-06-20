@@ -1,0 +1,243 @@
+import decimal
+
+from django.db import models
+from django.conf import settings
+
+from admon_empresas.models import Empresa, Moneda
+
+
+class MetodoPago(models.Model):
+    """Catálogo de formas de pago por empresa (efectivo, transferencia, etc.)."""
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='metodos_pago')
+    nombre = models.CharField(max_length=50)
+    clave_sat = models.CharField(max_length=10, blank=True, null=True, help_text="Clave SAT forma de pago (futuro CFDI)")
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Método de pago"
+        verbose_name_plural = "Métodos de pago"
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
+class FacturaProveedor(models.Model):
+    """Factura que el proveedor nos emite contra una orden de compra.
+    Una OC puede tener varias (facturación parcial). Genera saldo por pagar."""
+    ESTADO_CHOICES = [
+        ('PENDIENTE', 'Pendiente de pago'),
+        ('PARCIAL', 'Pago parcial'),
+        ('PAGADA', 'Pagada'),
+        ('CANCELADA', 'Cancelada'),
+    ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='facturas_proveedor')
+    orden_compra = models.ForeignKey(
+        'admon_compras.OrdenCompra', on_delete=models.PROTECT, related_name='facturas')
+    proveedor = models.ForeignKey('admon_compras.Proveedor', on_delete=models.PROTECT)
+
+    folio = models.CharField(max_length=50, help_text="Folio de la factura del proveedor")
+    uuid_cfdi = models.CharField(max_length=40, blank=True, null=True, help_text="UUID del CFDI (opcional)")
+    fecha_emision = models.DateField()
+    fecha_vencimiento = models.DateField(null=True, blank=True)
+
+    moneda = models.ForeignKey(Moneda, on_delete=models.PROTECT)
+    subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    impuestos = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=14, decimal_places=2)
+
+    estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, default='PENDIENTE')
+    notas = models.TextField(blank=True, null=True)
+
+    # CFDI del proveedor
+    archivo_xml = models.FileField(upload_to='cfdi/facturas/xml/', null=True, blank=True)
+    archivo_pdf = models.FileField(upload_to='cfdi/facturas/pdf/', null=True, blank=True)
+
+    registrada_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    creada_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha_emision', '-id']
+        verbose_name = "Factura de proveedor"
+        verbose_name_plural = "Facturas de proveedor"
+
+    @property
+    def total_pagado(self):
+        """Suma de lo aplicado a esta factura, en su propia moneda."""
+        agg = self.aplicaciones.aggregate(s=models.Sum('monto_aplicado'))
+        return agg['s'] or decimal.Decimal('0')
+
+    @property
+    def saldo(self):
+        return self.total - self.total_pagado
+
+    def recalcular_estado(self):
+        if self.estado == 'CANCELADA':
+            return
+        pagado = self.total_pagado
+        if pagado <= 0:
+            self.estado = 'PENDIENTE'
+        elif pagado < self.total:
+            self.estado = 'PARCIAL'
+        else:
+            self.estado = 'PAGADA'
+        self.save(update_fields=['estado'])
+
+    def color_estado(self):
+        return {'PENDIENTE': 'amber', 'PARCIAL': 'blue', 'PAGADA': 'emerald', 'CANCELADA': 'slate'}.get(self.estado, 'slate')
+
+    def __str__(self):
+        return f"Factura {self.folio} — {self.proveedor}"
+
+
+class FacturaCliente(models.Model):
+    """Factura/cuenta por cobrar que la empresa emite a un cliente contra
+    un pedido de venta. Un pedido puede tener varias (entregas parciales)."""
+    ESTADO_CHOICES = [
+        ('PENDIENTE', 'Pendiente de cobro'),
+        ('PARCIAL', 'Cobro parcial'),
+        ('PAGADA', 'Cobrada'),
+        ('CANCELADA', 'Cancelada'),
+    ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='facturas_cliente')
+    pedido = models.ForeignKey(
+        'admon_ventas.Pedido', on_delete=models.PROTECT, related_name='facturas')
+    cliente = models.ForeignKey('admon_ventas.Cliente', on_delete=models.PROTECT)
+
+    folio = models.CharField(max_length=25, help_text="Folio interno de la cuenta por cobrar")
+    uuid_cfdi = models.CharField(max_length=40, blank=True, null=True, help_text="UUID del CFDI emitido (opcional)")
+    fecha_emision = models.DateField()
+    fecha_vencimiento = models.DateField(null=True, blank=True)
+
+    moneda = models.ForeignKey(Moneda, on_delete=models.PROTECT)
+    subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    impuestos = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=14, decimal_places=2)
+
+    estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, default='PENDIENTE')
+    notas = models.TextField(blank=True, null=True)
+
+    # CFDI emitido al cliente
+    archivo_xml = models.FileField(upload_to='cfdi/cobrar/xml/', null=True, blank=True)
+    archivo_pdf = models.FileField(upload_to='cfdi/cobrar/pdf/', null=True, blank=True)
+
+    registrada_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    creada_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha_emision', '-id']
+        verbose_name = "Factura de cliente"
+        verbose_name_plural = "Facturas de cliente"
+
+    @property
+    def total_pagado(self):
+        agg = self.aplicaciones.aggregate(s=models.Sum('monto_aplicado'))
+        return agg['s'] or decimal.Decimal('0')
+
+    @property
+    def saldo(self):
+        return self.total - self.total_pagado
+
+    def recalcular_estado(self):
+        if self.estado == 'CANCELADA':
+            return
+        pagado = self.total_pagado
+        if pagado <= 0:
+            self.estado = 'PENDIENTE'
+        elif pagado < self.total:
+            self.estado = 'PARCIAL'
+        else:
+            self.estado = 'PAGADA'
+        self.save(update_fields=['estado'])
+
+    def color_estado(self):
+        return {'PENDIENTE': 'amber', 'PARCIAL': 'blue', 'PAGADA': 'emerald', 'CANCELADA': 'slate'}.get(self.estado, 'slate')
+
+    def __str__(self):
+        return f"CxC {self.folio} — {self.cliente}"
+
+
+class Pago(models.Model):
+    """Egreso (a proveedor) o ingreso (de cliente, futuro). Puede aplicarse
+    a una o varias facturas. Soporta moneda distinta con tipo de cambio."""
+    TIPO_EGRESO = 'EGRESO'
+    TIPO_INGRESO = 'INGRESO'
+    TIPO_CHOICES = [
+        (TIPO_EGRESO, 'Egreso (pago a proveedor)'),
+        (TIPO_INGRESO, 'Ingreso (cobro a cliente)'),
+    ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='pagos')
+    tipo = models.CharField(max_length=8, choices=TIPO_CHOICES, default=TIPO_EGRESO)
+    folio = models.CharField(max_length=20, blank=True)
+
+    proveedor = models.ForeignKey('admon_compras.Proveedor', on_delete=models.PROTECT, null=True, blank=True)
+    cliente = models.ForeignKey('admon_ventas.Cliente', on_delete=models.PROTECT, null=True, blank=True)
+
+    fecha = models.DateField()
+    moneda = models.ForeignKey(Moneda, on_delete=models.PROTECT)
+    monto = models.DecimalField(max_digits=14, decimal_places=2, default=0,
+                                help_text="Total del pago en su propia moneda (suma de aplicaciones)")
+    metodo = models.ForeignKey(MetodoPago, on_delete=models.PROTECT, null=True, blank=True)
+    cuenta_banco = models.CharField(max_length=100, blank=True, null=True, help_text="Cuenta/banco de donde salió (informativo)")
+    referencia = models.CharField(max_length=100, blank=True, null=True)
+    notas = models.TextField(blank=True, null=True)
+
+    # Complemento de pago (REP) que emite el proveedor; suele llegar después
+    uuid_complemento = models.CharField(max_length=40, blank=True, null=True)
+    fecha_complemento = models.DateField(null=True, blank=True)
+    complemento_xml = models.FileField(upload_to='cfdi/complementos/xml/', null=True, blank=True)
+    complemento_pdf = models.FileField(upload_to='cfdi/complementos/pdf/', null=True, blank=True)
+
+    creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def tiene_complemento(self):
+        return bool(self.complemento_xml or self.uuid_complemento)
+
+    class Meta:
+        ordering = ['-fecha', '-id']
+        verbose_name = "Pago"
+        verbose_name_plural = "Pagos"
+
+    def save(self, *args, **kwargs):
+        if not self.folio:
+            prefijo = 'EGR' if self.tipo == self.TIPO_EGRESO else 'ING'
+            ultimo = Pago.objects.filter(empresa=self.empresa, tipo=self.tipo).count() + 1
+            self.folio = f"{prefijo}-{ultimo:05d}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.folio} — {self.moneda.simbolo}{self.monto}"
+
+
+class AplicacionPago(models.Model):
+    """Cuánto de un pago se aplica a una factura específica.
+    monto_aplicado está en la moneda de la FACTURA; tipo_cambio convierte
+    a la moneda del pago (cuántas unidades de moneda_pago por 1 de moneda_factura)."""
+    pago = models.ForeignKey(Pago, on_delete=models.CASCADE, related_name='aplicaciones')
+    # Una aplicación apunta a una factura de proveedor (egreso) O de cliente (ingreso)
+    factura = models.ForeignKey(FacturaProveedor, on_delete=models.PROTECT,
+                                null=True, blank=True, related_name='aplicaciones')
+    factura_cliente = models.ForeignKey(FacturaCliente, on_delete=models.PROTECT,
+                                        null=True, blank=True, related_name='aplicaciones')
+    monto_aplicado = models.DecimalField(max_digits=14, decimal_places=2,
+                                         help_text="En la moneda de la factura")
+    tipo_cambio = models.DecimalField(max_digits=12, decimal_places=6, default=1,
+                                      help_text="Moneda_pago por 1 de moneda_factura (1 si misma moneda)")
+
+    @property
+    def documento(self):
+        """La factura a la que aplica, sea de proveedor o de cliente."""
+        return self.factura or self.factura_cliente
+
+    @property
+    def monto_en_pago(self):
+        return self.monto_aplicado * self.tipo_cambio
+
+    def __str__(self):
+        doc = self.documento
+        return f"{self.pago.folio} → {doc.folio if doc else '?'}: {self.monto_aplicado}"

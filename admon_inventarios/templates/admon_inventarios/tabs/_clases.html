@@ -1,0 +1,73 @@
+<div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-10">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div class="lg:col-span-1 space-y-6">
+            <div>
+                <h4 id="titulo_clase" class="font-black text-slate-800 uppercase text-[11px] tracking-[0.2em] italic mb-1">Registro Maestro</h4>
+                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Definición de parámetros generales</p>
+                <div class="h-1 w-10 bg-brand mt-2 rounded-full shadow-sm shadow-brand/20"></div>
+            </div>
+            
+            <form method="POST" id="form_clase" class="space-y-4 pt-4">
+                {% csrf_token %}
+                <input type="hidden" name="item_id" id="clase_item_id" value="">
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Código</label>
+                    {{ form_clase.codigo }} 
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Descripción</label>
+                    {{ form_clase.descripcion }}
+                </div>                
+
+                <div class="flex flex-col gap-2">
+                    <button type="submit" name="btn_clase" id="btn_clase_submit"
+                        class="w-full bg-brand text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all transform hover:-translate-y-1 active:scale-95">
+                        Guardar Registro
+                    </button>
+                    <button type="button" id="btn_cancelar_clase" onclick="resetClaseForm()" 
+                        class="hidden w-full bg-slate-100 text-slate-400 font-black py-2 rounded-xl text-[9px] uppercase tracking-widest hover:bg-slate-200 transition-all">
+                        Cancelar Edición
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="lg:col-span-2 border-l border-slate-50 pl-0 lg:pl-10">
+            {% include "admon_inventarios/partials/_tabla_simple.html" with items=clases %}
+        </div>
+    </div>
+</div>
+
+<script>
+    /**
+     * Sube los datos de la fila de la tabla al formulario de la izquierda
+     */
+    function editClase(id, codigo, descripcion) {
+        // 1. Cambiar textos visuales
+        document.getElementById('titulo_clase').innerText = 'Editando Clase';
+        document.getElementById('btn_clase_submit').innerText = 'Actualizar Cambios';
+        document.getElementById('btn_cancelar_clase').classList.remove('hidden');
+
+        // 2. Llenar los campos
+        document.getElementById('clase_item_id').value = id;
+        
+        // Django suele renderizar los IDs como id_codigo e id_descripcion
+        if(document.getElementById('id_codigo')) document.getElementById('id_codigo').value = codigo;
+        if(document.getElementById('id_descripcion')) document.getElementById('id_descripcion').value = descripcion;
+        
+        // Scroll suave al formulario en móviles
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /**
+     * Limpia el formulario y regresa al modo "Registro"
+     */
+    function resetClaseForm() {
+        document.getElementById('form_clase').reset();
+        document.getElementById('clase_item_id').value = '';
+        document.getElementById('titulo_clase').innerText = 'Registro Maestro';
+        document.getElementById('btn_clase_submit').innerText = 'Guardar Registro';
+        document.getElementById('btn_cancelar_clase').classList.add('hidden');
+    }
+</script>

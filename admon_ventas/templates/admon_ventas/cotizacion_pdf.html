@@ -1,0 +1,94 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+    @page { size: letter; margin: 1.4cm 1.5cm; }
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #334155; }
+    .muted { color: #94a3b8; font-size: 8.5px; }
+    table { width: 100%; border-collapse: collapse; } td { vertical-align: top; }
+    .empresa { font-size: 13px; font-weight: bold; color: #0f172a; }
+    .doc-title { font-size: 11px; font-weight: bold; color: #1e3a8a; letter-spacing: 1px; }
+    .doc-folio { font-size: 17px; font-weight: bold; color: #0f172a; }
+    .bar { height: 3px; background: #1e3a8a; margin: 10px 0 16px 0; font-size: 0; line-height: 0; }
+    .label { color: #1e3a8a; font-size: 8px; font-weight: bold; letter-spacing: 0.5px; }
+    .val { font-size: 9.5px; color: #1e293b; }
+    .panel { border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; }
+    .items th { background: #1e3a8a; color: #fff; padding: 7px 9px; text-align: left; font-size: 8.5px; }
+    .items td { padding: 7px 9px; border-bottom: 1px solid #eef2f7; font-size: 9.5px; }
+    .items tr.alt td { background: #f8fafc; }
+    .right { text-align: right; } .center { text-align: center; }
+    .tot td { padding: 4px 9px; font-size: 10px; }
+    .tot .k { color: #64748b; text-align: right; }
+    .tot .v { text-align: right; width: 110px; }
+    .tot .grand { font-size: 13px; font-weight: bold; color: #fff; background: #1e3a8a; }
+</style>
+</head>
+<body>
+    <table>
+        <tr>
+            <td width="55%">
+                {% if empresa.logo %}<img src="{{ empresa.logo.path }}" style="height:34px; margin-bottom:8px;"><br>{% endif %}
+                <div class="empresa" style="margin-top:6px;">{{ empresa.nombre_fiscal }}</div>
+                <div class="muted">RFC: {{ empresa.rfc }}</div>
+            </td>
+            <td width="45%" class="right" align="right">
+                <div class="doc-title">COTIZACIÓN</div>
+                <div class="doc-folio">{{ cotizacion.folio }}</div>
+                <div class="muted" style="margin-top:8px;">Emisión: <b style="color:#334155;">{{ cotizacion.fecha_emision|date:"d/m/Y" }}</b></div>
+                {% if cotizacion.vigencia %}<div class="muted">Válida hasta: {{ cotizacion.vigencia|date:"d/m/Y" }}</div>{% endif %}
+                <div class="muted">Sucursal: {{ cotizacion.sucursal.nombre }}</div>
+                <div class="muted">Moneda: {{ cotizacion.moneda.codigo }}</div>
+            </td>
+        </tr>
+    </table>
+    <div class="bar">&nbsp;</div>
+
+    <table style="margin-bottom:16px;"><tr><td class="panel">
+        <table><tr>
+            <td width="60%"><span class="label">CLIENTE</span><br>
+                <span class="val" style="font-weight:bold; font-size:11px;">{{ cotizacion.cliente.nombre_fiscal|default:cotizacion.cliente }}</span><br>
+                {% if cotizacion.cliente.direccion %}<span class="val">{{ cotizacion.cliente.direccion }}</span>{% endif %}
+            </td>
+            <td width="40%">
+                {% if cotizacion.cliente.rfc %}<span class="label">RFC</span> <span class="val">{{ cotizacion.cliente.rfc }}</span><br>{% endif %}
+                {% if cotizacion.cliente.contacto_nombre %}<span class="label">ATENCIÓN</span> <span class="val">{{ cotizacion.cliente.contacto_nombre }}</span><br>{% endif %}
+                {% if cotizacion.cliente.telefono %}<span class="label">TEL</span> <span class="val">{{ cotizacion.cliente.telefono }}</span><br>{% endif %}
+                {% if cotizacion.cliente.email %}<span class="label">EMAIL</span> <span class="val">{{ cotizacion.cliente.email }}</span>{% endif %}
+            </td>
+        </tr></table>
+    </td></tr></table>
+
+    <table class="items">
+        <thead><tr>
+            <th width="48%">Producto</th><th class="center" width="12%">Tipo</th>
+            <th class="center" width="10%">Cant.</th><th class="right" width="15%">Precio</th><th class="right" width="15%">Importe</th>
+        </tr></thead>
+        <tbody>
+            {% for d in detalles %}
+            <tr class="{% cycle '' 'alt' %}">
+                <td><b>{{ d.producto.nombre }}</b><br><span class="muted">{{ d.producto.sku }}</span></td>
+                <td class="center">{% if d.tipo_linea == 'RENTA' %}Renta{% else %}Producto{% endif %}</td>
+                <td class="center">{{ d.cantidad|floatformat:"-2" }}</td>
+                <td class="right">{{ cotizacion.moneda.simbolo }}{{ d.precio_unitario|floatformat:2|intcomma }}</td>
+                <td class="right">{{ cotizacion.moneda.simbolo }}{{ d.importe|floatformat:2|intcomma }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <table style="margin-top:14px;"><tr>
+        <td width="58%" style="vertical-align:bottom;">
+            {% if cotizacion.notas %}<div class="panel" style="background:#f8fafc;"><span class="label">OBSERVACIONES</span><br><span class="val">{{ cotizacion.notas }}</span></div>{% endif %}
+        </td>
+        <td width="42%"><table class="tot">
+            <tr><td class="k">Subtotal</td><td class="v">{{ cotizacion.moneda.simbolo }}{{ cotizacion.subtotal|floatformat:2|intcomma }}</td></tr>
+            <tr><td class="k">Impuestos</td><td class="v">{{ cotizacion.moneda.simbolo }}{{ cotizacion.impuestos|floatformat:2|intcomma }}</td></tr>
+            <tr><td class="k grand">TOTAL {{ cotizacion.moneda.codigo }}</td><td class="v grand">{{ cotizacion.moneda.simbolo }}{{ cotizacion.total|floatformat:2|intcomma }}</td></tr>
+        </table></td>
+    </tr></table>
+
+    <p class="muted" style="margin-top:34px; text-align:center;">Cotización sujeta a disponibilidad · {{ empresa.nombre_fiscal }}</p>
+</body>
+</html>

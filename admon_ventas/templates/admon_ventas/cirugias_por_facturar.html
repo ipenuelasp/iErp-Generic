@@ -1,0 +1,80 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-5xl mx-auto p-8">
+    <div class="mb-10">
+        <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Cirugías por Facturar</h1>
+        <p class="text-slate-500 mt-2 font-medium">Finalizadas por almacén · pendientes de generar pedido y CxC</p>
+    </div>
+
+    <div class="space-y-4">
+        {% for c in cirugias %}
+        <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <!-- Encabezado clicable -->
+            <div class="flex items-center justify-between px-7 py-5 cursor-pointer hover:bg-slate-50/60 transition" onclick="toggleCir({{ c.id }})">
+                <div class="flex items-center gap-4">
+                    <i id="chev-{{ c.id }}" class="fa-solid fa-chevron-right text-slate-300 text-xs transition-transform"></i>
+                    <div>
+                        <p class="font-black text-brand text-sm">{{ c.folio }}</p>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ c.fecha_cirugia|date:"d/m/Y"|default:"s/fecha" }}</p>
+                    </div>
+                </div>
+                <div class="hidden md:block text-[11px] font-bold text-slate-600 text-center">
+                    <p>{{ c.paciente|default:"—" }}</p>
+                    <p class="text-slate-400">{{ c.doctor.nombre|default:"—" }}</p>
+                </div>
+                <div class="hidden md:block text-[11px] font-bold text-slate-500">{{ c.hospital.nombre|default:"—" }}</div>
+                <div class="text-right">
+                    <p class="text-[9px] font-black text-slate-400 uppercase">Cliente</p>
+                    <p class="text-xs font-bold text-slate-700">{{ c.cliente|default:"— sin cliente —" }}</p>
+                </div>
+            </div>
+
+            <!-- Detalle desplegable -->
+            <div id="det-{{ c.id }}" class="hidden border-t border-slate-100">
+                <table class="w-full text-left">
+                    <thead><tr class="bg-slate-50/60 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                        <th class="px-7 py-3">Producto</th><th class="px-4 py-3 text-center">Tipo</th><th class="px-7 py-3 text-right">Cantidad a facturar</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for s in c.salidas.all %}{% for it in s.contenido.all %}
+                        <tr>
+                            <td class="px-7 py-3 text-xs font-bold text-slate-700">[{{ it.producto.sku }}] {{ it.producto.nombre }}</td>
+                            <td class="px-4 py-3 text-center text-[9px] font-black uppercase">{% if it.es_retornable %}<span class="text-amber-600">Renta</span>{% else %}<span class="text-slate-400">Venta</span>{% endif %}</td>
+                            <td class="px-7 py-3 text-right text-xs font-black {% if it.es_retornable %}text-amber-600{% else %}text-emerald-600{% endif %}">{% if it.es_retornable %}{{ it.cantidad_enviada|floatformat:"-2" }}{% else %}{{ it.cantidad_usada|floatformat:"-2" }}{% endif %}</td>
+                        </tr>
+                        {% endfor %}{% endfor %}
+                    </tbody>
+                </table>
+                <div class="flex flex-col md:flex-row md:items-center justify-end gap-3 px-7 py-5 bg-slate-50/40 border-t border-slate-50">
+                    <form method="POST" action="{% url 'admon_ventas:generar_pedido_cirugia' c.id %}" class="flex items-center gap-3">
+                        {% csrf_token %}
+                        <label class="text-[10px] font-black text-slate-400 uppercase">Moneda</label>
+                        <select name="moneda" class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold no-select2">
+                            {% for m in monedas %}<option value="{{ m.id }}" {% if m.es_principal %}selected{% endif %}>{{ m.codigo }}</option>{% endfor %}
+                        </select>
+                        <button type="submit" {% if not c.cliente %}disabled{% endif %} class="bg-brand text-white font-black py-3 px-8 rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-1 transition-all disabled:opacity-40">
+                            <i class="fa-solid fa-file-invoice-dollar mr-2"></i> Generar pedido y CxC
+                        </button>
+                    </form>
+                </div>
+                {% if not c.cliente %}<p class="px-7 pb-4 text-[10px] font-bold text-rose-500">Sin cliente asignado: edita la solicitud antes de facturar.</p>{% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="bg-white rounded-[2.5rem] border border-slate-100 p-16 text-center">
+            <i class="fa-solid fa-clipboard-check text-4xl text-slate-200 mb-4 block"></i>
+            <p class="text-slate-400 font-bold italic text-sm">No hay cirugías pendientes de facturar.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+<script>
+function toggleCir(id){
+    const row=document.getElementById('det-'+id), chev=document.getElementById('chev-'+id);
+    row.classList.toggle('hidden');
+    if(chev) chev.style.transform = row.classList.contains('hidden') ? '' : 'rotate(90deg)';
+}
+</script>
+{% endblock %}

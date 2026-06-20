@@ -1,0 +1,72 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-4xl mx-auto p-8">
+    <div class="mb-10 flex justify-between items-end">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Liquidar cirugía {{ solicitud.folio }}</h1>
+            <p class="text-slate-500 mt-2 font-medium">{{ solicitud.cliente|default:"sin cliente" }} · {{ solicitud.hospital.nombre|default:'' }}</p>
+        </div>
+        <a href="{% url 'admon_cirugias:solicitud_detalle' solicitud.pk %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver</a>
+    </div>
+
+    {% if not solicitud.cliente %}
+    <div class="bg-rose-50 border border-rose-100 rounded-2xl px-6 py-4 mb-6 text-xs font-black text-rose-600">Esta cirugía no tiene cliente a facturar. Edítala antes de liquidar.</div>
+    {% endif %}
+
+    <form method="POST" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- Datos de la cirugía (paciente editable) -->
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+            <h3 class="text-sm font-black text-slate-800 uppercase italic mb-4"><i class="fa-solid fa-notes-medical mr-2 text-brand"></i> Datos de la cirugía</h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div><p class="text-[10px] font-black text-slate-400 uppercase">Doctor</p><p class="text-xs font-bold text-slate-700">{{ solicitud.doctor.nombre|default:"—" }}</p></div>
+                <div><p class="text-[10px] font-black text-slate-400 uppercase">Hospital</p><p class="text-xs font-bold text-slate-700">{{ solicitud.hospital.nombre|default:"—" }}</p></div>
+                <div><p class="text-[10px] font-black text-slate-400 uppercase">Fecha cirugía</p><p class="text-xs font-bold text-slate-700">{{ solicitud.fecha_cirugia|date:"d/m/Y"|default:"—" }}</p></div>
+                <div><p class="text-[10px] font-black text-slate-400 uppercase">Cliente</p><p class="text-xs font-bold text-slate-700">{{ solicitud.cliente|default:"—" }}</p></div>
+                <div class="md:col-span-2 space-y-1">
+                    <label class="text-[10px] font-black text-amber-600 uppercase ml-1"><i class="fa-solid fa-pen mr-1"></i> Paciente (puedes corregirlo)</label>
+                    <input type="text" name="paciente" value="{{ solicitud.paciente|default:'' }}" placeholder="Nombre del paciente"
+                        class="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:border-amber-400">
+                    <p class="text-[9px] text-slate-400 font-bold ml-1">Si el doctor avisó que la cirugía fue para otro paciente, corrígelo aquí.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Consumo consolidado (solo lectura) -->
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <div class="px-8 pt-8 pb-2"><h3 class="text-sm font-black text-slate-800 uppercase italic">Consumo a facturar</h3>
+                <p class="text-[10px] text-slate-400 font-bold">Consumibles por lo usado; retornables por lo enviado (renta). De todas las cajas de la cirugía.</p>
+            </div>
+            <table class="w-full text-left">
+                <thead><tr class="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    <th class="px-8 py-4">Producto</th><th class="px-4 py-4 text-center">Tipo</th>
+                    <th class="px-8 py-4 text-right">Cantidad a facturar</th>
+                </tr></thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for s in salidas %}{% for it in s.contenido.all %}
+                    <tr>
+                        <td class="px-8 py-3 text-xs font-bold text-slate-700">[{{ it.producto.sku }}] {{ it.producto.nombre }}</td>
+                        <td class="px-4 py-3 text-center text-[9px] font-black uppercase">{% if it.es_retornable %}<span class="text-amber-600">Renta</span>{% else %}<span class="text-slate-400">Venta</span>{% endif %}</td>
+                        <td class="px-8 py-3 text-right text-xs font-black {% if it.es_retornable %}text-amber-600{% else %}text-emerald-600{% endif %}">{% if it.es_retornable %}{{ it.cantidad_enviada|floatformat:"-2" }}{% else %}{{ it.cantidad_usada|floatformat:"-2" }}{% endif %}</td>
+                    </tr>
+                    {% endfor %}{% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div class="bg-white rounded-[2rem] shadow border border-slate-100 p-5 md:w-64">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Moneda</label>
+                <select name="moneda" class="w-full mt-1">{% for m in monedas %}<option value="{{ m.id }}" {% if m.es_principal %}selected{% endif %}>{{ m.codigo }} ({{ m.simbolo }})</option>{% endfor %}</select>
+            </div>
+            <p class="text-[10px] font-bold text-slate-400 italic md:max-w-sm">Los <b>extras (productos adicionales)</b> y las <b>comisiones internas</b> se agregan en el <b>pedido</b> después de liquidar.</p>
+            <button type="submit" {% if not solicitud.cliente %}disabled{% endif %} class="bg-brand text-white px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-xl shadow-brand/30 hover:-translate-y-1 transition-all disabled:opacity-40"><i class="fa-solid fa-file-invoice-dollar mr-2"></i> Generar pedido y CxC</button>
+        </div>
+    </form>
+</div>
+<style>select{width:100%;padding:0.7rem 0.9rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.9rem;outline:none;font-weight:600;color:#334155;font-size:0.8rem}
+select:focus{border-color:var(--brand-color);background:#fff;box-shadow:0 0 0 4px rgba(0,171,241,0.1)}</style>
+{% endblock %}

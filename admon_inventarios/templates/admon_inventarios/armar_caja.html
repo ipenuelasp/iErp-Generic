@@ -1,0 +1,163 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% block main_content %}
+<div class="max-w-6xl mx-auto p-8">
+    <div class="mb-8 flex justify-between items-end">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Armar caja</h1>
+            <p class="text-slate-500 mt-2 font-medium">
+                {{ caja.codigo_caja }} · {{ caja.nombre_display }} ·
+                {% if es_consigna %}<span class="text-amber-600 font-black">Consigna · {{ caja.consignante.nombre }}</span>{% else %}<span class="text-brand font-black">Propia</span>{% endif %}
+                · Sede {{ sucursal_activa.nombre }}
+            </p>
+        </div>
+        <a href="{% url 'admon_inventarios:cajas' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver</a>
+    </div>
+
+    <form method="POST" id="armarForm">
+        {% csrf_token %}
+
+        <div class="bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-5 text-[11px] font-bold text-slate-500">
+            <i class="fa-solid fa-circle-info mr-2 text-brand"></i> Esto es el <b>borrador</b> de la caja: defines qué debe llevar y las cantidades estándar. El material se carga al inventario después, al <b>reabastecer</b>.
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <!-- Catálogo: elegir productos -->
+            <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm flex flex-col" style="max-height:70vh">
+                <div class="p-5 border-b border-slate-50">
+                    <h3 class="text-xs font-black text-slate-800 uppercase italic mb-3">1 · Elige productos</h3>
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-xs"></i>
+                        <input id="buscador" type="text" placeholder="Buscar por SKU o nombre…" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-xs font-bold" autofocus>
+                    </div>
+                </div>
+                <div id="catalogo" class="overflow-y-auto divide-y divide-slate-50">
+                    {% for p in productos %}
+                    <label class="prod-row flex items-center gap-3 px-5 py-3 hover:bg-slate-50 cursor-pointer"
+                           data-pid="{{ p.id }}" data-nombre="[{{ p.sku }}] {{ p.nombre }}"
+                           data-search="{{ p.sku|lower }} {{ p.nombre|lower }}">
+                        <input type="checkbox" class="pick w-4 h-4 accent-[color:var(--brand-color)]"
+                               {% if p.id in actuales %}checked{% endif %}>
+                        <span class="text-[11px] font-bold text-slate-600 leading-tight">[{{ p.sku }}] {{ p.nombre }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Contenido de la caja: cantidades + renta -->
+            <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm flex flex-col" style="max-height:70vh">
+                <div class="p-5 border-b border-slate-50 flex items-center justify-between">
+                    <h3 class="text-xs font-black text-slate-800 uppercase italic">2 · Cantidades <span id="contador" class="text-slate-300">(0)</span></h3>
+                    <span class="text-[9px] font-black text-slate-300 uppercase">Tab / Enter para avanzar</span>
+                </div>
+                <div id="lineas" class="overflow-y-auto p-2 flex-1"></div>
+                <div id="vacio" class="p-10 text-center text-slate-300 text-xs font-bold italic">Marca productos a la izquierda…</div>
+                <div class="p-5 border-t border-slate-50">
+                    <button type="submit" class="w-full bg-brand text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-0.5 transition-all">
+                        <i class="fa-solid fa-floppy-disk mr-2"></i> Guardar contenido
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<template id="tplLinea">
+    <div class="linea flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50" data-pid="">
+        <span class="flex-1 text-[11px] font-bold text-slate-600 nombre leading-tight"></span>
+        <label class="flex items-center gap-1 text-[9px] font-black text-amber-600 uppercase cursor-pointer select-none" title="Herramienta de renta (regresa)">
+            <input type="checkbox" class="ret w-3.5 h-3.5 accent-amber-500"> Renta
+        </label>
+        <input type="number" step="0.0001" min="0" value="1" class="cant w-20 text-center font-black text-brand bg-slate-50 border border-slate-200 rounded-lg py-2">
+        <button type="button" class="quitar text-slate-300 hover:text-rose-500 px-1"><i class="fa-solid fa-xmark"></i></button>
+        <input type="hidden" name="producto_id[]" class="h-pid">
+        <input type="hidden" name="es_retornable[]" class="h-ret" disabled>
+    </div>
+</template>
+
+<script>
+(function () {
+    const catalogo = document.getElementById('catalogo');
+    const lineasBox = document.getElementById('lineas');
+    const vacio = document.getElementById('vacio');
+    const contador = document.getElementById('contador');
+    const tpl = document.getElementById('tplLinea');
+    const buscador = document.getElementById('buscador');
+    const actuales = {{ actuales_json|default:"{}"|safe }};
+
+    function refresca() {
+        const n = lineasBox.querySelectorAll('.linea').length;
+        contador.textContent = '(' + n + ')';
+        vacio.style.display = n ? 'none' : 'block';
+        // numerar cantidad[] en orden visual
+        lineasBox.querySelectorAll('.linea .cant').forEach(function (c) { c.setAttribute('name', 'cantidad[]'); });
+    }
+
+    function agregar(pid, nombre, cant, ret) {
+        if (lineasBox.querySelector('.linea[data-pid="' + pid + '"]')) return;
+        const node = tpl.content.cloneNode(true);
+        const linea = node.querySelector('.linea');
+        linea.dataset.pid = pid;
+        linea.querySelector('.nombre').textContent = nombre;
+        linea.querySelector('.h-pid').value = pid;
+        const cantInp = linea.querySelector('.cant');
+        cantInp.value = (cant != null ? cant : 1);
+        const retInp = linea.querySelector('.ret');
+        const hret = linea.querySelector('.h-ret');
+        retInp.checked = !!ret;
+        hret.disabled = !ret;
+        hret.value = pid;
+        retInp.addEventListener('change', function () { hret.disabled = !retInp.checked; });
+        linea.querySelector('.quitar').addEventListener('click', function () {
+            const cb = catalogo.querySelector('.prod-row[data-pid="' + pid + '"] .pick');
+            if (cb) cb.checked = false;
+            linea.remove(); refresca();
+        });
+        cantInp.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const cants = Array.from(lineasBox.querySelectorAll('.cant'));
+                const i = cants.indexOf(cantInp);
+                if (i > -1 && i + 1 < cants.length) cants[i + 1].focus();
+                else cantInp.blur();
+            }
+        });
+        lineasBox.appendChild(linea);
+        refresca();
+    }
+
+    function quitar(pid) {
+        const l = lineasBox.querySelector('.linea[data-pid="' + pid + '"]');
+        if (l) { l.remove(); refresca(); }
+    }
+
+    catalogo.addEventListener('change', function (e) {
+        if (!e.target.classList.contains('pick')) return;
+        const row = e.target.closest('.prod-row');
+        const pid = row.dataset.pid;
+        if (e.target.checked) {
+            agregar(pid, row.dataset.nombre, 1, false);
+            const c = lineasBox.querySelector('.linea[data-pid="' + pid + '"] .cant');
+            if (c) c.focus();
+        } else { quitar(pid); }
+    });
+
+    buscador.addEventListener('input', function () {
+        const q = buscador.value.toLowerCase().trim();
+        catalogo.querySelectorAll('.prod-row').forEach(function (r) {
+            r.style.display = (!q || r.dataset.search.indexOf(q) > -1) ? 'flex' : 'none';
+        });
+    });
+
+    // Precarga de receta existente
+    Object.keys(actuales).forEach(function (pid) {
+        const row = catalogo.querySelector('.prod-row[data-pid="' + pid + '"]');
+        if (row) agregar(pid, row.dataset.nombre, actuales[pid].cant, actuales[pid].ret);
+    });
+    refresca();
+
+    document.getElementById('armarForm').addEventListener('submit', function (e) {
+        if (!lineasBox.querySelector('.linea')) { e.preventDefault(); alert('Agrega al menos un producto.'); }
+    });
+})();
+</script>
+{% endblock %}

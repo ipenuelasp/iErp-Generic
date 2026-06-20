@@ -1,0 +1,101 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Recibir {{ orden.folio }}</h1>
+            <p class="text-slate-500 mt-2 font-medium">Proveedor <span class="text-brand">{{ orden.proveedor }}</span> · Sede <span class="text-brand">{{ sucursal_activa.nombre }}</span></p>
+        </div>
+        <a href="{% url 'admon_compras:orden_detalle' orden.pk %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver a la OC</a>
+    </div>
+
+    <form method="POST" id="formRec">
+        {% csrf_token %}
+        <div class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 mb-8">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block ml-1">Datos de entrada</label>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input type="text" name="remision" placeholder="REMISIÓN">
+                <input type="text" name="factura" placeholder="FACTURA">
+                <input type="text" name="notas" placeholder="NOTAS">
+            </div>
+        </div>
+
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left" id="tabla">
+                    <thead><tr class="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                        <th class="px-8 py-5">Producto</th>
+                        <th class="px-4 py-5 text-center">Pendiente</th>
+                        <th class="px-4 py-5 w-36 text-center text-brand">A recibir</th>
+                        <th class="px-4 py-5 w-56">Ubicación</th>
+                        <th class="px-4 py-5 w-28 text-center">Trazabilidad</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for det in partidas %}
+                        <tr class="fila hover:bg-slate-50/50 transition" data-id="{{ det.id }}" data-nombre="{{ det.producto.nombre|escapejs }}"
+                            data-lote="{{ det.producto.es_loteable }}" data-serie="{{ det.producto.es_serializable }}">
+                            <td class="px-8 py-5"><div class="font-bold text-slate-800 text-xs uppercase">{{ det.producto.nombre }}</div><div class="text-[10px] font-bold text-slate-400">SKU: {{ det.producto.sku }}</div></td>
+                            <td class="px-4 py-5 text-center text-xs font-bold text-amber-500">{{ det.pendiente_por_recibir|floatformat:2 }}</td>
+                            <td class="px-4 py-5">
+                                <input type="number" name="cantidad[]" step="0.0001" value="0" min="0" max="{{ det.pendiente_por_recibir }}" class="input-cant w-full text-center font-black text-brand">
+                                <input type="hidden" name="detalle_oc_id[]" value="{{ det.id }}">
+                            </td>
+                            <td class="px-4 py-5">
+                                <select name="ubicacion_id[]" required class="w-full">
+                                    <option value="">-- Seleccionar --</option>
+                                    {% for u in ubicaciones %}<option value="{{ u.id }}" {% if det.producto.ubicacion_defecto_id == u.id %}selected{% endif %}>{{ u.almacen.nombre }} > {{ u.codigo }}</option>{% endfor %}
+                                </select>
+                            </td>
+                            <td class="px-4 py-5 text-center">
+                                <div class="traza-oculta"></div>
+                                {% if det.producto.es_loteable or det.producto.es_serializable %}
+                                <button type="button" onclick="abrirTrazabilidad(this)" class="btn-traza p-3 bg-slate-100 text-slate-400 rounded-xl hover:bg-brand hover:text-white transition-all"><i class="fa-solid fa-barcode"></i></button>
+                                {% else %}<span class="text-[9px] font-black text-slate-200 uppercase italic">N/A</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="px-8 py-14 text-center text-slate-400 italic text-sm">Esta orden ya está recibida por completo.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% if partidas %}
+        <div class="mt-8 flex justify-end">
+            <button type="submit" class="bg-brand text-white px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-xl shadow-brand/30 hover:-translate-y-1 transition-all">Procesar Entrada</button>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+{% include "admon_inventarios/modals/modal_trazabilidad.html" %}
+
+<script>
+// El modal de trazabilidad de inventarios usa data-id, data-lote, data-serie, .input-cantidad, .datos-trazabilidad-ocultos, .btn-traza
+// Adaptamos los nombres de esta tabla a los que el modal espera:
+document.querySelectorAll('.fila').forEach(tr => {
+    const cant = tr.querySelector('.input-cant'); if (cant) cant.classList.add('input-cantidad');
+    const oc = tr.querySelector('.traza-oculta'); if (oc) oc.classList.add('datos-trazabilidad-ocultos');
+});
+document.getElementById('formRec').addEventListener('submit', function(e){
+    for (const tr of document.querySelectorAll('.fila')) {
+        const c = parseFloat(tr.querySelector('.input-cant').value)||0;
+        if (c <= 0) continue;
+        const requiere = tr.dataset.lote === 'True' || tr.dataset.serie === 'True';
+        if (requiere && tr.querySelector('.traza-oculta').innerHTML.trim() === '') {
+            e.preventDefault();
+            alert(`La partida "${tr.dataset.nombre}" requiere capturar lote o series (botón de código de barras).`);
+            return;
+        }
+    }
+});
+</script>
+<style>
+    input, select { width:100%; padding:0.7rem 0.9rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.9rem; outline:none; font-weight:600; color:#334155; font-size:0.8rem; }
+    input:focus, select:focus { border-color: var(--brand-color); background:#fff; box-shadow:0 0 0 4px rgba(0,171,241,0.1); }
+</style>
+{% endblock %}

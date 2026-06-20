@@ -1,0 +1,37 @@
+<div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-10">
+    <div class="flex items-center space-x-4 mb-2">
+        <div class="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+            <i class="fa-solid fa-puzzle-piece text-xl"></i>
+        </div>
+        <div>
+            <h2 class="text-xl font-bold text-slate-800">Módulos contratados</h2>
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Qué módulos puede usar {{ empresa.nombre_fiscal }}</p>
+        </div>
+    </div>
+    <p class="text-[11px] text-slate-400 italic mb-8 ml-16">Solo tú (administrador) defines esto. El dueño de la empresa reparte estos módulos entre sus usuarios.</p>
+
+    <form method="POST">
+        {% csrf_token %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for m in modulos_empresa %}
+            <label class="flex items-center justify-between p-5 rounded-2xl border-2 cursor-pointer transition-all {% if m.activo %}border-brand bg-brand/5{% else %}border-slate-100 hover:border-slate-200{% endif %}">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center {% if m.activo %}bg-brand text-white{% else %}bg-slate-100 text-slate-400{% endif %}">
+                        <i class="fa-solid {{ m.icono }}"></i>
+                    </div>
+                    <span class="font-bold text-slate-700">{{ m.nombre }}</span>
+                </div>
+                <input type="checkbox" name="modulos[]" value="{{ m.clave }}" {% if m.activo %}checked{% endif %} class="no-select2 w-5 h-5 rounded">
+            </label>
+            {% endfor %}
+        </div>
+        <div class="pt-8 border-t border-slate-50 mt-8 flex justify-end">
+            <button type="submit" name="btn_modulos" class="bg-brand hover:bg-brand-dark text-white font-black py-4 px-10 rounded-2xl shadow-lg shadow-brand/20 transition-all text-xs uppercase tracking-widest">
+                Guardar Módulos
+            </button>
+        </div>
+    </form>
+</div>
+<style>
+    #tab-modulos input[type=checkbox] { width:1.25rem; height:1.25rem; padding:0; }
+</style>

@@ -10,12 +10,20 @@
             </div>
         </div>
         
-        {% if empresa.logo %}
-        <div class="flex items-center space-x-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
-            <span class="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Logo Actual</span>
-            <img src="{{ empresa.logo.url }}" class="h-10 w-auto rounded-lg shadow-sm bg-white p-1">
+        <div class="flex items-center gap-3">
+            {% if empresa.logo %}
+            <div class="flex items-center space-x-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+                <span class="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Logo</span>
+                <img src="{{ empresa.logo.url }}" class="h-10 w-auto rounded-lg shadow-sm bg-white p-1">
+            </div>
+            {% endif %}
+            {% if empresa.isotipo %}
+            <div class="flex items-center space-x-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+                <span class="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Isotipo</span>
+                <img src="{{ empresa.isotipo.url }}" class="h-10 w-10 object-contain rounded-lg shadow-sm bg-white p-1">
+            </div>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
 
     <form method="POST" enctype="multipart/form-data" class="space-y-6">
@@ -38,6 +46,16 @@
                             </div>
                         </div>
                     
+                    {% elif field.name == 'isotipo' %}
+                        <div class="relative h-[60px]">
+                            <input type="file" name="{{ field.name }}" id="id_{{ field.name }}" accept="image/*"
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                            <div class="absolute inset-0 flex items-center w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-4 hover:border-brand transition-all z-10">
+                                <i class="fa-solid fa-shapes text-slate-400 mr-3"></i>
+                                <span class="text-sm text-slate-500 font-medium truncate">Subir isotipo (emblema cuadrado)</span>
+                            </div>
+                        </div>
+
                     {% elif field.name == 'moneda_principal' %}
                         <div class="relative">
                             <select name="{{ field.name }}" id="id_{{ field.name }}" 

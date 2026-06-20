@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}Panel{% endblock %} | {{ empresa.nombre_fiscal|default:"iErp" }}</title>
+    {% load static %}
+    <link rel="icon" type="image/png" href="{% if empresa.isotipo %}{{ empresa.isotipo.url }}{% elif empresa.logo %}{{ empresa.logo.url }}{% else %}{% static 'img/iErp_4k_sinfondo.png' %}{% endif %}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -20,8 +22,80 @@
     </script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
     <style>
+        /* ── FLATPICKR: acento de marca ── */
+        .flatpickr-day.selected, .flatpickr-day.selected:hover { background: #6366f1; border-color: #6366f1; }
+        .flatpickr-day.today { border-color: #a5b4fc; }
+        .flatpickr-day:hover { background: #eef2ff; }
+        .flatpickr-months .flatpickr-month, .flatpickr-current-month { color: #1e293b; }
+        span.flatpickr-weekday { color: #94a3b8; }
+
+        /* ── SELECT2 THEME (compartido en todo el sistema) ── */
+        .select2-container--default .select2-selection--single {
+            height: 42px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background-color: #ffffff;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .select2-container--default .select2-selection--single:hover { border-color: #a5b4fc; }
+        .select2-container--default.select2-container--open .select2-selection--single,
+        .select2-container--default.select2-container--focus .select2-selection--single {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+            outline: none;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #1e293b; font-size: 14px; line-height: 42px; padding-left: 0;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__placeholder { color: #94a3b8; }
+        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 42px; right: 10px; }
+        .select2-container--default .select2-selection--single .select2-selection__arrow b {
+            border-color: #94a3b8 transparent transparent transparent;
+        }
+        .select2-container--default.select2-container--open .select2-selection--single .select2-selection__arrow b {
+            border-color: transparent transparent #6366f1 transparent;
+        }
+        /* Multiple */
+        .select2-container--default .select2-selection--multiple {
+            border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;
+            min-height: 42px; padding: 4px 8px; transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .select2-container--default.select2-container--open .select2-selection--multiple,
+        .select2-container--default.select2-container--focus .select2-selection--multiple {
+            border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); outline: none;
+        }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice {
+            background-color: #eef2ff; border: 1px solid #c7d2fe; border-radius: 8px;
+            color: #4338ca; font-size: 13px; padding: 2px 10px;
+        }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice__remove { color: #818cf8; margin-right: 6px; }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover { color: #4338ca; }
+        /* Dropdown */
+        .select2-dropdown {
+            border: 1px solid #e2e8f0; border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08); overflow: hidden; margin-top: 4px;
+            z-index: 99999;
+        }
+        .select2-container { z-index: 99999; }
+        .select2-container--default .select2-search--dropdown .select2-search__field {
+            border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 12px;
+            font-size: 13px; outline: none; color: #1e293b;
+        }
+        .select2-container--default .select2-search--dropdown .select2-search__field:focus {
+            border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.12);
+        }
+        .select2-results__option { padding: 9px 14px; font-size: 14px; color: #334155; }
+        .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: #eef2ff; color: #4338ca; }
+        .select2-container--default .select2-results__option[aria-selected=true] { background-color: #f1f5f9; color: #6366f1; font-weight: 600; }
+        .select2-results__option--load-more, .select2-results__message { color: #94a3b8; font-size: 13px; }
+
         /* Estilos adicionales para los mensajes */
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(-10px); }
@@ -95,6 +169,93 @@
                 setTimeout(() => msg.remove(), 500);
             });
         }, 6000);
+    </script>
+
+    <!-- Select2 (global para todos los <select> del sistema) -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
+    <script>
+        // Date picker estilizado en todos los <input type=date> (salvo .no-flatpickr)
+        window.initFlatpickr = function (contenedor) {
+            if (!window.flatpickr) return;
+            const ctx = contenedor || document;
+            const inputs = (ctx.matches && ctx.matches('input[type=date]')) ? [ctx]
+                : (ctx.querySelectorAll ? ctx.querySelectorAll('input[type=date]:not(.no-flatpickr)') : []);
+            inputs.forEach(function (inp) {
+                if (inp._flatpickr || inp.classList.contains('no-flatpickr')) return;
+                flatpickr(inp, {
+                    locale: 'es', dateFormat: 'Y-m-d',
+                    altInput: true, altFormat: 'd/M/Y', allowInput: true,
+                });
+            });
+        };
+    </script>
+    <script>
+        // Dónde se ancla el dropdown: dentro del modal si el select vive en uno
+        // (contenedor con position:fixed), si no, en el body.
+        function _dropdownParent($el) {
+            const $modal = $el.closest('.fixed, [data-modal], dialog');
+            return $modal.length ? $modal : $('body');
+        }
+
+        // Inicializa Select2 en los <select> de un contenedor (idempotente).
+        // Excluye los marcados con .no-select2 y los ya inicializados.
+        window.initSelect2 = function (contenedor) {
+            const ctx = contenedor || document;
+            let $selects = $(ctx).is('select') ? $(ctx) : $(ctx).find('select');
+            $selects.not('.no-select2').not('.select2-hidden-accessible').each(function () {
+                const $s = $(this);
+                $s.select2({
+                    width: '100%',
+                    placeholder: $s.data('placeholder') || ($s.find('option[value=""]').text() || 'Selecciona una opción'),
+                    allowClear: !$s.prop('required'),
+                    language: {
+                        noResults: function () { return 'Sin resultados'; },
+                        searching: function () { return 'Buscando...'; },
+                    },
+                    dropdownParent: _dropdownParent($s),
+                });
+            });
+        };
+
+        // ── Anti doble-clic GLOBAL ──
+        // Al enviar cualquier formulario, deshabilita su botón de submit y
+        // muestra "Procesando…" para evitar envíos dobles (reabastos, pedidos,
+        // cobros, etc.). Excepciones: forms con data-no-once (p.ej. filtros GET).
+        document.addEventListener('submit', function (e) {
+            if (e.defaultPrevented) return;            // validación previa canceló el envío
+            const form = e.target;
+            if (!(form instanceof HTMLFormElement)) return;
+            if (form.hasAttribute('data-no-once')) return;
+            const btn = form.querySelector('button[type=submit], input[type=submit]');
+            if (!btn || btn.disabled) return;
+            // Espera un tick para no abortar el envío nativo del form
+            setTimeout(function () {
+                btn.disabled = true;
+                if (btn.tagName === 'BUTTON') {
+                    btn.dataset.orig = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Procesando…';
+                }
+            }, 0);
+        }, false);
+
+        $(document).ready(function () {
+            initSelect2(document);
+            initFlatpickr(document);
+
+            // Selects/fechas creados dinámicamente (partidas de OC, recepciones, etc.)
+            // se inicializan solos al insertarse en el DOM.
+            const obs = new MutationObserver(function (mutaciones) {
+                mutaciones.forEach(function (m) {
+                    m.addedNodes.forEach(function (nodo) {
+                        if (nodo.nodeType === 1) { initSelect2(nodo); initFlatpickr(nodo); }
+                    });
+                });
+            });
+            obs.observe(document.body, { childList: true, subtree: true });
+        });
     </script>
 </body>
 </html>

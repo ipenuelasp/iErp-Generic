@@ -1,0 +1,351 @@
+{% load humanize %}
+<div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+    
+    <div class="flex justify-between items-center mb-8 pb-6 border-b border-slate-50">
+        <div>
+            <h3 class="text-xl font-black text-slate-800 italic uppercase">Maestro de Productos</h3>
+            <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Listado general de existencias</p>
+        </div>
+        {% if puede_editar_maestro %}
+        <div class="flex gap-3">
+            {% if user.is_superuser %}
+            <a href="{% url 'admon_inventarios:plantilla_productos' %}" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all">
+                <i class="fa-solid fa-file-arrow-down mr-2"></i> Plantilla
+            </a>
+            <button type="button" onclick="document.getElementById('modalImportProd').classList.remove('hidden')" class="bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-200 hover:-translate-y-1 transition-all">
+                <i class="fa-solid fa-file-arrow-up mr-2"></i> Carga masiva
+            </button>
+            {% endif %}
+            <button onclick="openModal()" class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
+                <i class="fa-solid fa-plus mr-2"></i> Nuevo Producto
+            </button>
+        </div>
+        {% else %}
+        <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest italic">
+            <i class="fa-solid fa-lock mr-1"></i> Maestro controlado por la matriz
+        </span>
+        {% endif %}
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-separate border-spacing-y-3"> 
+            <thead>
+                <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                    <th class="px-6 py-4 w-32">SKU</th> 
+                    <th class="px-6 py-4">Descripción / U.M.</th> 
+                    <th class="px-6 py-4 w-44 text-center">Clasificación</th> 
+                    <th class="px-6 py-4 w-40 text-center">Ubicación Sugerida</th> <th class="px-6 py-4 w-32 text-center">Trazabilidad</th>
+                    {% if puede_ver_precios %}<th class="px-6 py-4 w-44 text-right">Costo / Venta</th>{% endif %}
+                    <th class="px-6 py-4 w-28 text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in productos %}
+                <tr class="bg-white border-b border-slate-50 hover:bg-slate-50/50 transition-all group">
+                    <td class="px-6 py-5 font-black text-slate-700 italic text-xs uppercase">{{ p.sku }}</td>
+                    
+                    <td class="px-6 py-5">
+                        <div class="flex flex-col gap-1">
+                            <div class="flex items-center gap-2">
+                                <span class="font-black text-slate-800 text-sm leading-none">{{ p.nombre }}</span>
+                                <span class="bg-brand/10 text-brand text-[9px] font-black px-2 py-1 rounded-md uppercase border border-brand/5 shadow-sm">
+                                    {{ p.unidad_medida.codigo|default:"S/U" }}
+                                </span>
+                            </div>
+                            {% if p.descripcion %}
+                            <p class="text-[10px] text-slate-400 font-bold italic leading-tight max-w-2xl">
+                                {{ p.descripcion }}
+                            </p>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <td class="px-6 py-5">
+                        <div class="flex flex-col gap-1.5 items-center">
+                            <div class="flex gap-1">
+                                <span class="text-[8px] font-black text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200 uppercase" title="Clase">{{ p.clase.codigo|default:"---" }}</span>
+                                <span class="text-[8px] font-black text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200 uppercase" title="Grupo">{{ p.grupo.codigo|default:"---" }}</span>
+                            </div>
+                            <span class="text-[8px] font-black text-brand/70 bg-white px-2 py-0.5 rounded border border-brand/10 uppercase tracking-widest shadow-sm" title="Tipo">{{ p.tipo.codigo|default:"---" }}</span>
+                        </div>
+                    </td>
+
+                    <td class="px-6 py-5 text-center">
+                        {% if p.ubicacion_defecto %}
+                            <div class="flex flex-col items-center">
+                                <span class="text-[9px] font-black text-brand bg-brand/5 px-2 py-1 rounded-lg border border-brand/10 leading-none">
+                                    {{ p.ubicacion_defecto.codigo }}
+                                </span>
+                                <span class="text-[8px] text-slate-400 mt-1 uppercase font-bold italic">Específica</span>
+                            </div>
+                        {% elif p.grupo.ubicacion_defecto %}
+                            <div class="flex flex-col items-center">
+                                <span class="text-[9px] font-black text-slate-500 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200 leading-none">
+                                    {{ p.grupo.ubicacion_defecto.codigo }}
+                                </span>
+                                <span class="text-[8px] text-slate-300 mt-1 uppercase font-bold italic">Desde Grupo</span>
+                            </div>
+                        {% else %}
+                            <span class="text-[9px] font-bold text-slate-300 italic">Piso / Sin asignar</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="px-6 py-5">
+                        <div class="flex justify-center gap-1.5">
+                            {% if p.es_loteable %}<span class="w-8 h-8 flex items-center justify-center bg-blue-50 text-blue-500 rounded-xl border border-blue-100"><i class="fa-solid fa-box-archive text-xs"></i></span>{% endif %}
+                            {% if p.es_serializable %}<span class="w-8 h-8 flex items-center justify-center bg-purple-50 text-purple-500 rounded-xl border border-purple-100"><i class="fa-solid fa-barcode text-xs"></i></span>{% endif %}
+                        </div>
+                    </td>
+
+                    {% if puede_ver_precios %}
+                    <td class="px-6 py-5 text-right">
+                        <div class="text-[10px] font-black text-slate-300 italic mb-0.5">C: {{ moneda_simbolo }}{{ p.costo_unitario|default:0|floatformat:2|intcomma }}</div>
+                        <div class="text-sm font-black text-brand">V: {{ moneda_simbolo }}{{ p.precio_venta|default:0|floatformat:2|intcomma }}</div>
+                    </td>
+                    {% endif %}
+
+                    <td class="px-6 py-5">
+                        {% if puede_editar_maestro %}
+                        <div class="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="editProducto(this)"
+                                data-prod='{"id":"{{ p.id }}","nombre":"{{ p.nombre|escapejs }}","sku":"{{ p.sku|escapejs }}","precio":"{{ p.precio_venta }}","costo":"{{ p.costo_unitario }}","clase":"{{ p.clase.id|default:'' }}","grupo":"{{ p.grupo.id|default:'' }}","tipo":"{{ p.tipo.id|default:'' }}","lote":"{{ p.es_loteable }}","serie":"{{ p.es_serializable }}","activo":"{{ p.activo }}","unidad":"{{ p.unidad_medida.id|default:'' }}","ubicacion":"{{ p.ubicacion_defecto.id|default:'' }}","alcance":"{{ p.alcance }}","barras":"{{ p.codigo_barras|default:''|escapejs }}","sanitario":"{{ p.registro_sanitario|default:''|escapejs }}","comprable":"{{ p.es_comprable }}","vendible":"{{ p.es_vendible }}","mp":"{{ p.es_materia_prima }}","producible":"{{ p.es_producible }}","retornable":"{{ p.es_retornable }}","descripcion":"{{ p.descripcion|default:''|escapejs }}","impuesto":"{{ p.impuesto.id|default:'' }}"}'
+                                class="btn-edit-prod w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-brand hover:border-brand shadow-sm">
+                                <i class="fa-solid fa-pen-to-square text-xs"></i>
+                            </button>
+                            <button onclick="openDeleteModal('{{ p.id }}', 'producto')"
+                                class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500 shadow-sm">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modalProducto" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal()"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl p-10">
+            <button onclick="closeModal()" class="absolute top-8 right-8 w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            <div class="mb-8">
+                <h2 id="modalTitle" class="text-2xl font-black text-slate-800 italic uppercase">Nuevo Producto</h2>
+                <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest tracking-tighter">Información técnica y financiera</p>
+            </div>
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
+                <input type="hidden" name="item_id" id="prod_item_id">
+                
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase">Clase</label>{{ form_producto.clase }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase">Grupo</label>{{ form_producto.grupo }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase">Tipo</label>{{ form_producto.tipo }}</div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="grid grid-cols-4 gap-4">
+                        <div class="col-span-3 space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase">Nombre</label>{{ form_producto.nombre }}</div>
+                        <div class="col-span-1 space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase">U.M.</label>{{ form_producto.unidad_medida }}</div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-4">
+                        <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase">SKU</label>{{ form_producto.sku }}</div>
+                        <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase">Cód. Barras</label>{{ form_producto.codigo_barras }}</div>
+                        {% if puede_ver_precios %}
+                        <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase">Costo</label>{{ form_producto.costo_unitario }}</div>
+                        <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase">Venta</label>{{ form_producto.precio_venta }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase">Alcance</label>
+                            {{ form_producto.alcance }}
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase">Impuesto</label>
+                            {{ form_producto.impuesto }}
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase">Registro Sanitario <span class="text-slate-300 normal-case">(opcional)</span></label>
+                            {{ form_producto.registro_sanitario }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-5 rounded-[2rem] border border-slate-100">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center border-b border-slate-100 pb-2 mb-3 italic">Naturaleza del producto</p>
+                    <div class="grid grid-cols-5 gap-2 text-center">
+                        <label class="flex flex-col items-center gap-1.5 cursor-pointer group">
+                            {{ form_producto.es_comprable }}
+                            <span class="text-[9px] font-black uppercase text-slate-500 group-hover:text-brand">Comprable</span>
+                        </label>
+                        <label class="flex flex-col items-center gap-1.5 cursor-pointer group">
+                            {{ form_producto.es_vendible }}
+                            <span class="text-[9px] font-black uppercase text-slate-500 group-hover:text-brand">Vendible</span>
+                        </label>
+                        <label class="flex flex-col items-center gap-1.5 cursor-pointer group">
+                            {{ form_producto.es_materia_prima }}
+                            <span class="text-[9px] font-black uppercase text-slate-500 group-hover:text-brand">Mat. Prima</span>
+                        </label>
+                        <label class="flex flex-col items-center gap-1.5 cursor-pointer group">
+                            {{ form_producto.es_producible }}
+                            <span class="text-[9px] font-black uppercase text-slate-500 group-hover:text-brand">Producible</span>
+                        </label>
+                        <label class="flex flex-col items-center gap-1.5 cursor-pointer group">
+                            {{ form_producto.es_retornable }}
+                            <span class="text-[9px] font-black uppercase text-slate-500 group-hover:text-brand">Retornable</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-brand/5 p-6 rounded-[2rem] border border-brand/10">
+                    <div class="space-y-3 border-r border-brand/10 pr-4">
+                        <p class="text-[9px] font-black text-brand uppercase tracking-widest text-center border-b border-brand/10 pb-2 italic">Trazabilidad</p>
+                        <div class="flex justify-around items-center h-full pt-2">
+                            <label class="flex items-center space-x-2 cursor-pointer group">
+                                {{ form_producto.es_loteable }}
+                                <span class="text-[10px] font-black uppercase text-slate-600 group-hover:text-brand transition-colors">Lotes</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer group">
+                                {{ form_producto.es_serializable }}
+                                <span class="text-[10px] font-black uppercase text-slate-600 group-hover:text-brand transition-colors">Series</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between px-2 bg-white/50 py-2 rounded-xl border border-brand/5">
+                            <div>
+                                <p class="text-[9px] font-black text-brand uppercase italic leading-none">Estado</p>
+                                <p class="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Disponible en Sistema</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer group">
+                                {{ form_producto.activo }}
+                                
+                                <div class="w-10 h-5 bg-slate-200 rounded-full transition-all 
+                                            peer peer-checked:bg-brand 
+                                            after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
+                                            after:bg-white after:border-gray-300 after:border after:rounded-full 
+                                            after:h-4 after:w-4 after:transition-all 
+                                            peer-checked:after:translate-x-full peer-checked:after:border-white">
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-[9px] font-black text-slate-400 uppercase ml-1 italic">Ubicación Específica</label>
+                            {{ form_producto.ubicacion_defecto }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-6 flex justify-end gap-4">
+                    <button type="button" onclick="closeModal()" class="text-[10px] font-black uppercase text-slate-400 px-6">Cancelar</button>
+                    <button type="submit" name="btn_producto" id="btnSubmitProd" class="bg-brand text-white px-12 py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-brand/20">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openModal() {
+        document.getElementById('modalProducto').querySelector('form').reset();
+        document.getElementById('modalTitle').innerText = 'Nuevo Producto';
+        document.getElementById('btnSubmitProd').innerText = 'Registrar';
+        document.getElementById('prod_item_id').value = '';
+        document.getElementById('modalProducto').classList.remove('hidden');
+    }
+
+    function editProducto(btn) {
+        const d = JSON.parse(btn.dataset.prod);
+        openModal();
+        document.getElementById('modalTitle').innerText = 'Editar Producto';
+        document.getElementById('btnSubmitProd').innerText = 'Guardar Cambios';
+        document.getElementById('prod_item_id').value = d.id;
+
+        const setVal = (fid, val) => { const el = document.getElementById(fid); if (el) el.value = val; };
+        const setChk = (fid, val) => { const el = document.getElementById(fid); if (el) el.checked = (val === 'True' || val === 'true' || val === '1'); };
+
+        setVal('id_nombre', d.nombre);
+        setVal('id_sku', d.sku);
+        setVal('id_descripcion', d.descripcion);
+        setVal('id_precio_venta', parseFloat(d.precio).toFixed(2));
+        setVal('id_costo_unitario', parseFloat(d.costo).toFixed(2));
+        setVal('id_clase', d.clase);
+        setVal('id_grupo', d.grupo);
+        setVal('id_tipo', d.tipo);
+        setVal('id_unidad_medida', d.unidad);
+        setVal('id_ubicacion_defecto', d.ubicacion);
+        setVal('id_alcance', d.alcance);
+        setVal('id_impuesto', d.impuesto);
+        setVal('id_codigo_barras', d.barras);
+        setVal('id_registro_sanitario', d.sanitario);
+
+        setChk('id_es_loteable', d.lote);
+        setChk('id_es_serializable', d.serie);
+        setChk('id_activo', d.activo);
+        setChk('id_es_comprable', d.comprable);
+        setChk('id_es_vendible', d.vendible);
+        setChk('id_es_materia_prima', d.mp);
+        setChk('id_es_producible', d.producible);
+        setChk('id_es_retornable', d.retornable);
+    }
+
+    function closeModal() { 
+        document.getElementById('modalProducto').classList.add('hidden'); 
+    }
+</script>
+<style>
+    /* Buscamos el ID exacto que Django le pone al campo 'activo' */
+    #id_activo {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+        z-index: 10;
+        margin: 0;
+    }
+
+    /* Aseguramos que el switch reaccione cuando el input oculto sea 'checked' */
+    #id_activo:checked + div {
+        background-color: #00abf1; /* Tu color brand */
+    }
+
+    #id_activo:checked + div::after {
+        transform: translateX(20px); /* Ajusta según el ancho de tu switch */
+    }
+</style>
+{% if user.is_superuser and puede_editar_maestro %}
+<!-- MODAL CARGA MASIVA DE PRODUCTOS -->
+<div id="modalImportProd" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalImportProd').classList.add('hidden')"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-10">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-slate-800">Carga masiva de productos</h2>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Sube el Excel con la plantilla</p>
+            </div>
+            <ol class="text-[11px] font-bold text-slate-500 mb-5 space-y-1 list-decimal ml-4">
+                <li>Descarga la plantilla y llénala (borra la fila de ejemplo).</li>
+                <li>Súbela aquí. Si un SKU ya existe, ese producto se actualiza.</li>
+            </ol>
+            <form method="POST" action="{% url 'admon_inventarios:importar_productos' %}" enctype="multipart/form-data" class="space-y-5">
+                {% csrf_token %}
+                <input type="file" name="archivo" accept=".xlsx" required
+                    class="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-5 py-6 text-xs font-bold text-slate-600">
+                <div class="flex justify-between items-center pt-2">
+                    <a href="{% url 'admon_inventarios:plantilla_productos' %}" class="text-[10px] font-black uppercase text-brand hover:underline"><i class="fa-solid fa-file-arrow-down mr-1"></i> Descargar plantilla</a>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="document.getElementById('modalImportProd').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 px-4">Cancelar</button>
+                        <button type="submit" class="bg-emerald-600 text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">Cargar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}

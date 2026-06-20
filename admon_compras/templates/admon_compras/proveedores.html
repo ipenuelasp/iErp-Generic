@@ -1,0 +1,185 @@
+{% extends "admon_empresas/dashboard.html" %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Proveedores</h1>
+            <p class="text-slate-500 mt-2 font-medium">Catálogo de <span class="text-brand">{{ empresa.nombre_fiscal }}</span></p>
+        </div>
+        <div class="flex gap-3">
+            {% if user.is_superuser %}
+            <a href="{% url 'admon_compras:plantilla_proveedores' %}" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all">
+                <i class="fa-solid fa-file-arrow-down mr-2"></i> Descargar plantilla
+            </a>
+            <button onclick="document.getElementById('modalImport').classList.remove('hidden')" class="bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-200 hover:-translate-y-1 transition-all">
+                <i class="fa-solid fa-file-arrow-up mr-2"></i> Carga masiva
+            </button>
+            {% endif %}
+            <button onclick="abrirModal()" class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
+                <i class="fa-solid fa-plus mr-2"></i> Nuevo Proveedor
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50">
+                <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-8 py-5 font-black">Proveedor</th>
+                    <th class="px-6 py-5 font-black">RFC</th>
+                    <th class="px-6 py-5 font-black">Contacto</th>
+                    <th class="px-6 py-5 font-black text-center">Crédito</th>
+                    <th class="px-6 py-5 font-black text-center">Visibilidad</th>
+                    <th class="px-8 py-5 font-black text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for p in proveedores %}
+                <tr class="hover:bg-slate-50/80 transition group">
+                    <td class="px-8 py-4">
+                        <div class="font-bold text-slate-800 text-sm">{{ p.nombre_comercial|default:p.nombre_fiscal }}</div>
+                        <div class="text-[10px] text-slate-400 font-bold">{{ p.nombre_fiscal }}</div>
+                    </td>
+                    <td class="px-6 py-4 font-mono text-xs text-slate-500">{{ p.rfc }}</td>
+                    <td class="px-6 py-4 text-[10px] font-bold text-slate-500">
+                        {{ p.contacto_nombre|default:"—" }}<br>{{ p.email|default:"" }}
+                    </td>
+                    <td class="px-6 py-4 text-center text-xs font-bold text-slate-600">{{ p.dias_credito }} días</td>
+                    <td class="px-6 py-4 text-center">
+                        {% if p.sucursales_acceso.all %}
+                        <span class="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-lg uppercase">{{ p.sucursales_acceso.count }} sucursal(es)</span>
+                        {% else %}
+                        <span class="text-[9px] font-black bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg uppercase">Global</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-8 py-4 text-right">
+                        <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="editar(this)" data-prov='{"id":"{{ p.id }}","nombre_fiscal":"{{ p.nombre_fiscal|escapejs }}","nombre_comercial":"{{ p.nombre_comercial|default:''|escapejs }}","rfc":"{{ p.rfc|escapejs }}","email":"{{ p.email|default:''|escapejs }}","telefono":"{{ p.telefono|default:''|escapejs }}","celular":"{{ p.celular|default:''|escapejs }}","direccion":"{{ p.direccion|default:''|escapejs }}","contacto_nombre":"{{ p.contacto_nombre|default:''|escapejs }}","dias_credito":"{{ p.dias_credito }}","moneda":"{{ p.moneda_predeterminada.id|default:'' }}","sucursales":[{% for s in p.sucursales_acceso.all %}"{{ s.id }}"{% if not forloop.last %},{% endif %}{% endfor %}]}'
+                                class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-brand hover:border-brand shadow-sm">
+                                <i class="fa-solid fa-pen-to-square text-xs"></i>
+                            </button>
+                            <button onclick="eliminar('{{ p.id }}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500 shadow-sm">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin proveedores registrados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL PROVEEDOR -->
+<div id="modalProv" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="cerrarModal()"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-10">
+            <button onclick="cerrarModal()" class="absolute top-8 right-8 w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            <div class="mb-8">
+                <h2 id="modalTitulo" class="text-xl font-bold text-slate-800">Nuevo Proveedor</h2>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Datos fiscales y comerciales</p>
+            </div>
+            <form method="POST" class="space-y-5">
+                {% csrf_token %}
+                <input type="hidden" name="item_id" id="prov_id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Razón social</label>{{ form.nombre_fiscal }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Nombre comercial</label>{{ form.nombre_comercial }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">RFC</label>{{ form.rfc }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Email</label>{{ form.email }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Teléfono</label>{{ form.telefono }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Celular</label>{{ form.celular }}</div>
+                    <div class="space-y-1 col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Dirección</label>{{ form.direccion }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Atención con</label>{{ form.contacto_nombre }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Moneda</label>{{ form.moneda_predeterminada }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Días de crédito</label>{{ form.dias_credito }}</div>
+                </div>
+                <div class="space-y-2 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Visibilidad por sucursal</label>
+                    <p class="text-[9px] text-slate-400 font-bold ml-1 mb-2">Sin marcar ninguna = visible en todas las sucursales (global)</p>
+                    <div class="grid grid-cols-2 gap-2 text-xs font-bold text-slate-600">{{ form.sucursales_acceso }}</div>
+                </div>
+                <div class="pt-4 border-t border-slate-50 flex justify-end">
+                    <button type="submit" name="btn_guardar" class="bg-brand hover:bg-brand-dark text-white font-black py-4 px-10 rounded-2xl shadow-lg shadow-cyan-100 transition-all transform hover:-translate-y-1 text-xs uppercase tracking-widest">Guardar Proveedor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<form method="POST" id="formDel" class="hidden">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="item_id" id="del_id"></form>
+
+{% if user.is_superuser %}
+<!-- MODAL CARGA MASIVA -->
+<div id="modalImport" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalImport').classList.add('hidden')"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-10">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-slate-800">Carga masiva de proveedores</h2>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Sube el Excel con la plantilla</p>
+            </div>
+            <ol class="text-[11px] font-bold text-slate-500 mb-5 space-y-1 list-decimal ml-4">
+                <li>Descarga la plantilla y llénala (borra la fila de ejemplo).</li>
+                <li>Súbela aquí. Si un RFC ya existe, ese proveedor se actualiza.</li>
+            </ol>
+            <form method="POST" action="{% url 'admon_compras:importar_proveedores' %}" enctype="multipart/form-data" class="space-y-5">
+                {% csrf_token %}
+                <input type="file" name="archivo" accept=".xlsx" required
+                    class="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-5 py-6 text-xs font-bold text-slate-600">
+                <div class="flex justify-between items-center pt-2">
+                    <a href="{% url 'admon_compras:plantilla_proveedores' %}" class="text-[10px] font-black uppercase text-brand hover:underline"><i class="fa-solid fa-file-arrow-down mr-1"></i> Descargar plantilla</a>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="document.getElementById('modalImport').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 px-4">Cancelar</button>
+                        <button type="submit" class="bg-emerald-600 text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">Cargar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function abrirModal() {
+    document.querySelector('#modalProv form').reset();
+    document.getElementById('prov_id').value = '';
+    document.getElementById('modalTitulo').innerText = 'Nuevo Proveedor';
+    document.querySelectorAll('input[name="sucursales_acceso"]').forEach(c => c.checked = false);
+    document.getElementById('modalProv').classList.remove('hidden');
+}
+function cerrarModal() { document.getElementById('modalProv').classList.add('hidden'); }
+function editar(btn) {
+    const d = JSON.parse(btn.dataset.prov);
+    abrirModal();
+    document.getElementById('modalTitulo').innerText = 'Editar Proveedor';
+    document.getElementById('prov_id').value = d.id;
+    document.getElementById('id_nombre_fiscal').value = d.nombre_fiscal;
+    document.getElementById('id_nombre_comercial').value = d.nombre_comercial;
+    document.getElementById('id_rfc').value = d.rfc;
+    document.getElementById('id_email').value = d.email;
+    document.getElementById('id_telefono').value = d.telefono;
+    document.getElementById('id_celular').value = d.celular;
+    document.getElementById('id_direccion').value = d.direccion;
+    document.getElementById('id_contacto_nombre').value = d.contacto_nombre;
+    document.getElementById('id_dias_credito').value = d.dias_credito;
+    if (d.moneda) document.getElementById('id_moneda_predeterminada').value = d.moneda;
+    document.querySelectorAll('input[name="sucursales_acceso"]').forEach(c => { c.checked = d.sucursales.includes(c.value); });
+}
+function eliminar(id) {
+    if (!confirm('¿Eliminar este proveedor?')) return;
+    document.getElementById('del_id').value = id;
+    document.getElementById('formDel').submit();
+}
+</script>
+<style>
+    input, select, textarea { width:100%; padding:0.85rem 1rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:1rem; outline:none; font-weight:600; color:#334155; font-size:0.8rem; }
+    input:focus, select:focus { border-color: var(--brand-color); background:#fff; box-shadow:0 0 0 4px rgba(0,171,241,0.1); }
+    input[type=checkbox] { width:auto; margin-right:6px; }
+</style>
+{% endblock %}

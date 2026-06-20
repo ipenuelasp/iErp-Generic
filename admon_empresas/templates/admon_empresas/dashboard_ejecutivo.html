@@ -1,0 +1,157 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load static humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-6 md:p-8 animate-fade-in">
+
+    <!-- Encabezado -->
+    <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+        <div class="flex items-center gap-4">
+            {% if empresa.isotipo %}<img src="{{ empresa.isotipo.url }}" class="h-12 w-12 object-contain" alt="{{ empresa.nombre_fiscal }}">{% elif empresa.logo %}<img src="{{ empresa.logo.url }}" class="h-12 w-auto" alt="{{ empresa.nombre_fiscal }}">{% endif %}
+            <div>
+                <h1 class="text-2xl font-black text-slate-800 italic uppercase tracking-tight">Dashboard Ejecutivo</h1>
+                <p class="text-slate-400 text-xs font-bold">{{ empresa.nombre_fiscal }} · {{ request.session.sucursal_nombre|default:"" }}</p>
+            </div>
+        </div>
+        <div class="text-right">
+            <p class="text-[11px] font-black text-brand uppercase tracking-widest">Hola, {{ user.first_name|default:user.username }}</p>
+            <p class="text-[10px] font-bold text-slate-400 capitalize">{% now "l, d F Y" %}</p>
+        </div>
+    </div>
+
+    <!-- KPIs hero -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
+        {% if 'finanzas' in dash.mods %}
+        <a href="{% url 'admon_finanzas:cuentas_por_cobrar' %}" class="group bg-white rounded-[1.75rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all p-6">
+            <div class="flex items-center justify-between mb-3">
+                <span class="w-11 h-11 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center"><i class="fa-solid fa-hand-holding-dollar"></i></span>
+                {% if dash.cxc_venc %}<span class="text-[9px] font-black bg-rose-50 text-rose-500 px-2 py-1 rounded-lg uppercase">Vencido ${{ dash.cxc_venc|floatformat:0|intcomma }}</span>{% endif %}
+            </div>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Por cobrar (CxC)</p>
+            <p class="text-2xl font-black text-slate-800 mt-1">${{ dash.cxc_total|floatformat:2|intcomma }}</p>
+            <p class="text-[10px] font-bold text-slate-400 mt-1">{{ dash.cxc_count }} factura(s) pendiente(s)</p>
+        </a>
+        <a href="{% url 'admon_finanzas:cuentas_por_pagar' %}" class="group bg-white rounded-[1.75rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all p-6">
+            <div class="flex items-center justify-between mb-3">
+                <span class="w-11 h-11 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center"><i class="fa-solid fa-file-invoice-dollar"></i></span>
+            </div>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Por pagar (CxP)</p>
+            <p class="text-2xl font-black text-slate-800 mt-1">${{ dash.cxp_total|floatformat:2|intcomma }}</p>
+            <p class="text-[10px] font-bold text-slate-400 mt-1">{{ dash.cxp_count }} factura(s) por pagar</p>
+        </a>
+        {% endif %}
+        {% if 'ventas' in dash.mods %}
+        <a href="{% url 'admon_ventas:historial_pedidos' %}" class="group bg-white rounded-[1.75rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all p-6">
+            <div class="flex items-center justify-between mb-3">
+                <span class="w-11 h-11 rounded-2xl bg-brand/10 text-brand flex items-center justify-center"><i class="fa-solid fa-cart-shopping"></i></span>
+            </div>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ventas del mes</p>
+            <p class="text-2xl font-black text-slate-800 mt-1">${{ dash.ventas_mes|floatformat:2|intcomma }}</p>
+            <p class="text-[10px] font-bold text-slate-400 mt-1">facturado en {% now "F" %}</p>
+        </a>
+        <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-[1.75rem] shadow-lg shadow-emerald-200 p-6 text-white">
+            <div class="flex items-center justify-between mb-3">
+                <span class="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center"><i class="fa-solid fa-arrow-trend-up"></i></span>
+                <span class="text-[10px] font-black bg-white/20 px-2 py-1 rounded-lg">{{ dash.margen_mes|floatformat:1 }}%</span>
+            </div>
+            <p class="text-[10px] font-black uppercase tracking-widest text-emerald-50">Ganancia del mes</p>
+            <p class="text-2xl font-black mt-1">${{ dash.ganancia_mes|floatformat:2|intcomma }}</p>
+            <p class="text-[10px] font-bold text-emerald-50 mt-1">sobre venta neta ${{ dash.venta_neta_mes|floatformat:0|intcomma }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Flujo + Operativo -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-5 mb-6">
+        {% if 'finanzas' in dash.mods %}
+        <a href="{% url 'admon_finanzas:historial_pagos' %}" class="bg-white rounded-[1.75rem] border border-slate-100 shadow-sm p-6 hover:shadow-lg transition-all">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-money-bill-transfer mr-2 text-brand"></i>Flujo del mes</p>
+            <p class="text-xl font-black text-emerald-600">+${{ dash.cobrado_mes|floatformat:2|intcomma }}</p>
+            <p class="text-sm font-black text-rose-400">−${{ dash.pagado_mes|floatformat:2|intcomma }}</p>
+        </a>
+        {% endif %}
+        {% if 'ventas' in dash.mods %}
+        <div class="bg-white rounded-[1.75rem] border border-slate-100 shadow-sm p-6">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-clipboard-list mr-2 text-brand"></i>Pedidos</p>
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div><p class="text-2xl font-black text-slate-400">{{ dash.ped_borrador }}</p><p class="text-[9px] font-black text-slate-400 uppercase">Borrador</p></div>
+                <div><p class="text-2xl font-black text-amber-500">{{ dash.ped_confirmado }}</p><p class="text-[9px] font-black text-slate-400 uppercase">Por entregar</p></div>
+                <div><p class="text-2xl font-black text-emerald-500">{{ dash.ped_entregado }}</p><p class="text-[9px] font-black text-slate-400 uppercase">Entregados</p></div>
+            </div>
+        </div>
+        {% endif %}
+        {% if 'compras' in dash.mods %}
+        <a href="{% url 'admon_compras:historial_ordenes' %}" class="bg-white rounded-[1.75rem] border border-slate-100 shadow-sm p-6 hover:shadow-lg transition-all">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-truck-fast mr-2 text-brand"></i>Compras abiertas</p>
+            <p class="text-2xl font-black text-slate-800">{{ dash.oc_abiertas }}</p>
+            <p class="text-[10px] font-bold text-slate-400 mt-1">${{ dash.oc_monto|floatformat:2|intcomma }} sin finalizar</p>
+        </a>
+        {% endif %}
+        {% if 'inventarios' in dash.mods %}
+        <a href="{% url 'admon_inventarios:existencias' %}" class="bg-white rounded-[1.75rem] border border-slate-100 shadow-sm p-6 hover:shadow-lg transition-all">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-boxes-stacked mr-2 text-brand"></i>Inventario</p>
+            <p class="text-2xl font-black text-slate-800">${{ dash.inv_valor|floatformat:2|intcomma }}</p>
+            <p class="text-[10px] font-bold text-slate-400 mt-1">{{ dash.skus_con_stock }} de {{ dash.skus }} SKU con stock{% if dash.alertas_count %} · <span class="text-rose-500">{{ dash.alertas_count }} bajo mínimo</span>{% endif %}</p>
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Listas -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+        {% if 'ventas' in dash.mods and dash.top_productos %}
+        <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-50"><p class="text-sm font-black text-slate-800 italic uppercase">Top productos del mes</p></div>
+            <table class="w-full text-left">
+                <tbody class="divide-y divide-slate-50">
+                    {% for p in dash.top_productos %}
+                    <tr class="hover:bg-slate-50/60">
+                        <td class="px-6 py-3"><span class="font-bold text-slate-700 text-xs">{{ p.nombre|truncatechars:38 }}</span><br><span class="text-[10px] font-bold text-slate-400">{{ p.sku }} · {{ p.cant|floatformat:"-2" }} u</span></td>
+                        <td class="px-6 py-3 text-right"><span class="font-black text-slate-800 text-sm">${{ p.venta|floatformat:2|intcomma }}</span><br><span class="text-[10px] font-black text-emerald-600">+${{ p.ganancia|floatformat:0|intcomma }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        {% if 'finanzas' in dash.mods and dash.cxc_top %}
+        <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-50 flex items-center justify-between">
+                <p class="text-sm font-black text-slate-800 italic uppercase">Top por cobrar</p>
+                <a href="{% url 'admon_finanzas:cuentas_por_cobrar' %}" class="text-[10px] font-black uppercase text-brand hover:underline">Ver todas</a>
+            </div>
+            <table class="w-full text-left">
+                <tbody class="divide-y divide-slate-50">
+                    {% for f in dash.cxc_top %}
+                    <tr class="hover:bg-slate-50/60">
+                        <td class="px-6 py-3"><span class="font-bold text-slate-700 text-sm">{{ f.cliente.nombre_comercial|default:f.cliente.nombre_fiscal }}</span><br><span class="text-[10px] font-bold text-slate-400">{{ f.folio }}</span></td>
+                        <td class="px-6 py-3 text-right"><span class="font-black text-slate-800">${{ f.saldo|floatformat:2|intcomma }}</span>{% if f.fecha_vencimiento and f.fecha_vencimiento < hoy %}<br><span class="text-[9px] font-black text-rose-500 uppercase">Vencida</span>{% endif %}</td>
+                        <td class="px-6 py-3 text-right w-20"><a href="{% url 'admon_finanzas:factura_cliente_detalle' f.id %}" class="text-[10px] font-black uppercase text-brand hover:underline">Cobrar</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        {% if 'inventarios' in dash.mods and dash.alertas_stock %}
+        <div class="bg-white rounded-[2rem] border border-rose-100 shadow-sm overflow-hidden lg:col-span-2">
+            <div class="px-6 py-4 border-b border-slate-50"><p class="text-sm font-black text-rose-600 italic uppercase"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Alertas de stock mínimo</p></div>
+            <table class="w-full text-left">
+                <tbody class="divide-y divide-slate-50">
+                    {% for a in dash.alertas_stock %}
+                    <tr class="hover:bg-slate-50/60">
+                        <td class="px-6 py-3"><span class="font-bold text-slate-700 text-xs">{{ a.producto|truncatechars:40 }}</span> <span class="text-[10px] text-slate-400">{{ a.sku }}</span></td>
+                        <td class="px-6 py-3 text-[10px] font-bold text-slate-400">{{ a.sucursal }}</td>
+                        <td class="px-6 py-3 text-right text-xs font-black"><span class="text-rose-500">{{ a.actual|floatformat:"-2" }}</span> <span class="text-slate-300">/ mín {{ a.minimo|floatformat:"-2" }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

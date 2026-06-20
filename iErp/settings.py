@@ -56,6 +56,12 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     'admon_empresas',
     'admon_usuarios',
+    'admon_inventarios',
+    'admon_produccion',
+    'admon_compras',
+    'admon_finanzas',
+    'admon_ventas',
+    'admon_cirugias',
 ]
 
 MIDDLEWARE = [
@@ -67,6 +73,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'admon_empresas.middleware.TenantMiddleware',
+    'admon_empresas.middleware.ModuloAccessMiddleware',
     'iErp.middleware.TimezoneMiddleware',
 ]
 

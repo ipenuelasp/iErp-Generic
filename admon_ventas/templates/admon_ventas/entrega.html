@@ -1,0 +1,71 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-4xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Entregar {{ pedido.folio }}</h1>
+            <p class="text-slate-500 mt-2 font-medium">{{ pedido.cliente }} · Selecciona de qué ubicación/lote/serie sale cada producto</p>
+        </div>
+        <a href="{% url 'admon_ventas:pedido_detalle' pedido.pk %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver</a>
+    </div>
+
+    <form method="POST" class="space-y-6">
+        {% csrf_token %}
+        {% for det in detalles %}
+        {% if det.pendiente_por_entregar > 0 %}
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h3 class="text-sm font-black text-slate-800">[{{ det.producto.sku }}] {{ det.producto.nombre }}</h3>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pendiente: {{ det.pendiente_por_entregar|floatformat:"-2" }} {{ det.producto.unidad_medida.abreviatura|default:'' }}</p>
+                </div>
+            </div>
+            <div class="overflow-hidden rounded-2xl border border-slate-100">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50"><tr class="text-slate-400 text-[9px] uppercase tracking-[0.2em]">
+                        <th class="px-5 py-3 font-black">Ubicación</th>
+                        <th class="px-5 py-3 font-black">Lote / Serie</th>
+                        <th class="px-5 py-3 font-black text-center">Disponible</th>
+                        <th class="px-5 py-3 font-black text-center w-40">A entregar</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for ex in det.existencias_disp %}
+                        <tr>
+                            <td class="px-5 py-3 text-[11px] font-bold text-slate-600">{{ ex.ubicacion }}</td>
+                            <td class="px-5 py-3 text-[11px] font-bold text-slate-500">
+                                {% if ex.lote %}Lote {{ ex.lote.numero_lote }}{% if ex.lote.fecha_caducidad %} · cad {{ ex.lote.fecha_caducidad|date:"d/m/y" }}{% endif %}{% endif %}
+                                {% if ex.serie %}S/N {{ ex.serie.serie }}{% endif %}
+                                {% if not ex.lote and not ex.serie %}—{% endif %}
+                            </td>
+                            <td class="px-5 py-3 text-center text-[11px] font-black text-slate-700">{{ ex.cantidad|floatformat:"-2" }}</td>
+                            <td class="px-5 py-3 text-center">
+                                <input type="hidden" name="ent_exist_{{ det.id }}[]" value="{{ ex.id }}">
+                                <input type="number" name="ent_cant_{{ det.id }}[]" step="0.0001" min="0" max="{{ ex.cantidad }}" value="0"
+                                       class="w-28 text-center font-black text-brand">
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="px-5 py-6 text-center text-slate-400 italic text-xs">Sin existencias disponibles en esta sucursal.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <div class="flex justify-end">
+            <button type="submit" class="bg-brand text-white px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-xl shadow-brand/30 hover:-translate-y-1 transition-all">
+                <i class="fa-solid fa-truck-fast mr-2"></i> Confirmar entrega
+            </button>
+        </div>
+    </form>
+</div>
+<style>
+    input { padding:0.6rem 0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.8rem; outline:none; font-weight:600; color:#334155; font-size:0.8rem; }
+    input:focus { border-color: var(--brand-color); background:#fff; box-shadow:0 0 0 4px rgba(0,171,241,0.1); }
+</style>
+{% endblock %}

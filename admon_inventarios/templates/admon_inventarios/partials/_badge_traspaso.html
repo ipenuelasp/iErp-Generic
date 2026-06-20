@@ -1,0 +1,15 @@
+{% if estado == 'SOLICITADO' %}
+<span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black bg-slate-100 text-slate-600 uppercase tracking-widest">Solicitado</span>
+{% elif estado == 'APROBADO' %}
+<span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black bg-blue-100 text-blue-700 uppercase tracking-widest">Aprobado</span>
+{% elif estado == 'EN_TRANSITO' %}
+<span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black bg-amber-100 text-amber-700 uppercase tracking-widest">En Tránsito</span>
+{% elif estado == 'RECIBIDO' %}
+<span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-700 uppercase tracking-widest">Recibido</span>
+{% elif estado == 'RECIBIDO_PARCIAL' %}
+<span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black bg-teal-100 text-teal-700 uppercase tracking-widest">Parcial</span>
+{% elif estado == 'RECHAZADO' %}
+<span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black bg-rose-100 text-rose-700 uppercase tracking-widest">Rechazado</span>
+{% else %}
+<span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black bg-slate-100 text-slate-400 uppercase tracking-widest">Cancelado</span>
+{% endif %}

@@ -55,12 +55,17 @@ def empresa_context(request):
                         request.session['sucursal_id'] = matriz.id
                         request.session['sucursal_nombre'] = matriz.nombre
             
+            # 5. Módulos visibles para este usuario en la empresa activa
+            from .modulos import modulos_visibles
+            mods = modulos_visibles(request.user, empresa)
+
             return {
                 'empresa': empresa,
                 'mis_empresas': mis_empresas,
                 'sucursales_nav': sucursales_nav,
                 'brand_color': seleccion['base'],
                 'brand_color_dark': seleccion['dark'],
+                'modulos_visibles': mods,
             }
         except Exception as e:
             print(f"Error en context_processor: {e}")

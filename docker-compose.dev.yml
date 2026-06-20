@@ -6,12 +6,12 @@ version: '3.8'
 services:
   web:
     build: .
-    container_name: acuagro
-    command: python manage.py runserver 0.0.0.0:8006
+    container_name: iErp_generic_web_dev
+    command: python manage.py runserver 0.0.0.0:8007
     volumes:
       - .:/app
     ports:
-      - "8006:8006"
+      - "8007:8007"
     env_file:
       - .env
     environment:

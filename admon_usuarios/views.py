@@ -67,12 +67,29 @@ def gestion_usuarios(request):
             fila.append({'empresa': empresa, 'sucursales': sucs_de_empresa})
         accesos_por_usuario[emp.id] = fila
 
+    # Módulos contratados por la empresa del gestor (para repartir entre usuarios)
+    from admon_empresas.modulos import MODULOS_DISPONIBLES
+    from admon_empresas.models import EmpresaModulo, AccesoModuloUsuario
+    empresa_gestor = perfil_logueado.empresa_default
+    contratados = set(EmpresaModulo.objects.filter(
+        empresa=empresa_gestor, activo=True).values_list('modulo', flat=True)) if empresa_gestor else set()
+    modulos_empresa = [m for m in MODULOS_DISPONIBLES if m['clave'] in contratados]
+
+    # Módulos ya asignados a cada empleado (en la empresa del gestor)
+    modulos_por_usuario = {}
+    if empresa_gestor:
+        for emp in empleados:
+            modulos_por_usuario[emp.id] = list(AccesoModuloUsuario.objects.filter(
+                usuario=emp, empresa=empresa_gestor).values_list('modulo', flat=True))
+
     return render(request, 'admon_usuarios/gestion_usuarios.html', {
         'empleados': empleados,
         'sucursales': sucursales,
         'grupos': grupos,
         'empresas_con_sucursales': empresas_con_sucursales,
         'accesos_por_usuario': accesos_por_usuario,
+        'modulos_empresa': modulos_empresa,
+        'modulos_por_usuario': modulos_por_usuario,
         'titulo_pagina': "Gestión de Personal"
     })
 
@@ -162,7 +179,17 @@ def editar_usuario(request, usuario_id):
             empleado.groups.set(grupos_ids)
 
         perfil.save()
-        
+
+        # 3. Módulos visibles (Capa 2): sincronizar para la empresa del gestor
+        from admon_empresas.models import AccesoModuloUsuario
+        gestor = request.user.perfil
+        empresa_gestor = gestor.empresa_default
+        if empresa_gestor and (request.user.is_superuser or gestor.tipo_usuario == 'OWNER'):
+            modulos_ids = request.POST.getlist('modulos')
+            AccesoModuloUsuario.objects.filter(usuario=empleado, empresa=empresa_gestor).delete()
+            for clave in modulos_ids:
+                AccesoModuloUsuario.objects.create(usuario=empleado, empresa=empresa_gestor, modulo=clave)
+
         messages.success(request, f"Los accesos de {empleado.username} han sido actualizados.")
         return redirect('gestion_usuarios')
     

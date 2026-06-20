@@ -1,0 +1,87 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 text-center">
+        <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Cadena de Autorización</h1>
+        <p class="text-slate-500 mt-2 font-medium">Límite de compra y supervisor de cada usuario en <span class="text-brand">{{ empresa.nombre_fiscal }}</span></p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="md:col-span-1">
+            <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 sticky top-4">
+                <h2 class="text-lg font-bold text-slate-800 mb-1">Asignar autorizador</h2>
+                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-6">Monto 0 = sin límite</p>
+                <form method="POST" class="space-y-5">
+                    {% csrf_token %}
+                    <input type="hidden" name="item_id" id="auth_id">
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Usuario</label>{{ form.usuario }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Monto autorizado</label>{{ form.monto_autorizado }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Supervisor (a quién escala)</label>{{ form.supervisor }}</div>
+                    <button type="submit" class="w-full bg-brand text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-1 transition-all">Guardar</button>
+                    <button type="button" onclick="document.getElementById('auth_id').value='';this.closest('form').reset()" class="w-full text-[9px] font-black uppercase text-slate-400 tracking-widest">Limpiar</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="md:col-span-2">
+            <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50">
+                        <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                            <th class="px-8 py-5 font-black">Usuario</th>
+                            <th class="px-6 py-5 font-black text-right">Límite</th>
+                            <th class="px-6 py-5 font-black">Supervisor</th>
+                            <th class="px-8 py-5 font-black text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for a in autorizadores %}
+                        <tr class="hover:bg-slate-50/80 transition group">
+                            <td class="px-8 py-4 font-bold text-slate-800 text-sm">{{ a.usuario.get_full_name|default:a.usuario.username }}</td>
+                            <td class="px-6 py-4 text-right font-black text-sm {% if a.sin_limite %}text-rose-600{% else %}text-teal-600{% endif %}">
+                                {% if a.sin_limite %}SIN LÍMITE{% else %}${{ a.monto_autorizado|floatformat:2|intcomma }}{% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-xs font-bold text-slate-500">
+                                {% if a.supervisor %}<i class="fa-solid fa-arrow-up text-slate-300 mr-1"></i>{{ a.supervisor.get_full_name|default:a.supervisor.username }}{% else %}<span class="text-slate-300 italic">Cima de la cadena</span>{% endif %}
+                            </td>
+                            <td class="px-8 py-4 text-right">
+                                <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onclick="editar('{{ a.id }}','{{ a.usuario.id }}','{{ a.monto_autorizado }}','{{ a.supervisor.id|default:'' }}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-brand hover:border-brand shadow-sm"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+                                    <button onclick="eliminar('{{ a.id }}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500 shadow-sm"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="px-8 py-14 text-center text-slate-400 italic text-sm">Aún no defines la cadena. Empieza por el comprador y ve asignando supervisores hacia arriba.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="POST" id="formDel" class="hidden">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="item_id" id="del_id"></form>
+
+<script>
+function editar(id, usuario, monto, supervisor) {
+    document.getElementById('auth_id').value = id;
+    document.getElementById('id_usuario').value = usuario;
+    document.getElementById('id_monto_autorizado').value = parseFloat(monto).toFixed(2);
+    document.getElementById('id_supervisor').value = supervisor;
+    window.scrollTo({top:0, behavior:'smooth'});
+}
+function eliminar(id) {
+    if (!confirm('¿Eliminar este autorizador?')) return;
+    document.getElementById('del_id').value = id;
+    document.getElementById('formDel').submit();
+}
+</script>
+<style>
+    input, select { width:100%; padding:0.85rem 1rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:1rem; outline:none; font-weight:600; color:#334155; font-size:0.8rem; }
+    input:focus, select:focus { border-color: var(--brand-color); background:#fff; box-shadow:0 0 0 4px rgba(0,171,241,0.1); }
+</style>
+{% endblock %}

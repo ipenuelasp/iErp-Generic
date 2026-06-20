@@ -1,0 +1,233 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Recepción Directa</h1>
+            <p class="text-slate-500 mt-2 font-medium">
+                Entrada de mercancía sin orden de compra · Sucursal <span class="text-brand">{{ sucursal_activa.nombre }}</span>
+            </p>
+        </div>
+        <a href="{% url 'admon_inventarios:recepciones' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 transition-all italic">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Volver a Recepciones
+        </a>
+    </div>
+
+    <form method="POST" id="form-recepcion">
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 lg:col-span-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block italic ml-2">Datos del Proveedor</label>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="text" name="proveedor" required placeholder="NOMBRE DEL PROVEEDOR"
+                        class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-xs font-bold text-slate-700 focus:border-brand outline-none transition-all">
+                    <input type="text" name="remision" placeholder="REMISIÓN"
+                        class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-xs font-bold text-slate-700 focus:border-brand outline-none transition-all">
+                    <input type="text" name="factura" placeholder="FACTURA"
+                        class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-xs font-bold text-slate-700 focus:border-brand outline-none transition-all">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label class="text-[9px] font-black text-slate-400 uppercase ml-2">Propiedad</label>
+                        <select name="propiedad" id="sel_propiedad" onchange="toggleConsignante()"
+                            class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-xs font-bold text-slate-700 focus:border-brand outline-none transition-all">
+                            <option value="PROPIO">Propio</option>
+                            <option value="CONSIGNA">Consignación</option>
+                        </select>
+                    </div>
+                    <div id="box_consignante" class="hidden">
+                        <label class="text-[9px] font-black text-slate-400 uppercase ml-2">Consignante</label>
+                        <select name="consignante"
+                            class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-xs font-bold text-slate-700 focus:border-brand outline-none transition-all">
+                            <option value="">-- Seleccionar --</option>
+                            {% for c in consignantes %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block italic ml-2">Notas</label>
+                <textarea name="notas" placeholder="Observaciones de la recepción..."
+                    class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-xs font-bold text-slate-700 focus:border-brand outline-none transition-all h-[88px]"></textarea>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <div class="flex justify-between items-center px-8 pt-8 pb-4">
+                <h3 class="text-sm font-black text-slate-800 uppercase italic">Partidas a Recibir</h3>
+                <button type="button" onclick="agregarFila()"
+                    class="bg-brand/10 text-brand px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-brand hover:text-white transition-all">
+                    <i class="fa-solid fa-plus mr-2"></i> Agregar Partida
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left" id="tablaRecepcion">
+                    <thead>
+                        <tr class="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                            <th class="px-8 py-5">Producto</th>
+                            <th class="px-4 py-5 w-36 text-center text-brand">Cantidad</th>
+                            {% if puede_ver_precios %}<th class="px-4 py-5 w-36 text-right">Costo Unit.</th>{% endif %}
+                            <th class="px-4 py-5 w-56">Ubicación</th>
+                            <th class="px-4 py-5 w-28 text-center">Trazabilidad</th>
+                            <th class="px-4 py-5 w-16"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="cuerpoPartidas" class="divide-y divide-slate-50"></tbody>
+                </table>
+                <p id="sinPartidas" class="text-center text-slate-300 font-black text-[10px] uppercase tracking-widest py-10 italic">
+                    Agrega partidas para comenzar la recepción
+                </p>
+            </div>
+        </div>
+
+        <div class="mt-10 flex justify-end gap-4">
+            <button type="submit" class="bg-brand text-white px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-xl shadow-brand/30 hover:-translate-y-1 transition-all">
+                Procesar Entrada de Almacén
+            </button>
+        </div>
+    </form>
+</div>
+
+{# Plantillas de datos para JS #}
+{{ productos_json|json_script:"datosProductos" }}
+{{ ubicaciones_json|json_script:"datosUbicaciones" }}
+
+{% include "admon_inventarios/modals/modal_trazabilidad.html" %}
+
+<script>
+const PRODUCTOS = JSON.parse(document.getElementById('datosProductos').textContent);
+const UBICACIONES = JSON.parse(document.getElementById('datosUbicaciones').textContent);
+let contadorFilas = 0;
+
+const VER_PRECIOS = {{ puede_ver_precios|yesno:"true,false" }};
+function toggleConsignante() {
+    const es = document.getElementById('sel_propiedad').value === 'CONSIGNA';
+    document.getElementById('box_consignante').classList.toggle('hidden', !es);
+}
+
+function opcionesProductos() {
+    let html = '<option value="">-- Seleccionar producto --</option>';
+    PRODUCTOS.forEach(p => {
+        html += `<option value="${p.id}" data-lote="${p.es_loteable}" data-serie="${p.es_serializable}" data-costo="${p.costo}" data-ubicacion="${p.ubicacion_defecto || ''}" data-nombre="${p.nombre.replace(/"/g,'&quot;')}">[${p.sku}] ${p.nombre}</option>`;
+    });
+    return html;
+}
+
+function opcionesUbicaciones(seleccion) {
+    let html = '<option value="">-- Seleccionar --</option>';
+    let almacenActual = null;
+    UBICACIONES.forEach(u => {
+        if (u.almacen !== almacenActual) {
+            if (almacenActual !== null) html += '</optgroup>';
+            html += `<optgroup label="ALMACÉN: ${u.almacen.toUpperCase()}">`;
+            almacenActual = u.almacen;
+        }
+        html += `<option value="${u.id}" ${String(u.id) === String(seleccion) ? 'selected' : ''}>${u.codigo}</option>`;
+    });
+    if (almacenActual !== null) html += '</optgroup>';
+    return html;
+}
+
+function agregarFila() {
+    contadorFilas++;
+    const uid = contadorFilas;
+    const tbody = document.getElementById('cuerpoPartidas');
+    const tr = document.createElement('tr');
+    tr.className = 'fila-recepcion hover:bg-slate-50/50 transition-all';
+    tr.dataset.uid = uid;
+    tr.dataset.lote = 'False';
+    tr.dataset.serie = 'False';
+    tr.dataset.id = uid; /* el modal de trazabilidad usa data-id para nombrar los inputs */
+    tr.innerHTML = `
+        <td class="px-8 py-4">
+            <select name="producto_id[]" required onchange="cambioProducto(this)"
+                class="w-full bg-slate-50 border-none rounded-xl p-3 text-[11px] font-bold outline-none focus:ring-2 focus:ring-brand transition-all">
+                ${opcionesProductos()}
+            </select>
+            <input type="hidden" name="row_uid[]" value="${uid}">
+        </td>
+        <td class="px-4 py-4">
+            <input type="number" name="cantidad[]" step="0.0001" value="0" min="0" required
+                class="input-cantidad w-full px-3 py-3 bg-white border-2 border-slate-100 rounded-xl font-black text-center text-sm text-brand focus:border-brand outline-none transition-all">
+        </td>
+        ${VER_PRECIOS ? `<td class="px-4 py-4">
+            <input type="number" name="costo[]" step="0.0001" value="0" min="0"
+                class="input-costo w-full px-3 py-3 bg-white border-2 border-slate-100 rounded-xl font-bold text-right text-xs text-slate-600 focus:border-brand outline-none transition-all">
+        </td>` : ''}
+        <td class="px-4 py-4">
+            <select name="ubicacion_id[]" required class="select-ubicacion w-full bg-slate-50 border-none rounded-xl p-3 text-[10px] font-bold outline-none focus:ring-2 focus:ring-brand transition-all">
+                ${opcionesUbicaciones('')}
+            </select>
+        </td>
+        <td class="px-4 py-4 text-center">
+            <div class="datos-trazabilidad-ocultos"></div>
+            <span class="traza-na text-[9px] font-black text-slate-200 uppercase italic">N/A</span>
+            <button type="button" onclick="abrirTrazabilidad(this)" style="display:none"
+                class="btn-traza p-3 bg-slate-100 text-slate-400 rounded-xl hover:bg-brand hover:text-white transition-all shadow-sm">
+                <i class="fa-solid fa-barcode text-lg"></i>
+            </button>
+        </td>
+        <td class="px-4 py-4 text-center">
+            <button type="button" onclick="this.closest('tr').remove(); actualizarVacio();"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500 shadow-sm">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+            </button>
+        </td>`;
+    tbody.appendChild(tr);
+    actualizarVacio();
+}
+
+function cambioProducto(sel) {
+    const tr = sel.closest('tr');
+    const opt = sel.options[sel.selectedIndex];
+    tr.dataset.lote = opt.dataset.lote || 'False';
+    tr.dataset.serie = opt.dataset.serie || 'False';
+    tr.dataset.nombre = opt.dataset.nombre || '';
+    const inpCosto = tr.querySelector('.input-costo');
+    if (inpCosto) inpCosto.value = opt.dataset.costo || '0';
+    if (opt.dataset.ubicacion) {
+        tr.querySelector('.select-ubicacion').innerHTML = opcionesUbicaciones(opt.dataset.ubicacion);
+    }
+    const requiereTraza = (tr.dataset.lote === 'True' || tr.dataset.serie === 'True');
+    tr.querySelector('.btn-traza').style.display = requiereTraza ? 'inline-block' : 'none';
+    tr.querySelector('.traza-na').style.display = requiereTraza ? 'none' : 'inline';
+    tr.querySelector('.datos-trazabilidad-ocultos').innerHTML = '';
+}
+
+function actualizarVacio() {
+    const hay = document.querySelectorAll('#cuerpoPartidas tr').length > 0;
+    document.getElementById('sinPartidas').style.display = hay ? 'none' : 'block';
+}
+
+// Validación antes de enviar: trazabilidad completa
+document.getElementById('form-recepcion').addEventListener('submit', function(e) {
+    const filas = document.querySelectorAll('#cuerpoPartidas tr');
+    if (filas.length === 0) {
+        e.preventDefault();
+        alert('Agrega al menos una partida.');
+        return;
+    }
+    for (const tr of filas) {
+        const cant = parseFloat(tr.querySelector('.input-cantidad').value);
+        if (isNaN(cant) || cant <= 0) {
+            e.preventDefault();
+            alert('Todas las partidas deben tener cantidad mayor a 0.');
+            return;
+        }
+        const requiereTraza = (tr.dataset.lote === 'True' || tr.dataset.serie === 'True');
+        if (requiereTraza && tr.querySelector('.datos-trazabilidad-ocultos').innerHTML.trim() === '') {
+            e.preventDefault();
+            alert(`La partida "${tr.dataset.nombre}" requiere capturar lote o números de serie (botón de código de barras).`);
+            return;
+        }
+    }
+});
+
+// Iniciar con una fila lista
+agregarFila();
+</script>
+{% endblock %}

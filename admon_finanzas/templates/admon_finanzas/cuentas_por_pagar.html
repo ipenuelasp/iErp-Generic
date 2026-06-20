@@ -1,0 +1,61 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Cuentas por Pagar</h1>
+            <p class="text-slate-500 mt-2 font-medium">Facturas de proveedores de <span class="text-brand">{{ empresa.nombre_fiscal }}</span></p>
+        </div>
+        <a href="{% url 'admon_finanzas:registrar_pago' %}" class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
+            <i class="fa-solid fa-money-bill-transfer mr-2"></i> Registrar Pago
+        </a>
+    </div>
+
+    {% if resumen_por_pagar %}
+    <div class="flex flex-wrap gap-4 mb-8">
+        {% for cod, saldo in resumen_por_pagar.items %}
+        <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 px-8 py-5">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saldo por pagar ({{ cod }})</p>
+            <p class="text-2xl font-black text-rose-600 mt-1">${{ saldo|floatformat:2|intcomma }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50">
+                <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-8 py-5 font-black">Factura</th>
+                    <th class="px-6 py-5 font-black">Proveedor</th>
+                    <th class="px-6 py-5 font-black">OC</th>
+                    <th class="px-6 py-5 font-black text-center">Vence</th>
+                    <th class="px-6 py-5 font-black text-right">Total</th>
+                    <th class="px-6 py-5 font-black text-right">Saldo</th>
+                    <th class="px-8 py-5 font-black text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for f in facturas %}
+                <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="window.location='{% url 'admon_finanzas:factura_detalle' f.pk %}'">
+                    <td class="px-8 py-4 font-black text-brand text-xs">{{ f.folio }}</td>
+                    <td class="px-6 py-4 text-xs font-bold text-slate-700">{{ f.proveedor }}</td>
+                    <td class="px-6 py-4 text-[10px] font-bold text-slate-400">{{ f.orden_compra.folio }}</td>
+                    <td class="px-6 py-4 text-center text-[10px] font-bold text-slate-400">{{ f.fecha_vencimiento|date:"d/m/Y"|default:"—" }}</td>
+                    <td class="px-6 py-4 text-right text-xs font-bold text-slate-600">{{ f.moneda.simbolo }}{{ f.total|floatformat:2|intcomma }}</td>
+                    <td class="px-6 py-4 text-right text-xs font-black {% if f.saldo > 0 %}text-rose-600{% else %}text-emerald-600{% endif %}">{{ f.moneda.simbolo }}{{ f.saldo|floatformat:2|intcomma }}</td>
+                    <td class="px-8 py-4 text-center">
+                        <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ f.color_estado }}-100 text-{{ f.color_estado }}-700">{{ f.get_estado_display }}</span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin facturas registradas. Regístralas desde el detalle de una orden de compra.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

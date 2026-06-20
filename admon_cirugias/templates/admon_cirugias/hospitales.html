@@ -1,0 +1,92 @@
+{% extends "admon_empresas/dashboard.html" %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Hospitales</h1>
+            <p class="text-slate-500 mt-2 font-medium">Catálogo clínico de <span class="text-brand">{{ empresa.nombre_fiscal }}</span></p>
+        </div>
+        <div class="flex gap-3">
+            {% if user.is_superuser %}
+            <a href="{% url 'admon_cirugias:plantilla_hospitales' %}" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all"><i class="fa-solid fa-file-arrow-down mr-2"></i> Plantilla</a>
+            <button onclick="document.getElementById('modalImport').classList.remove('hidden')" class="bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-200 hover:-translate-y-1 transition-all"><i class="fa-solid fa-file-arrow-up mr-2"></i> Carga masiva</button>
+            {% endif %}
+            <button onclick="abrir()" class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-1 transition-all"><i class="fa-solid fa-plus mr-2"></i> Nuevo Hospital</button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50"><tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                <th class="px-8 py-5 font-black">Código</th><th class="px-6 py-5 font-black">Hospital</th>
+                <th class="px-6 py-5 font-black">Ciudad</th><th class="px-8 py-5 font-black text-right">Acciones</th>
+            </tr></thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for h in hospitales %}
+                <tr class="hover:bg-slate-50/80 transition group">
+                    <td class="px-8 py-4 font-black text-brand text-xs uppercase">{{ h.codigo|default:"—" }}</td>
+                    <td class="px-6 py-4 font-bold text-slate-800 text-sm">{{ h.nombre }}</td>
+                    <td class="px-6 py-4 text-xs font-bold text-slate-500">{{ h.ciudad|default:"—" }}</td>
+                    <td class="px-8 py-4 text-right">
+                        <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick='editar(this)' data-h='{"id":"{{ h.id }}","nombre":"{{ h.nombre|escapejs }}","codigo":"{{ h.codigo|escapejs }}","ciudad":"{{ h.ciudad|escapejs }}"}' class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-brand hover:border-brand shadow-sm"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+                            <button onclick="eliminar('{{ h.id }}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500 shadow-sm"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}<tr><td colspan="4" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin hospitales registrados.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modal" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="cerrar()"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-10">
+            <h2 id="mtitulo" class="text-xl font-bold text-slate-800 mb-6">Nuevo Hospital</h2>
+            <form method="POST" class="space-y-4">{% csrf_token %}
+                <input type="hidden" name="item_id" id="f_id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1"><label class="lbl">Código</label><input name="codigo" id="f_codigo"></div>
+                    <div class="space-y-1"><label class="lbl">Ciudad</label><input name="ciudad" id="f_ciudad"></div>
+                    <div class="col-span-2 space-y-1"><label class="lbl">Nombre</label><input name="nombre" id="f_nombre" required></div>
+                </div>
+                <div class="pt-4 flex justify-end gap-3">
+                    <button type="button" onclick="cerrar()" class="text-[10px] font-black uppercase text-slate-400 px-4">Cancelar</button>
+                    <button type="submit" class="bg-brand text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<form method="POST" id="formDel" class="hidden">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="item_id" id="del_id"></form>
+
+{% if user.is_superuser %}
+<div id="modalImport" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalImport').classList.add('hidden')"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-10">
+            <h2 class="text-xl font-bold text-slate-800 mb-4">Carga masiva de hospitales</h2>
+            <form method="POST" action="{% url 'admon_cirugias:importar_hospitales' %}" enctype="multipart/form-data" class="space-y-5">{% csrf_token %}
+                <input type="file" name="archivo" accept=".xlsx" required class="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-5 py-6 text-xs font-bold text-slate-600">
+                <div class="flex justify-between items-center">
+                    <a href="{% url 'admon_cirugias:plantilla_hospitales' %}" class="text-[10px] font-black uppercase text-brand hover:underline">Descargar plantilla</a>
+                    <button type="submit" class="bg-emerald-600 text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">Cargar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function abrir(){document.querySelector('#modal form').reset();document.getElementById('f_id').value='';document.getElementById('mtitulo').innerText='Nuevo Hospital';document.getElementById('modal').classList.remove('hidden');}
+function cerrar(){document.getElementById('modal').classList.add('hidden');}
+function editar(b){const h=JSON.parse(b.dataset.h);abrir();document.getElementById('mtitulo').innerText='Editar Hospital';for(const k of ['id','nombre','codigo','ciudad'])document.getElementById('f_'+k).value=h[k]||'';}
+function eliminar(id){if(!confirm('¿Eliminar hospital?'))return;document.getElementById('del_id').value=id;document.getElementById('formDel').submit();}
+</script>
+<style>.lbl{font-size:10px;font-weight:900;color:#94a3b8;text-transform:uppercase;margin-left:4px}
+#modal input{width:100%;padding:0.7rem 0.9rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.9rem;outline:none;font-weight:600;color:#334155;font-size:0.8rem}</style>
+{% endblock %}

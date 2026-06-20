@@ -1,0 +1,125 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Pagos</h1>
+            <p class="text-slate-500 mt-2 font-medium">Historial de egresos a proveedores</p>
+        </div>
+        <a href="{% url 'admon_finanzas:registrar_pago' %}" class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
+            <i class="fa-solid fa-plus mr-2"></i> Nuevo Pago
+        </a>
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50">
+                <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-8 py-5 font-black">Folio</th>
+                    <th class="px-6 py-5 font-black">Proveedor</th>
+                    <th class="px-6 py-5 font-black">Método</th>
+                    <th class="px-6 py-5 font-black">Facturas</th>
+                    <th class="px-6 py-5 font-black text-right">Monto</th>
+                    <th class="px-6 py-5 font-black text-center">Complemento</th>
+                    <th class="px-8 py-5 font-black text-right">Fecha</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for p in pagos %}
+                <tr class="hover:bg-slate-50/80 transition">
+                    <td class="px-8 py-4 font-black text-brand text-xs">{{ p.folio }}
+                        <a href="{% url 'admon_finanzas:pago_pdf' p.pk %}" target="_blank" title="Recibo PDF" class="ml-1 text-rose-500"><i class="fa-solid fa-file-pdf"></i></a>
+                    </td>
+                    <td class="px-6 py-4 text-xs font-bold text-slate-700">{{ p.proveedor|default:p.cliente|default:"—" }}</td>
+                    <td class="px-6 py-4 text-[10px] font-bold text-slate-500">{{ p.metodo.nombre|default:"—" }}</td>
+                    <td class="px-6 py-4 text-[10px] font-bold text-slate-400">
+                        {% for ap in p.aplicaciones.all %}{% if ap.factura %}<a href="{% url 'admon_finanzas:factura_detalle' ap.factura.pk %}" class="hover:text-brand">{{ ap.factura.folio }}</a>{% elif ap.factura_cliente %}<a href="{% url 'admon_finanzas:factura_cliente_detalle' ap.factura_cliente.pk %}" class="hover:text-brand">{{ ap.factura_cliente.folio }}</a>{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}
+                    </td>
+                    <td class="px-6 py-4 text-right text-sm font-black text-slate-800">{{ p.moneda.simbolo }}{{ p.monto|floatformat:2|intcomma }} <span class="text-[9px] text-slate-400">{{ p.moneda.codigo }}</span></td>
+                    <td class="px-6 py-4 text-center">
+                        {% if p.tiene_complemento %}
+                        <span class="inline-flex items-center gap-1 text-[9px] font-black text-emerald-600">
+                            <i class="fa-solid fa-circle-check"></i>
+                            {% if p.complemento_xml %}<a href="{{ p.complemento_xml.url }}" target="_blank" class="hover:underline">XML</a>{% endif %}
+                            {% if p.complemento_pdf %}<a href="{{ p.complemento_pdf.url }}" target="_blank" class="hover:underline">PDF</a>{% endif %}
+                        </span>
+                        {% else %}
+                        <button onclick='abrirComplemento({{ p.id }}, "{{ p.folio }}")' class="text-[9px] font-black text-brand uppercase tracking-widest hover:underline">
+                            <i class="fa-solid fa-upload mr-1"></i> Adjuntar
+                        </button>
+                        {% endif %}
+                    </td>
+                    <td class="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{{ p.fecha|date:"d/m/Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin pagos registrados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL COMPLEMENTO DE PAGO -->
+<div id="modalComplemento" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalComplemento').classList.add('hidden')"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-10">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-slate-800">Complemento de Pago (REP)</h2>
+                <p id="comp_folio" class="text-slate-400 text-xs font-bold uppercase tracking-widest"></p>
+            </div>
+            <form id="formComplemento" method="POST" enctype="multipart/form-data" class="space-y-5">
+                {% csrf_token %}
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">XML del complemento (autocompleta)</label>
+                    <input type="file" name="complemento_xml" accept=".xml" onchange="leerREP(this)">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">PDF del complemento</label>
+                    <input type="file" name="complemento_pdf" accept=".pdf">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">UUID</label><input type="text" name="uuid_complemento" id="rep_uuid"></div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Fecha</label><input type="date" name="fecha_complemento" id="rep_fecha"></div>
+                </div>
+                <div class="pt-4 border-t border-slate-50 flex justify-end gap-3">
+                    <button type="button" onclick="document.getElementById('modalComplemento').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 px-4">Cancelar</button>
+                    <button type="submit" class="bg-brand text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirComplemento(pagoId, folio) {
+    document.getElementById('comp_folio').innerText = 'Pago ' + folio;
+    document.getElementById('formComplemento').action = `/finanzas/pagos/${pagoId}/complemento/`;
+    document.getElementById('modalComplemento').classList.remove('hidden');
+}
+function leerREP(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const xml = new DOMParser().parseFromString(e.target.result, 'application/xml');
+            const tag = (ln) => xml.getElementsByTagNameNS('*', ln)[0];
+            const tfd = tag('TimbreFiscalDigital');
+            if (tfd && tfd.getAttribute('UUID')) document.getElementById('rep_uuid').value = tfd.getAttribute('UUID');
+            const pago = tag('Pago');
+            const comp = tag('Comprobante');
+            const fecha = (pago && pago.getAttribute('FechaPago')) || (comp && comp.getAttribute('Fecha')) || '';
+            if (fecha) document.getElementById('rep_fecha').value = fecha.substring(0,10);
+        } catch (err) { alert('No se pudo leer el XML: ' + err.message); }
+    };
+    reader.readAsText(file);
+}
+</script>
+<style>
+    #modalComplemento input { width:100%; padding:0.7rem 0.9rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.9rem; outline:none; font-weight:600; color:#334155; font-size:0.8rem; }
+</style>
+{% endblock %}

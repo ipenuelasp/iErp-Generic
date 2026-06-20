@@ -1,0 +1,109 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Órdenes de Producción</h1>
+            <p class="text-slate-500 mt-2 font-medium">Sede <span class="text-brand">{{ sucursal_activa.nombre }}</span></p>
+        </div>
+        {% if recetas %}
+        <button onclick="document.getElementById('modalOrden').classList.remove('hidden')"
+            class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
+            <i class="fa-solid fa-plus mr-2"></i> Nueva Orden
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50">
+                <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-8 py-5 font-black">Folio</th>
+                    <th class="px-6 py-5 font-black">Producto</th>
+                    <th class="px-6 py-5 font-black text-center">A Producir</th>
+                    <th class="px-6 py-5 font-black text-center">Producido</th>
+                    <th class="px-6 py-5 font-black text-center">Estado</th>
+                    <th class="px-6 py-5 font-black">Responsable</th>
+                    <th class="px-8 py-5 font-black text-right">Fecha</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for o in ordenes %}
+                <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="window.location='{% url 'admon_produccion:orden_produccion_detalle' o.pk %}'">
+                    <td class="px-8 py-4 font-black text-brand text-xs">{{ o.folio }}</td>
+                    <td class="px-6 py-4 text-xs font-bold text-slate-700">{{ o.receta.producto_terminado.nombre }}</td>
+                    <td class="px-6 py-4 text-center text-xs font-bold text-slate-500">{{ o.cantidad_a_producir|floatformat:2 }}</td>
+                    <td class="px-6 py-4 text-center text-xs font-bold text-emerald-600">{{ o.cantidad_producida|floatformat:2 }}</td>
+                    <td class="px-6 py-4 text-center">
+                        {% if o.estado == 'ABIERTA' %}<span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black bg-slate-100 text-slate-600 uppercase tracking-widest">Abierta</span>
+                        {% elif o.estado == 'EN_PROCESO' %}<span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black bg-amber-100 text-amber-700 uppercase tracking-widest">En Proceso</span>
+                        {% elif o.estado == 'COMPLETADA' %}<span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-700 uppercase tracking-widest">Completada</span>
+                        {% elif o.estado == 'PAUSADA' %}<span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black bg-blue-100 text-blue-700 uppercase tracking-widest">Pausada</span>
+                        {% else %}<span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black bg-rose-100 text-rose-700 uppercase tracking-widest">Cancelada</span>{% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase">{{ o.responsable.username }}</td>
+                    <td class="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{{ o.fecha_creacion|date:"d/m/Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="px-8 py-14 text-center text-slate-400 italic text-sm">
+                    {% if recetas %}Sin órdenes de producción.{% else %}Primero crea una receta en el catálogo de Recetas.{% endif %}
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if recetas %}
+<div id="modalOrden" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalOrden').classList.add('hidden')"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-10">
+            <button onclick="document.getElementById('modalOrden').classList.add('hidden')"
+                class="absolute top-8 right-8 w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-slate-800">Nueva Orden de Producción</h2>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Se producirá en {{ sucursal_activa.nombre }}</p>
+            </div>
+            <form method="POST" class="space-y-5">
+                {% csrf_token %}
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Receta</label>
+                    <select name="receta" required>
+                        <option value="">-- Seleccionar --</option>
+                        {% for r in recetas %}
+                        <option value="{{ r.id }}">{{ r.nombre }} v{{ r.version }} → {{ r.producto_terminado.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cantidad a producir</label>
+                    <input type="number" name="cantidad" step="0.0001" min="0.0001" value="1" required>
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Notas</label>
+                    <textarea name="notas" rows="2"></textarea>
+                </div>
+                <div class="pt-4 border-t border-slate-50 flex justify-end">
+                    <button type="submit" class="bg-brand hover:bg-brand-dark text-white font-black py-4 px-10 rounded-2xl shadow-lg shadow-cyan-100 transition-all transform hover:-translate-y-1 text-xs uppercase tracking-widest">
+                        Crear Orden
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+    input, select, textarea {
+        width: 100%; padding: 0.85rem 1rem; background-color: #f8fafc; border: 1px solid #e2e8f0;
+        border-radius: 1rem; outline: none; transition: all 0.2s; font-weight: 600;
+        color: #334155; font-size: 0.8rem;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--brand-color); background-color: white; box-shadow: 0 0 0 4px rgba(0, 171, 241, 0.1); }
+</style>
+{% endblock %}

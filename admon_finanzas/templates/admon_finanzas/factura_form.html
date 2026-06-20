@@ -1,0 +1,112 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-3xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Registrar Factura</h1>
+            <p class="text-slate-500 mt-2 font-medium">{{ orden.proveedor }} · OC <span class="text-brand">{{ orden.folio }}</span></p>
+        </div>
+        <a href="{% url 'admon_compras:orden_detalle' orden.pk %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver a la OC</a>
+    </div>
+
+    <div class="bg-white rounded-[2rem] border border-slate-100 p-6 mb-6 flex justify-around text-center">
+        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total OC</p><p class="text-lg font-black text-slate-700">{{ orden.moneda.simbolo }}{{ orden.total|floatformat:2|intcomma }}</p></div>
+        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ya facturado</p><p class="text-lg font-black text-blue-600">{{ orden.moneda.simbolo }}{{ ya_facturado|floatformat:2|intcomma }}</p></div>
+        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sin facturar</p><p class="text-lg font-black text-amber-600">{{ orden.moneda.simbolo }}{{ saldo_oc|floatformat:2|intcomma }}</p></div>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-10 space-y-6">
+        {% csrf_token %}
+
+        <div class="bg-brand/5 border border-brand/10 rounded-2xl p-5">
+            <label class="text-[10px] font-black text-brand uppercase tracking-widest mb-3 block ml-1"><i class="fa-solid fa-file-code mr-1"></i> CFDI del proveedor</label>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">XML (se lee y autocompleta)</label>
+                    <input type="file" name="archivo_xml" accept=".xml" onchange="leerCFDI(this)">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">PDF (representación impresa)</label>
+                    <input type="file" name="archivo_pdf" accept=".pdf">
+                </div>
+            </div>
+            <p id="cfdi_msg" class="text-[10px] font-bold text-emerald-600 mt-2 ml-1 hidden"><i class="fa-solid fa-circle-check mr-1"></i> Datos cargados del XML. Revísalos abajo.</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Folio de la factura</label><input type="text" name="folio" required></div>
+            <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">UUID CFDI (opcional)</label><input type="text" name="uuid"></div>
+            <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Fecha de emisión</label><input type="date" name="fecha_emision" required></div>
+            <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Vencimiento</label><input type="date" name="fecha_vencimiento"></div>
+        </div>
+        <div class="grid grid-cols-3 gap-4">
+            <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Subtotal</label><input type="number" name="subtotal" step="0.01" min="0" value="0" oninput="calcTotal()" id="f_sub"></div>
+            <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Impuestos</label><input type="number" name="impuestos" step="0.01" min="0" value="0" oninput="calcTotal()" id="f_imp"></div>
+            <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Total ({{ orden.moneda.codigo }})</label><input type="number" name="total" step="0.01" min="0" value="0" required id="f_total" class="font-black text-brand"></div>
+        </div>
+        <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Notas</label><textarea name="notas" rows="2"></textarea></div>
+        <div class="pt-4 border-t border-slate-50 flex justify-end">
+            <button type="submit" class="bg-brand text-white font-black py-4 px-10 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-1 transition-all">Registrar Factura</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function calcTotal() {
+    const sub = parseFloat(document.getElementById('f_sub').value)||0;
+    const imp = parseFloat(document.getElementById('f_imp').value)||0;
+    if (sub > 0) document.getElementById('f_total').value = (sub+imp).toFixed(2);
+}
+
+// Lee el CFDI 4.0 del proveedor y autocompleta los campos.
+function leerCFDI(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const xml = new DOMParser().parseFromString(e.target.result, 'application/xml');
+            const tag = (ln) => xml.getElementsByTagNameNS('*', ln)[0];
+
+            const comp = tag('Comprobante');
+            if (!comp) { alert('El archivo no parece un CFDI válido.'); return; }
+
+            const folio = comp.getAttribute('Folio') || comp.getAttribute('Serie') || '';
+            const fecha = (comp.getAttribute('Fecha') || '').substring(0, 10);
+            const subtotal = comp.getAttribute('SubTotal') || '0';
+            const total = comp.getAttribute('Total') || '0';
+
+            // Impuestos: trasladados menos retenidos a nivel comprobante
+            const impNode = tag('Impuestos');
+            let trasladados = 0, retenidos = 0;
+            if (impNode) {
+                trasladados = parseFloat(impNode.getAttribute('TotalImpuestosTrasladados') || '0');
+                retenidos = parseFloat(impNode.getAttribute('TotalImpuestosRetenidos') || '0');
+            }
+
+            const tfd = tag('TimbreFiscalDigital');
+            const uuid = tfd ? (tfd.getAttribute('UUID') || '') : '';
+
+            if (folio) document.querySelector('[name=folio]').value = folio;
+            if (uuid) document.querySelector('[name=uuid]').value = uuid;
+            if (fecha) document.querySelector('[name=fecha_emision]').value = fecha;
+            document.getElementById('f_sub').value = parseFloat(subtotal).toFixed(2);
+            document.getElementById('f_imp').value = (trasladados - retenidos).toFixed(2);
+            document.getElementById('f_total').value = parseFloat(total).toFixed(2);
+
+            document.getElementById('cfdi_msg').classList.remove('hidden');
+        } catch (err) {
+            alert('No se pudo leer el XML: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+}
+</script>
+<style>
+    input, select, textarea { width:100%; padding:0.85rem 1rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:1rem; outline:none; font-weight:600; color:#334155; font-size:0.8rem; }
+    input:focus, textarea:focus { border-color: var(--brand-color); background:#fff; box-shadow:0 0 0 4px rgba(0,171,241,0.1); }
+</style>
+{% endblock %}

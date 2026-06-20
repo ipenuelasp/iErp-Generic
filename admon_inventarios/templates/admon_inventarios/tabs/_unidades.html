@@ -1,0 +1,66 @@
+<div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-10">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        
+        <div class="lg:col-span-1 space-y-6">
+            <div>
+                <h4 id="titulo_unidad" class="font-black text-slate-800 uppercase text-[11px] tracking-[0.2em] italic mb-1">Registro de Unidades</h4>
+                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Magnitudes de medida para artículos</p>
+                <div class="h-1 w-10 bg-brand mt-2 rounded-full shadow-sm shadow-brand/20"></div>
+            </div>
+            
+            <form method="POST" id="form_unidad" class="space-y-4 pt-4">
+                {% csrf_token %}
+                <input type="hidden" name="item_id" id="unidad_item_id" value="">
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Símbolo / Código</label>
+                    {{ form_unidad.codigo }} 
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Nombre Completo</label>
+                    {{ form_unidad.descripcion }}
+                </div>                
+
+                <div class="flex flex-col gap-2 pt-2">
+                    <button type="submit" name="btn_unidad" id="btn_unidad_submit"
+                        class="w-full bg-brand text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all transform hover:-translate-y-1 active:scale-95">
+                        Guardar Unidad
+                    </button>
+                    
+                    <button type="button" id="btn_cancelar_unidad" onclick="resetUnidadForm()" 
+                        class="hidden w-full bg-slate-100 text-slate-400 font-black py-2 rounded-xl text-[9px] uppercase tracking-widest hover:bg-slate-200 transition-all">
+                        Cancelar Edición
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="lg:col-span-2 border-l border-slate-50 pl-0 lg:pl-10">
+            {% include "admon_inventarios/partials/_tabla_simple.html" with items=unidades es_unidad=True %}
+        </div>
+    </div>
+</div>
+
+<script>
+    function editUnidad(id, codigo, descripcion) {
+        document.getElementById('titulo_unidad').innerText = 'Editando Unidad';
+        document.getElementById('btn_unidad_submit').innerText = 'Actualizar Cambios';
+        document.getElementById('btn_cancelar_unidad').classList.remove('hidden');
+        document.getElementById('unidad_item_id').value = id;
+
+        const form = document.getElementById('form_unidad');
+        form.querySelector('[name="codigo"]').value = codigo;
+        form.querySelector('[name="descripcion"]').value = descripcion;
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetUnidadForm() {
+        document.getElementById('form_unidad').reset();
+        document.getElementById('unidad_item_id').value = '';
+        document.getElementById('titulo_unidad').innerText = 'Registro de Unidades';
+        document.getElementById('btn_unidad_submit').innerText = 'Guardar Unidad';
+        document.getElementById('btn_cancelar_unidad').classList.add('hidden');
+    }
+</script>

@@ -1,0 +1,153 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">{% if orden %}Editar Orden {{ orden.folio }}{% else %}Nueva Orden de Compra{% endif %}</h1>
+            <p class="text-slate-500 mt-2 font-medium">Sede destino <span class="text-brand">{{ sucursal_activa.nombre }}</span></p>
+        </div>
+        <a href="{% url 'admon_compras:historial_ordenes' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 transition-all"><i class="fa-solid fa-arrow-left mr-2"></i> Volver</a>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 lg:col-span-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block ml-1">Datos de la orden</label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Proveedor</label>
+                        <select name="proveedor" required>
+                            <option value="">-- Seleccionar --</option>
+                            {% for p in proveedores %}<option value="{{ p.id }}" {% if orden.proveedor_id == p.id %}selected{% endif %}>{{ p }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Moneda</label>
+                        <select name="moneda" required>
+                            {% for m in monedas %}<option value="{{ m.id }}" {% if orden.moneda_id == m.id %}selected{% endif %}>{{ m.codigo }} ({{ m.simbolo }})</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Entrega estimada</label>
+                        <input type="date" name="fecha_entrega" value="{{ orden.fecha_entrega_estimada|date:'Y-m-d'|default:'' }}">
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block ml-1">Notas</label>
+                <textarea name="notas" rows="3" placeholder="Observaciones...">{{ orden.notas|default:'' }}</textarea>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <div class="flex justify-between items-center px-8 pt-8 pb-4">
+                <h3 class="text-sm font-black text-slate-800 uppercase italic">Partidas</h3>
+                <button type="button" onclick="agregar()" class="bg-brand/10 text-brand px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-brand hover:text-white transition-all"><i class="fa-solid fa-plus mr-2"></i> Agregar</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead><tr class="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                        <th class="px-8 py-5">Producto</th>
+                        <th class="px-4 py-5 w-32 text-center">Cantidad</th>
+                        <th class="px-4 py-5 w-36 text-right">Precio Unit.</th>
+                        <th class="px-4 py-5 w-36 text-center">Impuesto</th>
+                        <th class="px-4 py-5 w-36 text-right">Importe</th>
+                        <th class="px-4 py-5 w-16"></th>
+                    </tr></thead>
+                    <tbody id="cuerpo" class="divide-y divide-slate-50"></tbody>
+                </table>
+            </div>
+            <div class="flex justify-end p-8 border-t border-slate-50">
+                <div class="w-72 space-y-2">
+                    <div class="flex justify-between text-xs font-bold text-slate-500"><span>Subtotal</span><span id="t_sub">$0.00</span></div>
+                    <div class="flex justify-between text-xs font-bold text-slate-500"><span>Impuestos</span><span id="t_iva">$0.00</span></div>
+                    <div class="flex justify-between text-lg font-black text-slate-800 pt-2 border-t border-slate-100"><span>Total</span><span id="t_total">$0.00</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 flex justify-end">
+            <button type="submit" class="bg-brand text-white px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-xl shadow-brand/30 hover:-translate-y-1 transition-all">
+                {% if orden %}Guardar Cambios{% else %}Crear Borrador{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<select id="tplProductos" class="hidden no-select2">
+    <option value="">-- Producto --</option>
+    {% for p in productos %}<option value="{{ p.id }}" data-precio="{{ p.costo_unitario }}" data-impuesto="{{ p.impuesto_id|default:'' }}">[{{ p.sku }}] {{ p.nombre }}</option>{% endfor %}
+</select>
+<select id="tplImpuestos" class="hidden no-select2">
+    {% for imp in impuestos %}<option value="{{ imp.id }}" data-tasa="{{ imp.tasa }}" data-ret="{{ imp.es_retencion|yesno:'1,0' }}" {% if imp.es_default %}data-default="1"{% endif %}>{{ imp.nombre }}</option>{% endfor %}
+</select>
+
+<script>
+function fmt(n){ return '$'+n.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function impuestoDefault() {
+    const def = document.querySelector('#tplImpuestos option[data-default="1"]');
+    return def ? def.value : (document.querySelector('#tplImpuestos option') || {}).value || '';
+}
+function agregar(prod, cant, precio, impuesto) {
+    const tbody = document.getElementById('cuerpo');
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-slate-50/50';
+    tr.innerHTML = `
+        <td class="px-8 py-4"><select name="producto[]" required onchange="prefill(this)" class="w-full">${document.getElementById('tplProductos').innerHTML}</select></td>
+        <td class="px-4 py-4"><input type="number" name="cantidad[]" step="0.0001" min="0" value="${cant||1}" oninput="calc()" class="text-center font-black text-brand"></td>
+        <td class="px-4 py-4"><input type="number" name="precio[]" step="0.0001" min="0" value="${precio||0}" oninput="calc()" class="text-right font-bold"></td>
+        <td class="px-4 py-4"><select name="impuesto[]" onchange="calc()" class="text-center">${document.getElementById('tplImpuestos').innerHTML}</select></td>
+        <td class="px-4 py-4 text-right font-black text-slate-700 importe">$0.00</td>
+        <td class="px-4 py-4 text-center"><button type="button" onclick="this.closest('tr').remove();calc()" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500"><i class="fa-solid fa-trash-can text-xs"></i></button></td>`;
+    tbody.appendChild(tr);
+    if (prod) { tr.querySelector('select[name="producto[]"]').value = prod; }
+    const selImp = tr.querySelector('select[name="impuesto[]"]');
+    selImp.value = impuesto || impuestoDefault();
+    calc();
+}
+function prefill(sel) {
+    const opt = sel.options[sel.selectedIndex];
+    const tr = sel.closest('tr');
+    const inp = tr.querySelector('input[name="precio[]"]');
+    if (opt.dataset.precio && parseFloat(inp.value) === 0) inp.value = parseFloat(opt.dataset.precio).toFixed(4);
+    // Hereda el impuesto del producto si lo tiene
+    if (opt.dataset.impuesto) {
+        const selImp = tr.querySelector('select[name="impuesto[]"]');
+        selImp.value = opt.dataset.impuesto;
+        if (window.jQuery) $(selImp).trigger('change.select2');
+    }
+    calc();
+}
+function calc() {
+    let sub = 0, imp = 0;
+    document.querySelectorAll('#cuerpo tr').forEach(tr => {
+        const c = parseFloat(tr.querySelector('input[name="cantidad[]"]').value)||0;
+        const p = parseFloat(tr.querySelector('input[name="precio[]"]').value)||0;
+        const selImp = tr.querySelector('select[name="impuesto[]"]');
+        const opt = selImp.options[selImp.selectedIndex];
+        const tasa = opt ? (parseFloat(opt.dataset.tasa)||0) : 0;
+        const esRet = opt && opt.dataset.ret === '1';
+        const linea = c*p;
+        const monto = linea*(tasa/100);
+        tr.querySelector('.importe').innerText = fmt(linea);
+        sub += linea;
+        imp += esRet ? -monto : monto;
+    });
+    document.getElementById('t_sub').innerText = fmt(sub);
+    document.getElementById('t_iva').innerText = fmt(imp);
+    document.getElementById('t_total').innerText = fmt(sub+imp);
+}
+
+{% if detalles %}
+{% for d in detalles %}agregar('{{ d.producto_id }}', '{{ d.cantidad_pedida }}', '{{ d.precio_unitario }}', '{{ d.impuesto_id|default:'' }}');{% endfor %}
+{% else %}agregar();{% endif %}
+</script>
+<style>
+    input, select, textarea { width:100%; padding:0.7rem 0.9rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.9rem; outline:none; font-weight:600; color:#334155; font-size:0.8rem; }
+    input:focus, select:focus, textarea:focus { border-color: var(--brand-color); background:#fff; box-shadow:0 0 0 4px rgba(0,171,241,0.1); }
+</style>
+{% endblock %}

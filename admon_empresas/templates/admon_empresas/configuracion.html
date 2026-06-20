@@ -19,13 +19,25 @@
                 <i class="fa-solid fa-shop mr-2"></i> Sucursales
             </button>
             
-            <button onclick="switchTab('monedas')" id="btn-monedas" 
+            <button onclick="switchTab('monedas')" id="btn-monedas"
                 class="tab-btn w-full text-left p-4 rounded-2xl bg-transparent text-slate-400 font-medium hover:bg-slate-100 transition-all">
                 <i class="fa-solid fa-coins mr-2"></i> Monedas
             </button>
+
+            <button onclick="switchTab('impuestos')" id="btn-impuestos"
+                class="tab-btn w-full text-left p-4 rounded-2xl bg-transparent text-slate-400 font-medium hover:bg-slate-100 transition-all">
+                <i class="fa-solid fa-percent mr-2"></i> Impuestos
+            </button>
+
+            {% if user.is_superuser %}
+            <button onclick="switchTab('modulos')" id="btn-modulos"
+                class="tab-btn w-full text-left p-4 rounded-2xl bg-transparent text-slate-400 font-medium hover:bg-slate-100 transition-all">
+                <i class="fa-solid fa-puzzle-piece mr-2"></i> Módulos contratados
+            </button>
+            {% endif %}
         </div>
 
-        <div class="md:col-span-3">            
+        <div class="md:col-span-3">
             <div id="tab-empresa" class="tab-content space-y-8">
                 {% include 'admon_empresas/tabs/_empresa.html' %}
             </div>
@@ -37,11 +49,21 @@
             <div id="tab-monedas" class="tab-content hidden space-y-8">
                 {% include 'admon_empresas/tabs/_monedas.html' %}
             </div>
+
+            <div id="tab-impuestos" class="tab-content hidden space-y-8">
+                {% include 'admon_empresas/tabs/_impuestos.html' %}
+            </div>
+
+            {% if user.is_superuser %}
+            <div id="tab-modulos" class="tab-content hidden space-y-8">
+                {% include 'admon_empresas/tabs/_modulos.html' %}
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
-<select id="templateUbicaciones" class="hidden">
+<select id="templateUbicaciones" class="hidden no-select2">
     <option value="">--- Seleccionar Ubicación de Piso ---</option>
     {% for u in todas_las_ubicaciones %}
         <option value="{{ u.id }}">{{ u.almacen.nombre }} > {{ u.codigo }}</option>

@@ -1,0 +1,111 @@
+<div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-10">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div class="lg:col-span-1 space-y-6">
+            <div>
+                <h4 id="titulo_almacen" class="font-black text-slate-800 uppercase text-[11px] tracking-[0.2em] italic mb-1">Registro de Almacenes</h4>
+                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest italic">Sucursal: {{ sucursal_activa.nombre }}</p>
+                <div class="h-1 w-10 bg-brand mt-2 rounded-full shadow-sm shadow-brand/20"></div>
+            </div>
+            
+            <form method="POST" id="form_almacen" class="space-y-2 pt-4">
+                {% csrf_token %}
+                <input type="hidden" name="item_id" id="almacen_item_id" value="">
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Código Identificador</label>
+                    {{ form_almacen.codigo }} 
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Nombre de Bodega</label>
+                    {{ form_almacen.nombre }}
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Dirección / Referencia</label>
+                    {{ form_almacen.direccion }}
+                </div>
+
+                <div class="flex flex-col gap-2 pt-4">
+                    <button type="submit" name="btn_almacen" id="btn_almacen_submit"
+                        class="w-full bg-brand text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all transform hover:-translate-y-1 active:scale-95">
+                        Guardar Almacén
+                    </button>
+                    <button type="button" id="btn_cancelar_almacen" onclick="resetAlmacenForm()" 
+                        class="hidden w-full bg-slate-100 text-slate-400 font-black py-2 rounded-xl text-[9px] uppercase tracking-widest hover:bg-slate-200 transition-all">
+                        Cancelar Edición
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="lg:col-span-2 border-l border-slate-50 pl-0 lg:pl-10">
+            <div class="overflow-x-auto bg-slate-50 rounded-3xl border border-slate-100">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200">
+                            <th class="px-6 py-4 w-24">Cod.</th>
+                            <th class="px-6 py-4">Almacén</th>
+                            <th class="px-6 py-4 text-center">Ubicaciones</th>
+                            <th class="px-6 py-4 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for a in almacenes %}
+                        <tr class="hover:bg-white transition-all group">
+                            <td class="px-6 py-4 font-black text-slate-700 text-xs italic">{{ a.codigo }}</td>
+                            <td class="px-6 py-4">
+                                <div class="font-bold text-slate-800 text-xs">{{ a.nombre }}</div>
+                                <div class="text-[9px] text-slate-400 italic truncate w-40">{{ a.direccion|default:"Sin dirección" }}</div>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <button onclick="verUbicacionesDeAlmacen('{{ a.nombre }}')" 
+                                    class="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black text-brand hover:border-brand transition-all shadow-sm">
+                                    {{ a.ubicaciones.count }} <i class="fa-solid fa-arrow-right ml-1 text-[8px]"></i>
+                                </button>
+                            </td>
+                            <td class="px-6 py-4 text-right space-x-2">
+                                <button onclick="editAlmacen('{{ a.id }}', '{{ a.codigo|escapejs }}', '{{ a.nombre|escapejs }}', '{{ a.direccion|escapejs }}')" 
+                                    class="text-slate-300 hover:text-brand transition-colors"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+                                <button onclick="openDeleteModal('{{ a.id }}', 'almacen')" 
+                                    class="text-slate-300 hover:text-rose-500 transition-colors"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function editAlmacen(id, codigo, nombre, direccion) {
+        document.getElementById('titulo_almacen').innerText = 'Editando Almacén';
+        document.getElementById('btn_almacen_submit').innerText = 'Actualizar Cambios';
+        document.getElementById('btn_cancelar_almacen').classList.remove('hidden');
+        document.getElementById('almacen_item_id').value = id;
+
+        const form = document.getElementById('form_almacen');
+        form.querySelector('[name="codigo"]').value = codigo;
+        form.querySelector('[name="nombre"]').value = nombre;
+        form.querySelector('[name="direccion"]').value = direccion;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetAlmacenForm() {
+        document.getElementById('form_almacen').reset();
+        document.getElementById('almacen_item_id').value = '';
+        document.getElementById('titulo_almacen').innerText = 'Registro de Almacenes';
+        document.getElementById('btn_almacen_submit').innerText = 'Guardar Almacén';
+        document.getElementById('btn_cancelar_almacen').classList.add('hidden');
+    }
+
+    // El "Truco" de navegación
+    function verUbicacionesDeAlmacen(nombreAlmacen) {
+        switchTab('ubicaciones'); // Cambiamos de pestaña
+        const searchInput = document.getElementById('globalSearch');
+        searchInput.value = nombreAlmacen; // Ponemos el nombre del almacén en el buscador
+        filterTable(); // Ejecutamos el filtrado inmediatamente
+    }
+</script>

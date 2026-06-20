@@ -1,0 +1,119 @@
+{% extends "admon_empresas/dashboard.html" %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Existencias en Inventario</h1>
+            <p class="text-slate-500 mt-2 font-medium">Consulta el stock físico por almacén, ubicación y lote en esta sucursal.</p>
+        </div>
+
+        <div class="relative w-full md:w-1/3">
+            <input type="text" id="busquedaExistencia" onkeyup="filtrarExistencias()" 
+                placeholder="Buscar por producto o SKU..." 
+                class="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-3 text-xs font-bold text-slate-700 focus:border-brand outline-none transition-all shadow-sm shadow-slate-200/50">
+            <i class="fa-solid fa-magnifying-glass absolute right-5 top-1/2 -translate-y-1/2 text-slate-300"></i>
+        </div>
+    </div>
+
+    <div class="mb-4 flex justify-end">
+        <span class="text-[10px] font-black text-slate-400 uppercase italic tracking-widest">
+            Mostrando: <span id="contadorResultados" class="text-brand">0</span> registros
+        </span>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6">
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <table class="w-full text-left border-separate border-spacing-y-0" id="tablaExistencias">
+                <thead>
+                    <tr class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest italic">
+                        <th class="px-8 py-6">Producto</th>
+                        <th class="px-6 py-6 text-center">Unidad</th>
+                        <th class="px-6 py-6 text-center">Stock Total</th>
+                        <th class="px-8 py-6 text-right">Detalle por Ubicación</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for item in stock_resumen %}
+                    <tr class="fila-existencia hover:bg-slate-50/50 transition-all group">
+                        <td class="px-8 py-5">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-black text-slate-700 uppercase italic nombre-prod">{{ item.producto__nombre }}</span>
+                                <span class="text-[10px] font-bold text-slate-400 italic sku-prod">SKU: {{ item.producto__sku }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5 text-center">
+                            <span class="text-[10px] font-black text-slate-500 uppercase italic">{{ item.producto__unidad_medida__codigo }}</span>
+                        </td>
+                        <td class="px-6 py-5 text-center">
+                            <span class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-xs font-black italic">
+                                {{ item.total_stock|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td class="px-8 py-5 text-right">
+                            <button onclick="verDetalleUbicacion('{{ item.producto__id }}', '{{ item.producto__nombre|escapejs }}')" 
+                                    class="w-10 h-10 rounded-2xl bg-slate-100 text-slate-400 group-hover:bg-brand group-hover:text-white transition-all shadow-sm">
+                                <i class="fa-solid fa-layer-group text-xs"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr id="fila-vacia">
+                        <td colspan="4" class="py-20 text-center">
+                            <i class="fa-solid fa-box-open text-4xl text-slate-200 mb-4 block"></i>
+                            <p class="text-slate-400 font-bold italic text-sm">No hay existencias registradas en esta sucursal.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% include "admon_inventarios/modals/modal_detalle_existencia.html" %}
+
+<script>
+    // Alimentamos el array global que usará el modal desde el objeto 'detalle' que envía la vista
+    const detalleGlobalJS = [
+        {% for d in detalle %}
+        {
+            prod_id: "{{ d.producto.id }}",
+            almacen: "{{ d.ubicacion.almacen.nombre|escapejs }}",
+            ubicacion: "{{ d.ubicacion.codigo|escapejs }}",
+            lote: "{{ d.lote.numero_lote|default:''|escapejs }}",
+            serie: "{{ d.serie.serie|default:''|escapejs }}", 
+            cantidad: "{{ d.cantidad|floatformat:2 }}"
+        },
+        {% endfor %}
+    ];
+
+    // Función de filtrado en tiempo real
+    function filtrarExistencias() {
+        const input = document.getElementById('busquedaExistencia');
+        const filter = input.value.toUpperCase();
+        const filas = document.getElementsByClassName('fila-existencia');
+        let contador = 0;
+
+        for (let i = 0; i < filas.length; i++) {
+            const nombre = filas[i].querySelector('.nombre-prod').textContent || "";
+            const sku = filas[i].querySelector('.sku-prod').textContent || "";
+            
+            if (nombre.toUpperCase().indexOf(filter) > -1 || sku.toUpperCase().indexOf(filter) > -1) {
+                filas[i].style.display = "";
+                contador++;
+            } else {
+                filas[i].style.display = "none";
+            }
+        }
+        document.getElementById('contadorResultados').innerText = contador;
+    }
+
+    // Inicializar contador al cargar la página
+    document.addEventListener('DOMContentLoaded', () => {
+        const total = document.getElementsByClassName('fila-existencia').length;
+        document.getElementById('contadorResultados').innerText = total;
+    });
+</script>
+
+{% endblock %}

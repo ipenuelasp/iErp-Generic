@@ -16,6 +16,165 @@
 
 <nav class="flex-1 p-4 space-y-2 overflow-y-auto flex flex-col">
 
+    <!-- DASHBOARD EJECUTIVO -->
+    {% if 'ventas' in modulos_visibles or 'finanzas' in modulos_visibles or 'compras' in modulos_visibles or 'inventarios' in modulos_visibles %}
+    <a href="{% url 'dashboard_ejecutivo' %}"
+       class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'dashboard_ejecutivo' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+        <i class="fa-solid fa-chart-line mr-3"></i> Dashboard Ejecutivo
+    </a>
+    {% endif %}
+
+    <!-- VENTAS -->
+    {% if 'ventas' in modulos_visibles %}
+    <div class="pt-2">
+        <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Ventas</p>
+        <a href="{% url 'admon_ventas:historial_cotizaciones' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'ventas' and 'cotizacion' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-file-lines mr-3"></i> Cotizaciones
+        </a>
+        <a href="{% url 'admon_ventas:historial_pedidos' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'ventas' and 'pedido' in request.resolver_match.url_name or request.resolver_match.url_name == 'entrega_pedido' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-cash-register mr-3"></i> Pedidos de Venta
+        </a>
+        {% if 'cirugias' in modulos_visibles %}
+        <a href="{% url 'admon_ventas:cirugias_por_facturar' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if 'cirugias_por_facturar' in request.resolver_match.url_name or 'generar_pedido_cirugia' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-file-invoice-dollar mr-3"></i> Cirugías por Facturar
+        </a>
+        {% endif %}
+        {% if 'kits' in modulos_visibles and 'cirugias' not in modulos_visibles %}
+        <a href="{% url 'admon_ventas:liquidaciones' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if 'liquid' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-box-open mr-3"></i> Liquidar Salidas
+        </a>
+        {% endif %}
+        <a href="{% url 'admon_ventas:clientes' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'ventas' and request.resolver_match.url_name == 'clientes' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-user-tag mr-3"></i> Clientes
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- COMPRAS -->
+    {% if 'compras' in modulos_visibles %}
+    <div class="pt-2">
+        <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Compras</p>
+        <a href="{% url 'admon_compras:historial_ordenes' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'compras' and 'orden' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-file-invoice-dollar mr-3"></i> Órdenes de Compra
+        </a>
+        <a href="{% url 'admon_compras:proveedores' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'proveedores' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-handshake mr-3"></i> Proveedores
+        </a>
+        {% if user.is_superuser or user.perfil.tipo_usuario == 'OWNER' %}
+        <a href="{% url 'admon_compras:autorizadores' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'autorizadores' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-sitemap mr-3"></i> Cadena de Autorización
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- FINANZAS -->
+    {% if 'finanzas' in modulos_visibles %}
+    <div class="pt-2">
+        <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Finanzas</p>
+        <a href="{% url 'admon_finanzas:cuentas_por_pagar' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'cuentas_por_pagar' or request.resolver_match.url_name == 'factura_detalle' or request.resolver_match.url_name == 'registrar_factura' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-file-invoice-dollar mr-3"></i> Cuentas por Pagar
+        </a>
+        <a href="{% url 'admon_finanzas:cuentas_por_cobrar' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'cuentas_por_cobrar' or request.resolver_match.url_name == 'factura_cliente_detalle' or request.resolver_match.url_name == 'registrar_cobro' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-hand-holding-dollar mr-3"></i> Cuentas por Cobrar
+        </a>
+        <a href="{% url 'admon_finanzas:historial_pagos' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if 'pago' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-money-bill-wave mr-3"></i> Pagos
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- CIRUGÍAS (vertical Insermed) -->
+    {% if 'cirugias' in modulos_visibles %}
+    <div class="pt-2">
+        <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Cirugías</p>
+        <a href="{% url 'admon_cirugias:solicitudes' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if 'solicitud' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-syringe mr-3"></i> Solicitudes
+        </a>
+        <a href="{% url 'admon_cirugias:doctores' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if 'doctor' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-user-doctor mr-3"></i> Doctores
+        </a>
+        <a href="{% url 'admon_cirugias:hospitales' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if 'hospital' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-hospital mr-3"></i> Hospitales
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- INVENTARIOS -->
+    {% if 'inventarios' in modulos_visibles %}
+    <div class="pt-2">
+        <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Inventarios</p>
+        <a href="{% url 'admon_inventarios:catalogos_productos' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'inventarios' and request.resolver_match.url_name == 'catalogos_productos' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-boxes-stacked mr-3"></i> Catálogos
+        </a>
+        <a href="{% url 'admon_inventarios:recepciones' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'recepciones' or request.resolver_match.url_name == 'nueva_recepcion' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-truck-ramp-box mr-3"></i> Recepciones
+        </a>
+        <a href="{% url 'admon_inventarios:existencias' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'existencias' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-cubes mr-3"></i> Existencias
+        </a>
+        <a href="{% url 'admon_inventarios:kardex' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'kardex' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-clock-rotate-left mr-3"></i> Kardex
+        </a>
+        <a href="{% url 'admon_inventarios:traspasos' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'traspasos' or request.resolver_match.url_name == 'traspaso_detalle' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-right-left mr-3"></i> Traspasos
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- KITS -->
+    {% if 'kits' in modulos_visibles %}
+    <div class="pt-2">
+        <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Kits / Cajas</p>
+        <a href="{% url 'admon_inventarios:cajas' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'cajas' or request.resolver_match.url_name == 'armar_caja' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-box-open mr-3"></i> Armar Cajas
+        </a>
+        <a href="{% url 'admon_inventarios:kits' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'kits' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-box mr-3"></i> Plantillas Kit
+        </a>
+        <a href="{% url 'admon_inventarios:salidas_kit' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if 'salida_kit' in request.resolver_match.url_name or request.resolver_match.url_name == 'salidas_kit' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-truck-medical mr-3"></i> Salidas de Caja
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- PRODUCCIÓN -->
+    {% if 'produccion' in modulos_visibles %}
+    <div class="pt-2">
+        <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Producción</p>
+        <a href="{% url 'admon_produccion:recetas' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'recetas' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-flask mr-3"></i> Recetas
+        </a>
+        <a href="{% url 'admon_produccion:ordenes_produccion' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if 'produccion' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-industry mr-3"></i> Órdenes de Producción
+        </a>
+    </div>
+    {% endif %}
+
     <!-- Espaciador para empujar lo siguiente al fondo -->
     <div class="flex-1"></div>
 

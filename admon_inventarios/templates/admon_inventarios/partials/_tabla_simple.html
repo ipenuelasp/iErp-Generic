@@ -1,0 +1,93 @@
+<div class="overflow-x-auto bg-slate-50 rounded-3xl border border-slate-100">
+    <table class="w-full text-left">
+        <thead>
+            <tr class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-200">
+                <th class="px-6 py-4">Código</th>
+                <th class="px-6 py-4">Descripción</th>
+                
+                {% if es_grupo %}
+                <th class="px-6 py-4 text-center">Ubicación Sugerida</th>
+                {% endif %}
+
+                {% if items.0.es_inventariable is not None %}
+                <th class="px-6 py-4 text-center">Inv.</th>
+                {% endif %}
+                
+                <th class="px-6 py-4 text-right">Acciones</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            {% for item in items %}
+            <tr class="hover:bg-white transition-all group">
+                <td class="px-6 py-4 font-black text-slate-700 text-xs">{{ item.codigo }}</td>
+                <td class="px-6 py-4 font-bold text-slate-500 text-xs">{{ item.descripcion }}</td>
+                
+                {% if es_grupo %}
+                <td class="px-6 py-4 text-center">
+                    {% if item.ubicacion_defecto %}
+                        <div class="flex flex-col items-center">
+                            <span class="text-[9px] font-black text-brand bg-brand/5 px-2 py-1 rounded-lg border border-brand/10 leading-none">
+                                {{ item.ubicacion_defecto.codigo }}
+                            </span>
+                            <span class="text-[8px] text-slate-400 mt-1 uppercase font-bold">{{ item.ubicacion_defecto.almacen.nombre }}</span>
+                        </div>
+                    {% else %}
+                        <span class="text-[9px] font-bold text-slate-300 italic">Piso / General</span>
+                    {% endif %}
+                </td>
+                {% endif %}
+
+                {% if item.es_inventariable is not None %}
+                <td class="px-6 py-4 text-center">
+                    {% if item.es_inventariable %}
+                        <i class="fa-solid fa-circle-check text-emerald-500"></i>
+                    {% else %}
+                        <i class="fa-solid fa-circle-xmark text-slate-300"></i>
+                    {% endif %}
+                </td>
+                {% endif %}
+
+                <td class="px-6 py-4 text-right space-x-2">
+                    {% if es_grupo %}
+                        <button onclick="editGrupo('{{ item.id }}', '{{ item.codigo|escapejs }}', '{{ item.descripcion|escapejs }}', '{{ item.es_inventariable }}', '{{ item.ubicacion_defecto.id|default:'' }}')" 
+                                class="text-slate-300 hover:text-brand transition-colors">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                    {% elif es_tipo %}
+                        <button onclick="editTipo('{{ item.id }}', '{{ item.codigo|escapejs }}', '{{ item.descripcion|escapejs }}')" class="text-slate-300 hover:text-brand transition-colors">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                    {% elif es_unidad %}
+                        <button onclick="editUnidad('{{ item.id }}', '{{ item.codigo|escapejs }}', '{{ item.descripcion|escapejs }}')" class="text-slate-300 hover:text-brand transition-colors">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                    {% elif es_almacen %}
+                        <button onclick="editAlmacen('{{ item.id }}', '{{ item.codigo|escapejs }}', '{{ item.nombre|escapejs }}', '{{ item.direccion|escapejs }}')" class="text-slate-300 hover:text-brand transition-colors">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                    {% elif es_ubicacion %}
+                        <button onclick="editUbicacion('{{ item.id }}', '{{ item.almacen.id }}', '{{ item.codigo|escapejs }}', '{{ item.descripcion|escapejs }}')" class="text-slate-300 hover:text-brand transition-colors">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                    {% else %}
+                        <button onclick="editClase('{{ item.id }}', '{{ item.codigo|escapejs }}', '{{ item.descripcion|escapejs }}')" class="text-slate-300 hover:text-brand transition-colors">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                    {% endif %}
+
+                    <button onclick="openDeleteModal('{{ item.id }}', '{% if es_grupo %}grupo{% elif es_tipo %}tipo{% elif es_unidad %}unidad{% elif es_almacen %}almacen{% elif es_ubicacion %}ubicacion{% else %}clase{% endif %}')" 
+                            class="text-slate-300 hover:text-rose-500 transition-colors">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="{% if es_grupo %}5{% else %}4{% endif %}" class="px-6 py-10 text-center text-slate-400 italic text-xs font-medium">
+                    No hay registros en este catálogo.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

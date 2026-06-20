@@ -1,0 +1,80 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-4xl mx-auto p-8">
+    <div class="mb-10 flex justify-between items-end">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Reabastecer caja</h1>
+            <p class="text-slate-500 mt-2 font-medium">{{ caja.codigo_caja }} · {{ caja.nombre_display }} · Sede {{ sucursal_activa.nombre }}</p>
+        </div>
+        <a href="{% url 'admon_inventarios:cajas' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver</a>
+    </div>
+
+    <form method="POST" class="js-once bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="reabastecer">
+        <div class="px-8 pt-8 pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+                <h3 class="text-sm font-black text-slate-800 uppercase italic">Llenar al estándar del kit</h3>
+                <p class="text-[10px] text-slate-400 font-bold">Se mueve del almacén a la caja la cantidad que indiques.</p>
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Tomar del almacén / ubicación</label>
+                <select name="origen" required class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700">
+                    {% for u in ubicaciones %}<option value="{{ u.id }}">{{ u.almacen.nombre }} › {{ u.codigo }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+        <table class="w-full text-left">
+            <thead><tr class="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                <th class="px-8 py-4">Producto</th>
+                <th class="px-4 py-4 text-center">Estándar</th>
+                <th class="px-4 py-4 text-center">En caja</th>
+                <th class="px-4 py-4 text-center">Disp. almacén</th>
+                <th class="px-8 py-4 text-center w-36">Agregar</th>
+            </tr></thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for f in filas %}
+                <tr>
+                    <td class="px-8 py-3 text-xs font-bold text-slate-700">[{{ f.producto.sku }}] {{ f.producto.nombre }}</td>
+                    <td class="px-4 py-3 text-center text-xs font-bold text-slate-500">{{ f.requerida|floatformat:"-2" }}</td>
+                    <td class="px-4 py-3 text-center text-xs font-black {% if f.actual >= f.requerida %}text-emerald-600{% else %}text-amber-600{% endif %}">{{ f.actual|floatformat:"-2" }}</td>
+                    <td class="px-4 py-3 text-center text-[11px] font-bold text-slate-400">{{ f.disp|floatformat:"-2" }}</td>
+                    <td class="px-8 py-3 text-center">
+                        <input type="number" name="cant_{{ f.producto.id }}" step="0.0001" min="0" value="{{ f.falta|floatformat:'-2' }}" class="w-28 text-center font-black text-brand">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="flex justify-end p-8 border-t border-slate-50">
+            <button type="submit" class="bg-brand text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-1 transition-all"><i class="fa-solid fa-box-open mr-2"></i> Reabastecer</button>
+        </div>
+    </form>
+
+    <!-- Vaciar caja -->
+    <form method="POST" class="js-once bg-white rounded-[2rem] border border-rose-100 shadow-sm mt-6 p-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="vaciar">
+        <div>
+            <h3 class="text-sm font-black text-rose-600 uppercase italic"><i class="fa-solid fa-box-archive mr-2"></i>Vaciar caja</h3>
+            <p class="text-[10px] text-slate-400 font-bold">Regresa todo el contenido actual ({{ total_en_caja|floatformat:"-2" }} piezas) al almacén que elijas.</p>
+        </div>
+        <div class="flex items-end gap-3">
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Regresar a</label>
+                <select name="origen" required class="block bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700">
+                    {% for u in ubicaciones %}<option value="{{ u.id }}">{{ u.almacen.nombre }} › {{ u.codigo }}</option>{% endfor %}
+                </select>
+            </div>
+            <button type="submit" {% if not total_en_caja %}disabled{% endif %}
+                class="bg-rose-500 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-rose-500/20 hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0">
+                <i class="fa-solid fa-arrow-right-from-bracket mr-2"></i> Vaciar
+            </button>
+        </div>
+    </form>
+</div>
+<style>input,select{outline:none}input:focus,select:focus{border-color:var(--brand-color);box-shadow:0 0 0 4px rgba(0,171,241,0.1)}
+input[name^=cant_]{padding:0.5rem 0.7rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.7rem;font-weight:700;color:#334155;font-size:0.8rem}</style>
+{% endblock %}

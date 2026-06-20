@@ -1,0 +1,178 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Traspasos entre Sucursales</h1>
+            <p class="text-slate-500 mt-2 font-medium">Solicitudes de material · Sede <span class="text-brand">{{ sucursal_activa.nombre }}</span></p>
+        </div>
+        {% if otras_sucursales %}
+        <button onclick="document.getElementById('modalSolicitud').classList.remove('hidden')"
+            class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
+            <i class="fa-solid fa-plus mr-2"></i> Solicitar Material
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+        <!-- MIS SOLICITUDES (yo pido, soy destino) -->
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+            <div class="flex items-center space-x-4 mb-6">
+                <div class="w-12 h-12 bg-cyan-50 rounded-2xl flex items-center justify-center text-brand">
+                    <i class="fa-solid fa-arrow-down-long text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Mis Solicitudes</h2>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Material que pedí a otras sedes</p>
+                </div>
+            </div>
+            <div class="overflow-hidden rounded-2xl border border-slate-100">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50">
+                        <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                            <th class="px-5 py-4 font-black">Folio</th>
+                            <th class="px-5 py-4 font-black">Origen</th>
+                            <th class="px-5 py-4 font-black text-center">Estado</th>
+                            <th class="px-5 py-4 font-black text-right">Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for t in entrantes %}
+                        <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="window.location='{% url 'admon_inventarios:traspaso_detalle' t.pk %}'">
+                            <td class="px-5 py-4 font-black text-brand text-xs">{{ t.folio }}</td>
+                            <td class="px-5 py-4 text-xs font-bold text-slate-700">{{ t.sucursal_origen.nombre }}</td>
+                            <td class="px-5 py-4 text-center">{% include "admon_inventarios/partials/_badge_traspaso.html" with estado=t.estado %}</td>
+                            <td class="px-5 py-4 text-right text-[10px] font-bold text-slate-400">{{ t.fecha_solicitud|date:"d/m/Y" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="px-5 py-10 text-center text-slate-400 italic text-sm">Sin solicitudes propias.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- POR ATENDER (me piden, soy origen) -->
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+            <div class="flex items-center space-x-4 mb-6">
+                <div class="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500">
+                    <i class="fa-solid fa-arrow-up-long text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Por Atender</h2>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Otras sedes me piden material</p>
+                </div>
+            </div>
+            <div class="overflow-hidden rounded-2xl border border-slate-100">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50">
+                        <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                            <th class="px-5 py-4 font-black">Folio</th>
+                            <th class="px-5 py-4 font-black">Destino</th>
+                            <th class="px-5 py-4 font-black text-center">Estado</th>
+                            <th class="px-5 py-4 font-black text-right">Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for t in salientes %}
+                        <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="window.location='{% url 'admon_inventarios:traspaso_detalle' t.pk %}'">
+                            <td class="px-5 py-4 font-black text-brand text-xs">{{ t.folio }}</td>
+                            <td class="px-5 py-4 text-xs font-bold text-slate-700">{{ t.sucursal_destino.nombre }}</td>
+                            <td class="px-5 py-4 text-center">{% include "admon_inventarios/partials/_badge_traspaso.html" with estado=t.estado %}</td>
+                            <td class="px-5 py-4 text-right text-[10px] font-bold text-slate-400">{{ t.fecha_solicitud|date:"d/m/Y" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="px-5 py-10 text-center text-slate-400 italic text-sm">Nadie te ha solicitado material.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: NUEVA SOLICITUD -->
+<div id="modalSolicitud" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalSolicitud').classList.add('hidden')"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-10">
+            <button onclick="document.getElementById('modalSolicitud').classList.add('hidden')"
+                class="absolute top-8 right-8 w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-slate-800">Solicitar Material</h2>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">El material llegará a {{ sucursal_activa.nombre }}</p>
+            </div>
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Solicitar a (sucursal origen)</label>
+                    <select name="sucursal_origen" required>
+                        <option value="">-- Seleccionar sucursal --</option>
+                        {% for s in otras_sucursales %}
+                        <option value="{{ s.id }}">{{ s.nombre }}{% if s.es_matriz %} (Matriz){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Partidas</label>
+                        <button type="button" onclick="agregarPartidaSol()" class="text-brand text-[10px] font-black uppercase tracking-widest hover:underline">
+                            <i class="fa-solid fa-plus mr-1"></i> Agregar
+                        </button>
+                    </div>
+                    <div id="partidasSolicitud" class="space-y-2"></div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Notas</label>
+                    <textarea name="notas" rows="2" placeholder="Motivo o comentarios de la solicitud..."></textarea>
+                </div>
+
+                <div class="pt-4 border-t border-slate-50 flex justify-end">
+                    <button type="submit" class="bg-brand hover:bg-brand-dark text-white font-black py-4 px-10 rounded-2xl shadow-lg shadow-cyan-100 transition-all transform hover:-translate-y-1 text-xs uppercase tracking-widest">
+                        Enviar Solicitud
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<select id="templateProductosSol" class="hidden no-select2">
+    <option value="">-- Producto --</option>
+    {% for p in productos %}
+    <option value="{{ p.id }}">[{{ p.sku }}] {{ p.nombre }}</option>
+    {% endfor %}
+</select>
+
+<script>
+function agregarPartidaSol() {
+    const cont = document.getElementById('partidasSolicitud');
+    const opciones = document.getElementById('templateProductosSol').innerHTML;
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-center';
+    div.innerHTML = `
+        <select name="producto_id[]" required class="flex-1">${opciones}</select>
+        <input type="number" name="cantidad[]" step="0.0001" min="0" value="1" required style="width:110px" class="text-center font-bold">
+        <button type="button" onclick="this.parentElement.remove()" class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+        </button>`;
+    cont.appendChild(div);
+}
+agregarPartidaSol();
+</script>
+
+<style>
+    input, select, textarea {
+        width: 100%; padding: 0.85rem 1rem; background-color: #f8fafc; border: 1px solid #e2e8f0;
+        border-radius: 1rem; outline: none; transition: all 0.2s; font-weight: 600;
+        color: #334155; font-size: 0.8rem;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--brand-color); background-color: white; box-shadow: 0 0 0 4px rgba(0, 171, 241, 0.1); }
+</style>
+{% endblock %}

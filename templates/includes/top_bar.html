@@ -9,7 +9,9 @@
 </div>
 
 <div class="flex items-center space-x-6">
-    {% if empresa.logo %}
+    {% if empresa.isotipo %}
+        <img src="{{ empresa.isotipo.url }}" alt="{{ empresa.nombre_fiscal }}" class="h-9 w-9 object-contain border-r border-slate-200 pr-4 box-content">
+    {% elif empresa.logo %}
         <img src="{{ empresa.logo.url }}" alt="Logo" class="h-8 w-auto object-contain border-r border-slate-200 pr-4">
     {% endif %}
 

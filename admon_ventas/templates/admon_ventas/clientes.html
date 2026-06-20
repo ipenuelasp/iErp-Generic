@@ -1,0 +1,258 @@
+{% extends "admon_empresas/dashboard.html" %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Clientes</h1>
+            <p class="text-slate-500 mt-2 font-medium">Catálogo de <span class="text-brand">{{ empresa.nombre_fiscal }}</span></p>
+        </div>
+        <div class="flex gap-3">
+            {% if user.is_superuser %}
+            <a href="{% url 'admon_ventas:plantilla_clientes' %}" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all">
+                <i class="fa-solid fa-file-arrow-down mr-2"></i> Descargar plantilla
+            </a>
+            <button onclick="document.getElementById('modalImport').classList.remove('hidden')" class="bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-200 hover:-translate-y-1 transition-all">
+                <i class="fa-solid fa-file-arrow-up mr-2"></i> Carga masiva
+            </button>
+            {% endif %}
+            <button onclick="abrirModal()" class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
+                <i class="fa-solid fa-plus mr-2"></i> Nuevo Cliente
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50">
+                <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-8 py-5 font-black">Cliente</th>
+                    <th class="px-6 py-5 font-black">RFC</th>
+                    <th class="px-6 py-5 font-black">Contacto</th>
+                    <th class="px-6 py-5 font-black text-center">Crédito</th>
+                    <th class="px-6 py-5 font-black text-center">Visibilidad</th>
+                    <th class="px-8 py-5 font-black text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for c in clientes %}
+                <tr class="hover:bg-slate-50/80 transition group">
+                    <td class="px-8 py-4">
+                        <div class="font-bold text-slate-800 text-sm">{{ c.nombre_comercial|default:c.nombre_fiscal }}</div>
+                        <div class="text-[10px] text-slate-400 font-bold">{{ c.nombre_fiscal }}</div>
+                    </td>
+                    <td class="px-6 py-4 font-mono text-xs text-slate-500">{{ c.rfc|default:"—" }}</td>
+                    <td class="px-6 py-4 text-[10px] font-bold text-slate-500">
+                        {{ c.contacto_nombre|default:"—" }}<br>{{ c.email|default:"" }}
+                    </td>
+                    <td class="px-6 py-4 text-center text-xs font-bold text-slate-600">{{ c.dias_credito }} días</td>
+                    <td class="px-6 py-4 text-center">
+                        {% if c.sucursales_acceso.all %}
+                        <span class="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-lg uppercase">{{ c.sucursales_acceso.count }} sucursal(es)</span>
+                        {% else %}
+                        <span class="text-[9px] font-black bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg uppercase">Global</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-8 py-4 text-right">
+                        <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="editar(this)" data-cli='{"id":"{{ c.id }}","nombre_fiscal":"{{ c.nombre_fiscal|escapejs }}","nombre_comercial":"{{ c.nombre_comercial|default:''|escapejs }}","rfc":"{{ c.rfc|escapejs }}","email":"{{ c.email|default:''|escapejs }}","telefono":"{{ c.telefono|default:''|escapejs }}","contacto_nombre":"{{ c.contacto_nombre|default:''|escapejs }}","direccion":"{{ c.direccion|default:''|escapejs }}","codigo_postal":"{{ c.codigo_postal|default:''|escapejs }}","regimen_fiscal":"{{ c.regimen_fiscal|default:''|escapejs }}","dias_credito":"{{ c.dias_credito }}","limite_credito":"{{ c.limite_credito }}","moneda":"{{ c.moneda_predeterminada.id|default:'' }}","constancia":"{{ c.constancia_fiscal.url|default:''|escapejs }}","sucursales":[{% for s in c.sucursales_acceso.all %}"{{ s.id }}"{% if not forloop.last %},{% endif %}{% endfor %}]}'
+                                class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-brand hover:border-brand shadow-sm">
+                                <i class="fa-solid fa-pen-to-square text-xs"></i>
+                            </button>
+                            <button onclick="eliminar('{{ c.id }}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500 shadow-sm">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin clientes registrados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL CLIENTE -->
+<div id="modalCli" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="cerrarModal()"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-10">
+            <button onclick="cerrarModal()" class="absolute top-8 right-8 w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            <div class="mb-8">
+                <h2 id="modalTitulo" class="text-xl font-bold text-slate-800">Nuevo Cliente</h2>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Datos fiscales y comerciales</p>
+            </div>
+            <form method="POST" class="space-y-5" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="item_id" id="cli_id">
+
+                <!-- Constancia de Situación Fiscal -->
+                <div class="bg-brand/5 border border-brand/10 rounded-2xl p-5">
+                    <label class="text-[10px] font-black text-brand uppercase ml-1"><i class="fa-solid fa-file-pdf mr-1"></i> Constancia de Situación Fiscal (PDF)</label>
+                    <p class="text-[9px] text-slate-400 font-bold ml-1 mb-2">Súbela y autocompletamos los datos. Si no se puede leer, captura manual abajo.</p>
+                    <div class="flex items-center gap-3">
+                        {{ form.constancia_fiscal }}
+                    </div>
+                    <p id="csfStatus" class="text-[10px] font-black mt-2 ml-1 hidden"></p>
+                    <p id="csfActual" class="text-[10px] font-bold mt-2 ml-1 hidden">Archivo actual: <a id="csfLink" href="#" target="_blank" class="text-brand underline">ver constancia</a></p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Razón social</label>{{ form.nombre_fiscal }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Nombre comercial</label>{{ form.nombre_comercial }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">RFC</label>{{ form.rfc }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Email</label>{{ form.email }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Teléfono</label>{{ form.telefono }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Atención con</label>{{ form.contacto_nombre }}</div>
+                    <div class="space-y-1 col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Dirección</label>{{ form.direccion }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Código postal</label>{{ form.codigo_postal }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Régimen fiscal</label>{{ form.regimen_fiscal }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Moneda</label>{{ form.moneda_predeterminada }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Días de crédito</label>{{ form.dias_credito }}</div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Límite de crédito</label>{{ form.limite_credito }}</div>
+                </div>
+                <div class="space-y-2 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Visibilidad por sucursal</label>
+                    <p class="text-[9px] text-slate-400 font-bold ml-1 mb-2">Sin marcar ninguna = visible en todas las sucursales (global)</p>
+                    <div class="grid grid-cols-2 gap-2 text-xs font-bold text-slate-600">{{ form.sucursales_acceso }}</div>
+                </div>
+                <div class="pt-4 border-t border-slate-50 flex justify-end">
+                    <button type="submit" name="btn_guardar" class="bg-brand hover:bg-brand-dark text-white font-black py-4 px-10 rounded-2xl shadow-lg shadow-cyan-100 transition-all transform hover:-translate-y-1 text-xs uppercase tracking-widest">Guardar Cliente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<form method="POST" id="formDel" class="hidden">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="item_id" id="del_id"></form>
+
+{% if user.is_superuser %}
+<!-- MODAL CARGA MASIVA -->
+<div id="modalImport" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalImport').classList.add('hidden')"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-10">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-slate-800">Carga masiva de clientes</h2>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Sube el Excel con la plantilla</p>
+            </div>
+            <ol class="text-[11px] font-bold text-slate-500 mb-5 space-y-1 list-decimal ml-4">
+                <li>Descarga la plantilla y llénala (borra la fila de ejemplo).</li>
+                <li>Súbela aquí. Si un RFC ya existe, ese cliente se actualiza.</li>
+            </ol>
+            <form method="POST" action="{% url 'admon_ventas:importar_clientes' %}" enctype="multipart/form-data" class="space-y-5">
+                {% csrf_token %}
+                <input type="file" name="archivo" accept=".xlsx" required
+                    class="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-5 py-6 text-xs font-bold text-slate-600">
+                <div class="flex justify-between items-center pt-2">
+                    <a href="{% url 'admon_ventas:plantilla_clientes' %}" class="text-[10px] font-black uppercase text-brand hover:underline"><i class="fa-solid fa-file-arrow-down mr-1"></i> Descargar plantilla</a>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="document.getElementById('modalImport').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 px-4">Cancelar</button>
+                        <button type="submit" class="bg-emerald-600 text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">Cargar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function _csfReset() {
+    const st = document.getElementById('csfStatus');
+    st.classList.add('hidden'); st.textContent = '';
+    document.getElementById('csfActual').classList.add('hidden');
+}
+function abrirModal() {
+    document.querySelector('#modalCli form').reset();
+    document.getElementById('cli_id').value = '';
+    document.getElementById('modalTitulo').innerText = 'Nuevo Cliente';
+    document.querySelectorAll('input[name="sucursales_acceso"]').forEach(c => c.checked = false);
+    _csfReset();
+    document.getElementById('modalCli').classList.remove('hidden');
+}
+function cerrarModal() { document.getElementById('modalCli').classList.add('hidden'); }
+function editar(btn) {
+    const d = JSON.parse(btn.dataset.cli);
+    abrirModal();
+    document.getElementById('modalTitulo').innerText = 'Editar Cliente';
+    document.getElementById('cli_id').value = d.id;
+    document.getElementById('id_nombre_fiscal').value = d.nombre_fiscal;
+    document.getElementById('id_nombre_comercial').value = d.nombre_comercial;
+    document.getElementById('id_rfc').value = d.rfc;
+    document.getElementById('id_email').value = d.email;
+    document.getElementById('id_telefono').value = d.telefono;
+    document.getElementById('id_contacto_nombre').value = d.contacto_nombre;
+    document.getElementById('id_direccion').value = d.direccion;
+    document.getElementById('id_codigo_postal').value = d.codigo_postal || '';
+    document.getElementById('id_regimen_fiscal').value = d.regimen_fiscal || '';
+    document.getElementById('id_dias_credito').value = d.dias_credito;
+    document.getElementById('id_limite_credito').value = d.limite_credito;
+    if (d.moneda) document.getElementById('id_moneda_predeterminada').value = d.moneda;
+    document.querySelectorAll('input[name="sucursales_acceso"]').forEach(c => { c.checked = d.sucursales.includes(c.value); });
+    if (d.constancia) {
+        document.getElementById('csfLink').href = d.constancia;
+        document.getElementById('csfActual').classList.remove('hidden');
+    }
+}
+
+// Lectura automática de la CSF al seleccionar el PDF
+(function () {
+    const inp = document.getElementById('id_constancia_fiscal');
+    if (!inp) return;
+    inp.addEventListener('change', function () {
+        const f = inp.files && inp.files[0];
+        const st = document.getElementById('csfStatus');
+        if (!f) return;
+        if (f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) {
+            st.className = 'text-[10px] font-black mt-2 ml-1 text-rose-500';
+            st.textContent = 'El archivo debe ser PDF.'; st.classList.remove('hidden'); return;
+        }
+        st.className = 'text-[10px] font-black mt-2 ml-1 text-slate-400';
+        st.textContent = 'Leyendo constancia…'; st.classList.remove('hidden');
+        const fd = new FormData();
+        fd.append('constancia', f);
+        fd.append('csrfmiddlewaretoken', document.querySelector('#modalCli [name=csrfmiddlewaretoken]').value);
+        fetch('{% url "admon_ventas:leer_csf" %}', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(d => {
+                if (!d || (!d.ok && !d.texto_ok)) {
+                    st.className = 'text-[10px] font-black mt-2 ml-1 text-amber-600';
+                    st.textContent = 'No se pudieron leer los datos (PDF escaneado o imagen). Captúralos manualmente.';
+                    return;
+                }
+                const set = (id, v) => { if (v) { const el = document.getElementById(id); if (el && !el.value) el.value = v; } };
+                // Sobrescribe siempre los fiscales clave; lo demás solo si está vacío
+                if (d.rfc) document.getElementById('id_rfc').value = d.rfc;
+                if (d.nombre_fiscal) document.getElementById('id_nombre_fiscal').value = d.nombre_fiscal;
+                set('id_codigo_postal', d.codigo_postal);
+                set('id_regimen_fiscal', d.regimen_fiscal);
+                set('id_direccion', d.direccion);
+                if (d.ok) {
+                    st.className = 'text-[10px] font-black mt-2 ml-1 text-emerald-600';
+                    st.textContent = '✓ Datos extraídos. Revísalos y completa lo que falte.';
+                } else {
+                    st.className = 'text-[10px] font-black mt-2 ml-1 text-amber-600';
+                    st.textContent = 'Se leyó el PDF pero no se reconocieron todos los campos. Revísalos manualmente.';
+                }
+            })
+            .catch(() => {
+                st.className = 'text-[10px] font-black mt-2 ml-1 text-rose-500';
+                st.textContent = 'Error al leer el PDF. Captura los datos manualmente.';
+            });
+    });
+})();
+function eliminar(id) {
+    if (!confirm('¿Eliminar este cliente?')) return;
+    document.getElementById('del_id').value = id;
+    document.getElementById('formDel').submit();
+}
+</script>
+<style>
+    input, select, textarea { width:100%; padding:0.85rem 1rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:1rem; outline:none; font-weight:600; color:#334155; font-size:0.8rem; }
+    input:focus, select:focus { border-color: var(--brand-color); background:#fff; box-shadow:0 0 0 4px rgba(0,171,241,0.1); }
+    input[type=checkbox] { width:auto; margin-right:6px; }
+</style>
+{% endblock %}

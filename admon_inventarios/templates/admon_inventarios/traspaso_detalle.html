@@ -1,0 +1,273 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Traspaso {{ solicitud.folio }}</h1>
+            <p class="text-slate-500 mt-2 font-medium">
+                <span class="text-brand">{{ solicitud.sucursal_origen.nombre }}</span>
+                <i class="fa-solid fa-arrow-right-long mx-2 text-slate-300"></i>
+                <span class="text-brand">{{ solicitud.sucursal_destino.nombre }}</span>
+                · {% include "admon_inventarios/partials/_badge_traspaso.html" with estado=solicitud.estado %}
+            </p>
+        </div>
+        <a href="{% url 'admon_inventarios:traspasos' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 transition-all">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Volver a Traspasos
+        </a>
+    </div>
+
+    <!-- LÍNEA DE TIEMPO -->
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-8">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            <div>
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Solicitado</p>
+                <p class="text-xs font-bold text-slate-700">{{ solicitud.solicitado_por.username }}</p>
+                <p class="text-[10px] text-slate-400">{{ solicitud.fecha_solicitud|date:"d/m/Y H:i" }}</p>
+            </div>
+            <div>
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Aprobado</p>
+                {% if solicitud.aprobado_por %}
+                <p class="text-xs font-bold text-slate-700">{{ solicitud.aprobado_por.username }}</p>
+                <p class="text-[10px] text-slate-400">{{ solicitud.fecha_aprobacion|date:"d/m/Y H:i" }}</p>
+                {% else %}<p class="text-xs text-slate-300 italic">Pendiente</p>{% endif %}
+            </div>
+            <div>
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Enviado</p>
+                {% if solicitud.enviado_por %}
+                <p class="text-xs font-bold text-slate-700">{{ solicitud.enviado_por.username }}</p>
+                <p class="text-[10px] text-slate-400">{{ solicitud.fecha_envio|date:"d/m/Y H:i" }}</p>
+                {% else %}<p class="text-xs text-slate-300 italic">Pendiente</p>{% endif %}
+            </div>
+            <div>
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Recibido</p>
+                {% if solicitud.recibido_por %}
+                <p class="text-xs font-bold text-slate-700">{{ solicitud.recibido_por.username }}</p>
+                <p class="text-[10px] text-slate-400">{{ solicitud.fecha_recepcion|date:"d/m/Y H:i" }}</p>
+                {% else %}<p class="text-xs text-slate-300 italic">Pendiente</p>{% endif %}
+            </div>
+        </div>
+        {% if solicitud.notas_solicitud %}
+        <p class="mt-6 pt-4 border-t border-slate-50 text-xs text-slate-500"><span class="font-black uppercase text-[9px] text-slate-400 tracking-widest mr-2">Notas:</span>{{ solicitud.notas_solicitud }}</p>
+        {% endif %}
+    </div>
+
+    <!-- ACCIONES: APROBAR / RECHAZAR (origen, estado SOLICITADO) -->
+    {% if soy_origen and solicitud.estado == 'SOLICITADO' %}
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-8">
+        <h2 class="text-xl font-bold text-slate-800 mb-2">Atender Solicitud</h2>
+        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6">{{ solicitud.sucursal_destino.nombre }} te solicita el material listado abajo</p>
+        <div class="flex gap-4">
+            <form method="POST">{% csrf_token %}
+                <input type="hidden" name="accion" value="aprobar">
+                <button type="submit" class="bg-emerald-500 text-white font-black py-4 px-10 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-emerald-100 hover:-translate-y-1 transition-all">
+                    <i class="fa-solid fa-check mr-2"></i> Aprobar
+                </button>
+            </form>
+            <form method="POST" onsubmit="return confirm('¿Rechazar esta solicitud?')">{% csrf_token %}
+                <input type="hidden" name="accion" value="rechazar">
+                <button type="submit" class="bg-rose-50 text-rose-500 font-black py-4 px-10 rounded-2xl text-xs uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all">
+                    <i class="fa-solid fa-xmark mr-2"></i> Rechazar
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if soy_destino and solicitud.estado == 'SOLICITADO' %}
+    <div class="mb-8 flex justify-end">
+        <form method="POST" onsubmit="return confirm('¿Cancelar esta solicitud?')">{% csrf_token %}
+            <input type="hidden" name="accion" value="cancelar">
+            <button type="submit" class="text-rose-400 font-black text-[10px] uppercase tracking-widest hover:text-rose-600 transition-all">
+                <i class="fa-solid fa-ban mr-1"></i> Cancelar mi solicitud
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- FORM DE ENVÍO (origen, estado APROBADO) -->
+    {% if soy_origen and solicitud.estado == 'APROBADO' %}
+    <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="enviar">
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-8">
+            <h2 class="text-xl font-bold text-slate-800 mb-2">Confirmar Envío</h2>
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6">Indica de qué existencia sale cada partida (ubicación / lote / serie)</p>
+
+            {% for det in detalles %}
+            <div class="border border-slate-100 rounded-2xl p-6 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <p class="font-bold text-slate-800 text-sm">{{ det.producto.nombre }}</p>
+                        <p class="text-[10px] font-bold text-slate-400">SKU: {{ det.producto.sku }} · Solicitado: <span class="text-brand">{{ det.cantidad_solicitada|floatformat:2 }}</span></p>
+                    </div>
+                    <button type="button" onclick="agregarLineaEnvio({{ det.id }})" class="text-brand text-[10px] font-black uppercase tracking-widest hover:underline">
+                        <i class="fa-solid fa-plus mr-1"></i> Otra existencia
+                    </button>
+                </div>
+                <div id="lineas-envio-{{ det.id }}" class="space-y-2"></div>
+            </div>
+            {% endfor %}
+
+            <textarea name="notas_envio" rows="2" placeholder="Notas del envío (paquetería, guía, etc.)..."></textarea>
+
+            <div class="pt-6 flex justify-end">
+                <button type="submit" class="bg-brand text-white font-black py-4 px-10 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-cyan-100 hover:-translate-y-1 transition-all">
+                    <i class="fa-solid fa-truck-fast mr-2"></i> Confirmar Envío
+                </button>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+
+    <!-- FORM DE RECEPCIÓN (destino, estado EN_TRANSITO) -->
+    {% if soy_destino and solicitud.estado == 'EN_TRANSITO' %}
+    <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="recibir">
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-8">
+            <h2 class="text-xl font-bold text-slate-800 mb-2">Confirmar Recepción</h2>
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6">Asigna la ubicación donde se guardará cada partida</p>
+
+            {% for det in detalles %}
+            {% if det.cantidad_enviada > 0 %}
+            <div class="border border-slate-100 rounded-2xl p-6 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div>
+                    <p class="font-bold text-slate-800 text-sm">{{ det.producto.nombre }}</p>
+                    <p class="text-[10px] font-bold text-slate-400">Enviado: <span class="text-brand">{{ det.cantidad_enviada|floatformat:2 }}</span></p>
+                    {% for traza in det.trazabilidad.all %}
+                    <p class="text-[10px] text-slate-400 mt-1">
+                        {% if traza.lote %}<i class="fa-solid fa-box-archive mr-1 text-blue-400"></i>Lote {{ traza.lote.numero_lote }}{% endif %}
+                        {% if traza.serie %}<i class="fa-solid fa-barcode mr-1 text-purple-400"></i>S/N {{ traza.serie.serie }}{% endif %}
+                        × {{ traza.cantidad|floatformat:2 }}
+                    </p>
+                    {% endfor %}
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ubicación destino</label>
+                    <select name="rec_ubi_{{ det.id }}" required>
+                        <option value="">-- Seleccionar --</option>
+                        {% for u in ubicaciones_destino %}
+                        <option value="{{ u.id }}">{{ u.almacen.nombre }} > {{ u.codigo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+
+            <textarea name="notas_recepcion" rows="2" placeholder="Notas de la recepción..."></textarea>
+
+            <div class="pt-6 flex justify-end">
+                <button type="submit" class="bg-emerald-500 text-white font-black py-4 px-10 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-emerald-100 hover:-translate-y-1 transition-all">
+                    <i class="fa-solid fa-box-open mr-2"></i> Confirmar Recepción
+                </button>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+
+    <!-- TABLA DE PARTIDAS (siempre visible) -->
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+        <h3 class="text-xl font-bold text-slate-800 mb-6 flex items-center">
+            <i class="fa-solid fa-list-check mr-3 text-brand"></i> Partidas
+        </h3>
+        <div class="overflow-hidden rounded-2xl border border-slate-100">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50">
+                    <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                        <th class="px-6 py-4 font-black">Producto</th>
+                        <th class="px-6 py-4 font-black text-center">Solicitado</th>
+                        <th class="px-6 py-4 font-black text-center">Enviado</th>
+                        <th class="px-6 py-4 font-black text-center">Recibido</th>
+                        <th class="px-6 py-4 font-black">Trazabilidad</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for det in detalles %}
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-slate-800 text-xs">{{ det.producto.nombre }}</div>
+                            <div class="text-[10px] text-slate-400 font-bold">{{ det.producto.sku }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-center text-xs font-bold text-slate-500">{{ det.cantidad_solicitada|floatformat:2 }}</td>
+                        <td class="px-6 py-4 text-center text-xs font-bold text-amber-600">{{ det.cantidad_enviada|floatformat:2 }}</td>
+                        <td class="px-6 py-4 text-center text-xs font-bold text-emerald-600">{{ det.cantidad_recibida|floatformat:2 }}</td>
+                        <td class="px-6 py-4">
+                            {% for traza in det.trazabilidad.all %}
+                            <span class="inline-flex items-center gap-1 text-[9px] font-black bg-slate-100 text-slate-500 px-2 py-1 rounded-lg mr-1 mb-1">
+                                {% if traza.lote %}LOTE {{ traza.lote.numero_lote }}{% elif traza.serie %}S/N {{ traza.serie.serie }}{% else %}—{% endif %}
+                                × {{ traza.cantidad|floatformat:2 }}
+                            </span>
+                            {% empty %}
+                            <span class="text-[10px] text-slate-300 italic">Sin envío aún</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if soy_origen and solicitud.estado == 'APROBADO' %}
+<script>
+// Existencias disponibles por detalle (inyectadas desde la vista)
+const EXISTENCIAS = {
+    {% for det_id, existencias in existencias_por_detalle.items %}
+    "{{ det_id }}": [
+        {% for ex in existencias %}
+        {id: "{{ ex.id }}", texto: "{{ ex.ubicacion.almacen.nombre|escapejs }} > {{ ex.ubicacion.codigo|escapejs }}{% if ex.lote %} · Lote {{ ex.lote.numero_lote|escapejs }}{% endif %}{% if ex.serie %} · S/N {{ ex.serie.serie|escapejs }}{% endif %} (disp: {{ ex.cantidad|floatformat:2 }})", max: "{{ ex.cantidad }}", esSerie: {% if ex.serie %}true{% else %}false{% endif %}},
+        {% endfor %}
+    ],
+    {% endfor %}
+};
+
+function agregarLineaEnvio(detId) {
+    const cont = document.getElementById('lineas-envio-' + detId);
+    const lista = EXISTENCIAS[detId] || [];
+    if (lista.length === 0) {
+        cont.innerHTML = '<p class="text-[10px] font-black text-rose-400 uppercase tracking-widest">Sin existencias disponibles en esta sucursal</p>';
+        return;
+    }
+    let opciones = '<option value="">-- Existencia disponible --</option>';
+    lista.forEach(e => { opciones += `<option value="${e.id}" data-max="${e.max}" data-serie="${e.esSerie}">${e.texto}</option>`; });
+
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-center';
+    div.innerHTML = `
+        <select name="env_exist_${detId}[]" required class="flex-1" onchange="ajustarMax(this)">${opciones}</select>
+        <input type="number" name="env_cant_${detId}[]" step="0.0001" min="0" value="0" required style="width:110px" class="text-center font-bold">
+        <button type="button" onclick="this.parentElement.remove()" class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+        </button>`;
+    cont.appendChild(div);
+}
+
+function ajustarMax(sel) {
+    const opt = sel.options[sel.selectedIndex];
+    const input = sel.parentElement.querySelector('input[type=number]');
+    if (opt.dataset.max) {
+        input.max = opt.dataset.max;
+        input.value = opt.dataset.serie === 'true' ? 1 : opt.dataset.max;
+        if (opt.dataset.serie === 'true') input.readOnly = true; else input.readOnly = false;
+    }
+}
+
+// una línea inicial por partida
+{% for det in detalles %}agregarLineaEnvio({{ det.id }});{% endfor %}
+</script>
+{% endif %}
+
+<style>
+    input, select, textarea {
+        width: 100%; padding: 0.85rem 1rem; background-color: #f8fafc; border: 1px solid #e2e8f0;
+        border-radius: 1rem; outline: none; transition: all 0.2s; font-weight: 600;
+        color: #334155; font-size: 0.8rem;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--brand-color); background-color: white; box-shadow: 0 0 0 4px rgba(0, 171, 241, 0.1); }
+</style>
+{% endblock %}

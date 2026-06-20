@@ -25,5 +25,11 @@ urlpatterns = [
     path('manifest.json', core_views.manifest, name='manifest'),
     path('admin/', admin.site.urls),
     path('usuarios/', include('admon_usuarios.urls')),
+    path('inventarios/', include('admon_inventarios.urls')),
+    path('produccion/', include('admon_produccion.urls')),
+    path('compras/', include('admon_compras.urls')),
+    path('finanzas/', include('admon_finanzas.urls')),
+    path('ventas/', include('admon_ventas.urls')),
+    path('cirugias/', include('admon_cirugias.urls')),
     path('', include('admon_empresas.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

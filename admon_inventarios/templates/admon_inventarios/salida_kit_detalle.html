@@ -1,0 +1,278 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Salida {{ salida.folio }}</h1>
+            <p class="text-slate-500 mt-2 font-medium">
+                Caja <span class="text-brand">{{ salida.instancia_kit.codigo_caja }}</span> ({{ salida.instancia_kit.kit.nombre }})
+                → <span class="text-brand">{{ salida.hospital_cliente }}</span>
+                {% if salida.doctor_responsable %}· Dr. {{ salida.doctor_responsable }}{% endif %}
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'admon_inventarios:vale_salida_pdf' salida.pk %}" target="_blank" class="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all"><i class="fa-solid fa-file-pdf mr-2 text-rose-500"></i> Vale de salida</a>
+            <a href="{% url 'admon_inventarios:hoja_consumo_pdf' salida.pk %}" target="_blank" class="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all"><i class="fa-solid fa-file-pdf mr-2 text-rose-500"></i> Hoja de consumo</a>
+            <a href="{% url 'admon_inventarios:salidas_kit' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 transition-all">
+                <i class="fa-solid fa-arrow-left mr-2"></i> Volver
+            </a>
+        </div>
+    </div>
+
+    <!-- ARMAR CAJA (estado PREPARANDO) -->
+    {% if salida.estado == 'PREPARANDO' %}
+    <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="enviar">
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-8">
+            <h2 class="text-xl font-bold text-slate-800 mb-2">Armar Caja</h2>
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6">Captura qué existencias salen en la caja (lote / serie / ubicación)</p>
+
+            {% for item in componentes %}
+            <div class="border border-slate-100 rounded-2xl p-6 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <p class="font-bold text-slate-800 text-sm">
+                            {{ item.comp.producto.nombre }}
+                            {% if item.comp.es_retornable %}
+                            <span class="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-lg uppercase ml-2">Préstamo</span>
+                            {% else %}
+                            <span class="text-[9px] font-black bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg uppercase ml-2">Consumible</span>
+                            {% endif %}
+                        </p>
+                        <p class="text-[10px] font-bold text-slate-400">SKU: {{ item.comp.producto.sku }} · Requerido en plantilla: <span class="text-brand">{{ item.comp.cantidad_requerida|floatformat:0 }}</span></p>
+                    </div>
+                    <button type="button" onclick="agregarLineaKit({{ item.comp.id }})" class="text-brand text-[10px] font-black uppercase tracking-widest hover:underline">
+                        <i class="fa-solid fa-plus mr-1"></i> Otra existencia
+                    </button>
+                </div>
+                <div id="lineas-kit-{{ item.comp.id }}" class="space-y-2"></div>
+            </div>
+            {% endfor %}
+
+            <div class="pt-6 flex justify-between items-center">
+                <button type="button" onclick="document.getElementById('formCancelar').submit()" class="text-rose-400 font-black text-[10px] uppercase tracking-widest hover:text-rose-600">
+                    <i class="fa-solid fa-ban mr-1"></i> Cancelar salida
+                </button>
+                <button type="submit" class="bg-brand text-white font-black py-4 px-10 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-cyan-100 hover:-translate-y-1 transition-all">
+                    <i class="fa-solid fa-truck-medical mr-2"></i> Confirmar Envío al Hospital
+                </button>
+            </div>
+        </div>
+    </form>
+    <form method="POST" id="formCancelar" class="hidden">{% csrf_token %}<input type="hidden" name="accion" value="cancelar"></form>
+    {% endif %}
+
+    <!-- PROCESAR RETORNO (estado ENVIADA / EN_USO) -->
+    {% if salida.estado == 'ENVIADA' or salida.estado == 'EN_USO' %}
+    <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="retornar">
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-8">
+            <h2 class="text-xl font-bold text-slate-800 mb-2">Procesar Retorno</h2>
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6">Captura cuánto regresó de cada partida. Lo no retornado se considera usado en cirugía (facturable).</p>
+
+            <div class="overflow-hidden rounded-2xl border border-slate-100 mb-6">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50">
+                        <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                            <th class="px-6 py-4 font-black">Producto</th>
+                            <th class="px-6 py-4 font-black">Trazabilidad</th>
+                            <th class="px-6 py-4 font-black text-center">Tipo</th>
+                            <th class="px-6 py-4 font-black text-center">Enviado</th>
+                            <th class="px-6 py-4 font-black text-center text-brand">Retornado</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for item in contenido %}
+                        <tr>
+                            <td class="px-6 py-4">
+                                <div class="font-bold text-slate-800 text-xs">{{ item.producto.nombre }}</div>
+                                <div class="text-[10px] text-slate-400 font-bold">{{ item.producto.sku }}</div>
+                            </td>
+                            <td class="px-6 py-4 text-[10px] font-bold text-slate-500">
+                                {% if item.lote %}Lote {{ item.lote.numero_lote }}{% elif item.serie %}S/N {{ item.serie.serie }}{% else %}—{% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                {% if item.es_retornable %}
+                                <span class="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-lg uppercase">Préstamo</span>
+                                {% else %}
+                                <span class="text-[9px] font-black bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg uppercase">Consumible</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-center text-xs font-bold text-slate-500">{{ item.cantidad_enviada|floatformat:2 }}</td>
+                            <td class="px-6 py-4 text-center" style="width:140px">
+                                <input type="number" name="ret_{{ item.id }}" step="0.0001" min="0" max="{{ item.cantidad_enviada }}"
+                                    value="{% if item.es_retornable %}{{ item.cantidad_enviada }}{% else %}0{% endif %}"
+                                    class="text-center font-bold" style="padding:0.5rem">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex justify-end">
+                <button type="submit" class="bg-teal-500 text-white font-black py-4 px-10 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-teal-100 hover:-translate-y-1 transition-all">
+                    <i class="fa-solid fa-rotate-left mr-2"></i> Procesar Retorno
+                </button>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+
+    <!-- RESUMEN DE USO / CERRAR (estado RETORNADA) -->
+    {% if salida.estado == 'RETORNADA' %}
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-8">
+        <h2 class="text-xl font-bold text-slate-800 mb-2">Material Usado en Cirugía (Facturable)</h2>
+        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6">Esto es lo que se vende y factura al cliente</p>
+        <div class="overflow-hidden rounded-2xl border border-slate-100 mb-6">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50">
+                    <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                        <th class="px-6 py-4 font-black">Producto</th>
+                        <th class="px-6 py-4 font-black">Trazabilidad</th>
+                        <th class="px-6 py-4 font-black text-center">Usado</th>
+                        <th class="px-6 py-4 font-black text-right">Precio Unit.</th>
+                        <th class="px-6 py-4 font-black text-right">Importe</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for item in contenido %}
+                    {% if item.cantidad_usada > 0 %}
+                    <tr>
+                        <td class="px-6 py-4 text-xs font-bold text-slate-700">{{ item.producto.nombre }}</td>
+                        <td class="px-6 py-4 text-[10px] font-bold text-slate-500">
+                            {% if item.lote %}Lote {{ item.lote.numero_lote }}{% elif item.serie %}S/N {{ item.serie.serie }}{% else %}—{% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center text-xs font-black text-brand">{{ item.cantidad_usada|floatformat:2 }}</td>
+                        <td class="px-6 py-4 text-right text-xs font-bold text-slate-500">${{ item.producto.precio_venta|floatformat:2|intcomma }}</td>
+                        <td class="px-6 py-4 text-right text-xs font-black text-emerald-600">${{ item.importe_usado|floatformat:2|intcomma }}</td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="flex justify-end gap-3 items-center">
+            {% with cir=salida.solicitudes_cirugia.first %}
+            {% if cir %}
+            <a href="{% url 'admon_cirugias:solicitud_detalle' cir.pk %}" class="bg-brand text-white font-black py-4 px-10 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-1 transition-all">
+                <i class="fa-solid fa-syringe mr-2"></i> Ir a la cirugía {{ cir.folio }}
+            </a>
+            {% elif 'ventas' in modulos_visibles %}
+            <a href="{% url 'admon_ventas:liquidar_salida' salida.id %}" class="bg-brand text-white font-black py-4 px-10 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-1 transition-all">
+                <i class="fa-solid fa-file-invoice-dollar mr-2"></i> Liquidar y Facturar
+            </a>
+            {% endif %}
+            {% endwith %}
+            <form method="POST">{% csrf_token %}
+                <input type="hidden" name="accion" value="cerrar">
+                <button type="submit" class="bg-white border border-slate-200 text-slate-600 font-black py-4 px-8 rounded-2xl text-xs uppercase tracking-widest hover:-translate-y-1 transition-all" title="Cierra sin generar venta (ej. nada se usó)">
+                    <i class="fa-solid fa-check-double mr-2"></i> Cerrar sin facturar
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- CONTENIDO DE LA CAJA (siempre visible si hay) -->
+    {% if contenido %}
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+        <h3 class="text-xl font-bold text-slate-800 mb-6 flex items-center">
+            <i class="fa-solid fa-box mr-3 text-brand"></i> Contenido del Viaje
+        </h3>
+        <div class="overflow-hidden rounded-2xl border border-slate-100">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50">
+                    <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                        <th class="px-6 py-4 font-black">Producto</th>
+                        <th class="px-6 py-4 font-black">Trazabilidad</th>
+                        <th class="px-6 py-4 font-black">Origen</th>
+                        <th class="px-6 py-4 font-black text-center">Enviado</th>
+                        <th class="px-6 py-4 font-black text-center">Retornado</th>
+                        <th class="px-6 py-4 font-black text-center">Usado</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for item in contenido %}
+                    <tr>
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-slate-800 text-xs">{{ item.producto.nombre }}</div>
+                            <div class="text-[10px] text-slate-400 font-bold">{{ item.producto.sku }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-[10px] font-bold text-slate-500">
+                            {% if item.lote %}Lote {{ item.lote.numero_lote }}{% elif item.serie %}S/N {{ item.serie.serie }}{% else %}—{% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-[10px] font-bold text-slate-500">{{ item.ubicacion_origen }}</td>
+                        <td class="px-6 py-4 text-center text-xs font-bold text-slate-500">{{ item.cantidad_enviada|floatformat:2 }}</td>
+                        <td class="px-6 py-4 text-center text-xs font-bold text-teal-600">{{ item.cantidad_retornada|floatformat:2 }}</td>
+                        <td class="px-6 py-4 text-center text-xs font-black text-brand">{{ item.cantidad_usada|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if salida.estado == 'PREPARANDO' %}
+<script>
+const EXISTENCIAS = {
+    {% for item in componentes %}
+    "{{ item.comp.id }}": [
+        {% for ex in item.existencias %}
+        {id: "{{ ex.id }}", texto: "{{ ex.ubicacion.almacen.nombre|escapejs }} > {{ ex.ubicacion.codigo|escapejs }}{% if ex.lote %} · Lote {{ ex.lote.numero_lote|escapejs }}{% endif %}{% if ex.serie %} · S/N {{ ex.serie.serie|escapejs }}{% endif %} (disp: {{ ex.cantidad|floatformat:2 }})", max: "{{ ex.cantidad }}", esSerie: {% if ex.serie %}true{% else %}false{% endif %}},
+        {% endfor %}
+    ],
+    {% endfor %}
+};
+
+function agregarLineaKit(compId) {
+    const cont = document.getElementById('lineas-kit-' + compId);
+    const lista = EXISTENCIAS[compId] || [];
+    if (lista.length === 0) {
+        cont.innerHTML = '<p class="text-[10px] font-black text-rose-400 uppercase tracking-widest">Sin existencias disponibles de este producto</p>';
+        return;
+    }
+    let opciones = '<option value="">-- Existencia disponible --</option>';
+    lista.forEach(e => { opciones += `<option value="${e.id}" data-max="${e.max}" data-serie="${e.esSerie}">${e.texto}</option>`; });
+
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-center';
+    div.innerHTML = `
+        <select name="kit_exist_${compId}[]" class="flex-1" onchange="ajustarMaxKit(this)">${opciones}</select>
+        <input type="number" name="kit_cant_${compId}[]" step="0.0001" min="0" value="0" style="width:110px" class="text-center font-bold">
+        <button type="button" onclick="this.parentElement.remove()" class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+        </button>`;
+    cont.appendChild(div);
+}
+
+function ajustarMaxKit(sel) {
+    const opt = sel.options[sel.selectedIndex];
+    const input = sel.parentElement.querySelector('input[type=number]');
+    if (opt.dataset.max) {
+        input.max = opt.dataset.max;
+        if (opt.dataset.serie === 'true') { input.value = 1; input.readOnly = true; }
+        else { input.readOnly = false; }
+    }
+}
+
+{% for item in componentes %}agregarLineaKit({{ item.comp.id }});{% endfor %}
+</script>
+{% endif %}
+
+<style>
+    input, select, textarea {
+        width: 100%; padding: 0.85rem 1rem; background-color: #f8fafc; border: 1px solid #e2e8f0;
+        border-radius: 1rem; outline: none; transition: all 0.2s; font-weight: 600;
+        color: #334155; font-size: 0.8rem;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--brand-color); background-color: white; box-shadow: 0 0 0 4px rgba(0, 171, 241, 0.1); }
+</style>
+{% endblock %}

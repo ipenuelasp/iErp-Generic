@@ -1,0 +1,139 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-[1500px] mx-auto p-8">
+
+    <div class="mb-8">
+        <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Kardex de Productos</h1>
+        <p class="text-slate-500 mt-2 font-medium">Trazabilidad de movimientos · Sede <span class="text-brand">{{ sucursal_activa.nombre }}</span></p>
+    </div>
+
+    <!-- Selector + filtros -->
+    <form method="get" id="kardexForm" class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 mb-6">
+        <div class="flex flex-col md:flex-row md:items-end gap-4">
+            <div class="flex-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Producto</label>
+                <select name="producto" onchange="document.getElementById('kardexForm').submit()" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700">
+                    <option value="">— Selecciona un producto —</option>
+                    {% for p in productos %}<option value="{{ p.id }}" {% if producto.id == p.id %}selected{% endif %}>[{{ p.sku }}] {{ p.nombre }}</option>{% endfor %}
+                </select>
+            </div>
+            {% if producto %}
+            <div class="bg-brand/5 border border-brand/10 rounded-2xl px-6 py-3 text-center">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saldo {% if f.serie %}de la serie{% elif f.lote %}del lote{% elif f.sucursal %}de la sede{% else %}total{% endif %}</p>
+                <p class="text-2xl font-black text-brand">{{ saldo_actual|floatformat:"-2" }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if producto %}
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mt-4 pt-4 border-t border-slate-50">
+            {% if series %}
+            <div>
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-1"><i class="fa-solid fa-barcode mr-1 text-purple-500"></i>N° de serie</label>
+                <select name="serie" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-bold">
+                    <option value="">Todas</option>
+                    {% for s in series %}<option value="{{ s.id }}" {% if f.serie == s.id|stringformat:'s' %}selected{% endif %}>{{ s.serie }} ({{ s.get_estado_display }})</option>{% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            {% if lotes %}
+            <div>
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-1">Lote</label>
+                <select name="lote" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-bold">
+                    <option value="">Todos</option>
+                    {% for l in lotes %}<option value="{{ l.id }}" {% if f.lote == l.id|stringformat:'s' %}selected{% endif %}>{{ l.numero_lote }}</option>{% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div>
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-1">Sucursal</label>
+                <select name="sucursal" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-bold">
+                    <option value="">Todas</option>
+                    {% for s in sucursales %}<option value="{{ s.id }}" {% if f.sucursal == s.id|stringformat:'s' %}selected{% endif %}>{{ s.nombre }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-1">Tipo</label>
+                <select name="tipo" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-bold">
+                    <option value="">Todos</option>
+                    {% for k,v in tipos %}<option value="{{ k }}" {% if f.tipo == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-1">Desde</label>
+                <input type="date" name="desde" value="{{ f.desde }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-bold">
+            </div>
+            <div>
+                <label class="text-[9px] font-black text-slate-400 uppercase ml-1">Hasta</label>
+                <input type="date" name="hasta" value="{{ f.hasta }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-bold">
+            </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-4">
+            <a href="{% url 'admon_inventarios:kardex' %}?producto={{ producto.id }}&serie={{ f.serie }}&lote={{ f.lote }}&sucursal={{ f.sucursal }}&tipo={{ f.tipo }}&desde={{ f.desde }}&hasta={{ f.hasta }}&formato=xlsx" class="bg-emerald-600 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-file-excel mr-2"></i> Exportar Excel</a>
+            <button type="submit" class="bg-brand text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-filter mr-2"></i> Filtrar</button>
+        </div>
+        {% endif %}
+    </form>
+
+    {% if producto %}
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50">
+                    <tr class="text-slate-400 text-[9px] uppercase tracking-[0.15em]">
+                        <th class="px-5 py-4 font-black">Fecha</th>
+                        <th class="px-4 py-4 font-black">Movimiento</th>
+                        <th class="px-4 py-4 font-black">Referencia</th>
+                        <th class="px-4 py-4 font-black">Sucursal / Ubicación</th>
+                        <th class="px-4 py-4 font-black">Lote / Serie</th>
+                        <th class="px-4 py-4 font-black text-center">Propiedad</th>
+                        <th class="px-4 py-4 font-black text-right">Entrada</th>
+                        <th class="px-4 py-4 font-black text-right">Salida</th>
+                        <th class="px-4 py-4 font-black text-right">Saldo</th>
+                        <th class="px-5 py-4 font-black">Usuario</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for m in movimientos %}
+                    <tr class="hover:bg-slate-50/60">
+                        <td class="px-5 py-3 text-[10px] font-bold text-slate-400 whitespace-nowrap">{{ m.fecha|date:"d/m/Y H:i" }}</td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest {% if m.entrada %}bg-emerald-50 text-emerald-600{% else %}bg-rose-50 text-rose-500{% endif %}">{{ m.get_tipo_display }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-[10px] font-bold text-slate-500">{{ m.referencia|default:"—" }}</td>
+                        <td class="px-4 py-3 text-[10px] font-bold text-slate-500">{{ m.sucursal.nombre }}<br><span class="text-slate-400">{{ m.ubicacion.almacen.codigo }} / {{ m.ubicacion.codigo }}</span></td>
+                        <td class="px-4 py-3 text-[10px] font-bold text-slate-500">{% if m.lote %}L:{{ m.lote.numero_lote }}{% endif %}{% if m.serie %}S:{{ m.serie.serie }}{% endif %}{% if not m.lote and not m.serie %}—{% endif %}</td>
+                        <td class="px-4 py-3 text-center">{% if m.propiedad == 'CONSIGNA' %}<span class="text-[8px] font-black bg-amber-50 text-amber-600 px-2 py-0.5 rounded uppercase">Consigna</span>{% else %}<span class="text-[8px] font-black text-slate-300 uppercase">Propio</span>{% endif %}</td>
+                        <td class="px-4 py-3 text-right text-xs font-black text-emerald-600">{% if m.entrada %}+{{ m.entrada|floatformat:"-2" }}{% else %}—{% endif %}</td>
+                        <td class="px-4 py-3 text-right text-xs font-black text-rose-500">{% if m.salida %}−{{ m.salida|floatformat:"-2" }}{% else %}—{% endif %}</td>
+                        <td class="px-4 py-3 text-right text-xs font-black text-slate-800">{{ m.saldo|floatformat:"-2" }}</td>
+                        <td class="px-5 py-3 text-[10px] font-bold text-slate-400">{{ m.usuario.username }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="10" class="px-8 py-14 text-center text-slate-400 italic text-sm">Este producto no tiene movimientos registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-[2.5rem] border border-slate-100 p-16 text-center">
+        <i class="fa-solid fa-clock-rotate-left text-4xl text-slate-200 mb-4 block"></i>
+        <p class="text-slate-400 font-bold italic text-sm">Selecciona un producto para ver su kardex.</p>
+    </div>
+    {% endif %}
+</div>
+<style>
+    /* Filtros del kardex: todos los controles a la MISMA altura (38px) */
+    #kardexForm .select2-container { width: 100% !important; }
+    #kardexForm .grid .select2-selection--single {
+        height: 38px !important; box-sizing: border-box;
+        border-radius: 0.75rem !important; border-color: #e2e8f0 !important; background: #f8fafc !important;
+    }
+    #kardexForm .grid .select2-selection--single .select2-selection__rendered { line-height: 36px; padding-left: 10px; }
+    #kardexForm .grid .select2-selection--single .select2-selection__arrow { height: 36px; }
+    #kardexForm .grid input { height: 38px; box-sizing: border-box; }
+</style>
+{% endblock %}

@@ -1,0 +1,101 @@
+<div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-10">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        
+        <div class="lg:col-span-1 space-y-6">
+            <div>
+                <h4 id="titulo_ubicacion" class="font-black text-slate-800 uppercase text-[11px] tracking-[0.2em] italic mb-1">Mapa de Ubicaciones</h4>
+                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest italic">Ordenamiento físico por bodega</p>
+                <div class="h-1 w-10 bg-brand mt-2 rounded-full"></div>
+            </div>
+            
+            <form method="POST" id="form_ubicacion" class="space-y-3 pt-4">
+                {% csrf_token %}
+                <input type="hidden" name="item_id" id="ubicacion_item_id" value="">
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Seleccionar Almacén</label>
+                    {{ form_ubicacion.almacen }} 
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Código / Coordenada</label>
+                    {{ form_ubicacion.codigo }}
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Referencia Visual (Opcional)</label>
+                    {{ form_ubicacion.descripcion }}
+                </div>
+
+                <div class="flex flex-col gap-2 pt-4">
+                    <button type="submit" name="btn_ubicacion" id="btn_ubicacion_submit"
+                        class="w-full bg-brand text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
+                        Guardar Ubicación
+                    </button>
+                    <button type="button" id="btn_cancelar_ubicacion" onclick="resetUbicacionForm()" 
+                        class="hidden w-full bg-slate-100 text-slate-400 font-black py-2 rounded-xl text-[9px] uppercase tracking-widest hover:bg-slate-200 transition-all">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="lg:col-span-2 border-l border-slate-50 pl-0 lg:pl-10">
+            <div class="overflow-x-auto bg-slate-50 rounded-3xl border border-slate-100">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200">
+                            <th class="px-6 py-4">Almacén Origen</th>
+                            <th class="px-6 py-4">Ubicación</th>
+                            <th class="px-6 py-4 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for u in ubicaciones %}
+                        <tr class="hover:bg-white transition-all group">
+                            <td class="px-6 py-4">
+                                <span class="bg-brand/10 text-brand text-[9px] font-black px-2 py-1 rounded-md uppercase">
+                                    {{ u.almacen.nombre }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="font-black text-slate-800 text-xs tracking-tight italic">{{ u.codigo }}</div>
+                                <div class="text-[9px] text-slate-400 font-medium">{{ u.descripcion|default:"N/A" }}</div>
+                            </td>
+                            <td class="px-6 py-4 text-right space-x-2">
+                                <button onclick="editUbicacion('{{ u.id }}', '{{ u.almacen.id }}', '{{ u.codigo|escapejs }}', '{{ u.descripcion|escapejs }}')" 
+                                    class="text-slate-300 hover:text-brand transition-colors"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+                                <button onclick="openDeleteModal('{{ u.id }}', 'ubicacion')" 
+                                    class="text-slate-300 hover:text-rose-500 transition-colors"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function editUbicacion(id, almacenId, codigo, descripcion) {
+        document.getElementById('titulo_ubicacion').innerText = 'Editando Ubicación';
+        document.getElementById('btn_ubicacion_submit').innerText = 'Actualizar Cambios';
+        document.getElementById('btn_cancelar_ubicacion').classList.remove('hidden');
+        document.getElementById('ubicacion_item_id').value = id;
+
+        const form = document.getElementById('form_ubicacion');
+        form.querySelector('[name="almacen"]').value = almacenId;
+        form.querySelector('[name="codigo"]').value = codigo;
+        form.querySelector('[name="descripcion"]').value = descripcion;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetUbicacionForm() {
+        document.getElementById('form_ubicacion').reset();
+        document.getElementById('ubicacion_item_id').value = '';
+        document.getElementById('titulo_ubicacion').innerText = 'Mapa de Ubicaciones';
+        document.getElementById('btn_ubicacion_submit').innerText = 'Guardar Ubicación';
+        document.getElementById('btn_cancelar_ubicacion').classList.add('hidden');
+    }
+</script>

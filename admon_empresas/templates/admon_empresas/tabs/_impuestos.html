@@ -1,0 +1,147 @@
+<div class="space-y-8">
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-10">
+        <div class="flex items-center space-x-4 mb-8">
+            <div class="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+                <i class="fa-solid fa-percent text-xl"></i>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold text-slate-800">Nuevo Impuesto</h2>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Tasas configurables sin tocar código</p>
+            </div>
+        </div>
+
+        <form method="POST" class="grid grid-cols-1 md:grid-cols-5 gap-6 items-end">
+            {% csrf_token %}
+            <div class="space-y-2 md:col-span-2">
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nombre</label>
+                <input type="text" name="nombre_impuesto" placeholder="Ej: IVA 16%, Retención 6.25%" required>
+            </div>
+            <div class="space-y-2">
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tasa %</label>
+                <input type="number" name="tasa_impuesto" step="0.0001" min="0" placeholder="16" required>
+            </div>
+            <div class="space-y-2">
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tipo</label>
+                <select name="tipo_factor" class="w-full">
+                    <option value="TASA">Tasa</option>
+                    <option value="EXENTO">Exento</option>
+                </select>
+            </div>
+            <button type="submit" name="btn_impuesto" class="bg-brand hover:bg-brand-dark text-white font-black py-4 rounded-2xl shadow-lg shadow-brand/20 transition-all text-xs uppercase tracking-widest">
+                Añadir
+            </button>
+            <div class="md:col-span-5 flex gap-8 pt-1">
+                <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-600">
+                    <input type="checkbox" name="es_retencion" class="w-4 h-4"> Es retención (resta del total)
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-600">
+                    <input type="checkbox" name="es_default" class="w-4 h-4"> Usar como impuesto por defecto
+                </label>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white p-10 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+        <div class="overflow-hidden rounded-2xl border border-slate-100">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50">
+                    <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em] border-b border-slate-100">
+                        <th class="px-6 py-5 font-black">Impuesto</th>
+                        <th class="px-6 py-5 font-black text-center">Tasa</th>
+                        <th class="px-6 py-5 font-black text-center">Tipo</th>
+                        <th class="px-6 py-5 font-black text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for imp in impuestos %}
+                    <tr class="text-slate-700 hover:bg-slate-50 transition group">
+                        <td class="px-6 py-5">
+                            <div class="font-bold text-slate-800">{{ imp.nombre }}</div>
+                            <div class="flex gap-2 mt-1">
+                                {% if imp.es_default %}<span class="text-[9px] text-brand font-black uppercase tracking-widest">Por defecto</span>{% endif %}
+                                {% if imp.es_retencion %}<span class="text-[9px] text-rose-500 font-black uppercase tracking-widest">Retención</span>{% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-5 text-center font-black {% if imp.es_retencion %}text-rose-600{% else %}text-slate-700{% endif %}">
+                            {% if imp.tipo_factor == 'EXENTO' %}—{% else %}{% if imp.es_retencion %}-{% endif %}{{ imp.tasa|floatformat:"-2" }}%{% endif %}
+                        </td>
+                        <td class="px-6 py-5 text-center">
+                            <span class="text-[9px] font-black uppercase px-2 py-1 rounded-lg {% if imp.tipo_factor == 'EXENTO' %}bg-slate-100 text-slate-500{% else %}bg-indigo-50 text-indigo-600{% endif %}">{{ imp.get_tipo_factor_display }}</span>
+                        </td>
+                        <td class="px-6 py-5 text-right">
+                            <button onclick="abrirEditarImpuesto('{{ imp.pk }}','{{ imp.nombre|escapejs }}','{{ imp.tasa }}','{{ imp.tipo_factor }}','{{ imp.es_retencion|yesno:"1,0" }}','{{ imp.es_default|yesno:"1,0" }}')"
+                                    class="text-slate-400 hover:text-brand transition-all">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button type="button" onclick="openDeleteModal('{{ imp.pk }}', 'impuesto')"
+                                    class="text-slate-400 hover:text-red-500 transition-all ml-2">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="px-6 py-12 text-center text-slate-400 italic text-sm">No hay impuestos configurados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="modalEditarImpuesto" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl">
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600"><i class="fa-solid fa-percent"></i></div>
+                <h3 class="text-xl font-bold text-slate-800">Editar Impuesto</h3>
+            </div>
+            <button onclick="document.getElementById('modalEditarImpuesto').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <form id="formEditarImpuesto" method="POST" action="">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nombre</label>
+                    <input type="text" name="nombre" id="ei_nombre" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tasa %</label>
+                        <input type="number" name="tasa" id="ei_tasa" step="0.0001" min="0" required>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tipo</label>
+                        <select name="tipo_factor" id="ei_tipo" class="w-full">
+                            <option value="TASA">Tasa</option>
+                            <option value="EXENTO">Exento</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-8 pt-1">
+                    <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-600">
+                        <input type="checkbox" name="es_retencion" id="ei_retencion" class="w-4 h-4"> Es retención
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-600">
+                        <input type="checkbox" name="es_default" id="ei_default" class="w-4 h-4"> Por defecto
+                    </label>
+                </div>
+            </div>
+            <div class="mt-8 flex justify-end">
+                <button type="submit" class="bg-brand text-white font-black py-4 px-10 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-brand/20">Actualizar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function abrirEditarImpuesto(id, nombre, tasa, tipo, retencion, defecto) {
+    const form = document.getElementById('formEditarImpuesto');
+    form.action = `/configuracion/impuesto/editar/${id}/`;
+    document.getElementById('ei_nombre').value = nombre;
+    document.getElementById('ei_tasa').value = parseFloat(tasa).toFixed(2);
+    document.getElementById('ei_tipo').value = tipo;
+    document.getElementById('ei_retencion').checked = (retencion === '1');
+    document.getElementById('ei_default').checked = (defecto === '1');
+    document.getElementById('modalEditarImpuesto').classList.remove('hidden');
+}
+</script>

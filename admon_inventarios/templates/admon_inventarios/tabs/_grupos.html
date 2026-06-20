@@ -1,0 +1,101 @@
+<div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-10">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        
+        <div class="lg:col-span-1 space-y-6">
+            <div>
+                <h4 id="titulo_grupo" class="font-black text-slate-800 uppercase text-[11px] tracking-[0.2em] italic mb-1">Registro Maestro</h4>
+                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Segmentación de inventario</p>
+                <div class="h-1 w-10 bg-brand mt-2 rounded-full shadow-sm shadow-brand/20"></div>
+            </div>
+            
+            <form method="POST" id="form_grupo" class="space-y-4 pt-4">
+                {% csrf_token %}
+                <input type="hidden" name="item_id" id="grupo_item_id" value="">
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Código</label>
+                    {{ form_grupo.codigo }} 
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Descripción</label>
+                    {{ form_grupo.descripcion }}
+                </div> 
+
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1 italic">Ubicación Predeterminada (Recepciones)</label>
+                    {{ form_grupo.ubicacion_defecto }}
+                    <p class="text-[9px] text-slate-400 italic px-1">Todos los productos de este grupo se dirigirán aquí por defecto.</p>
+                </div>
+
+                <div class="bg-brand/5 border border-brand/10 p-4 rounded-2xl flex items-start space-x-3">
+                    <div class="pt-0.5">
+                        {{ form_grupo.es_inventariable }}
+                    </div>
+                    <div>
+                        <label for="id_es_inventariable" class="block text-[10px] font-black text-brand mb-0 uppercase tracking-tight italic cursor-pointer">
+                            Control de Inventario
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-2 pt-2">
+                    <button type="submit" name="btn_grupo" id="btn_grupo_submit"
+                        class="w-full bg-brand text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all">
+                        Guardar Grupo
+                    </button>
+                    
+                    <button type="button" id="btn_cancelar_grupo" onclick="resetGrupoForm()" 
+                        class="hidden w-full bg-slate-100 text-slate-400 font-black py-2 rounded-xl text-[9px] uppercase tracking-widest hover:bg-slate-200">
+                        Cancelar Edición
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="lg:col-span-2 border-l border-slate-50 pl-0 lg:pl-10">
+            {% include "admon_inventarios/partials/_tabla_simple.html" with items=grupos es_grupo=True %}
+        </div>
+    </div>
+</div>
+
+<script>
+    function editGrupo(id, codigo, descripcion, inventariable) {
+        // console.log("Editando Grupo:", id, codigo, descripcion, inventariable);
+
+        // 1. Cambiar textos visuales
+        document.getElementById('titulo_grupo').innerText = 'EDITANDO GRUPO';
+        document.getElementById('btn_grupo_submit').innerText = 'ACTUALIZAR CAMBIOS';
+        document.getElementById('btn_cancelar_grupo').classList.remove('hidden');
+
+        // 2. Localizar el formulario y el input oculto
+        const form = document.getElementById('form_grupo');
+        document.getElementById('grupo_item_id').value = id;
+
+        // 3. Buscar los inputs por su atributo 'name' en lugar de ID (esto es infalible)
+        const inputCodigo = form.querySelector('[name="codigo"]');
+        const inputDesc = form.querySelector('[name="descripcion"]');
+        const inputInv = form.querySelector('[name="es_inventariable"]');
+        const inputUbic = form.querySelector('[name="ubicacion_defecto"]');
+
+        if (inputCodigo) inputCodigo.value = codigo;
+        if (inputDesc) inputDesc.value = descripcion;
+        if (inputUbic) inputUbic.value = ubicacion_id;
+        
+        // Manejo del checkbox
+        if (inputInv) {
+            inputInv.checked = (inventariable === 'True' || inventariable === 'true');
+        }
+
+        // Scroll suave para ver el formulario cargado
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetGrupoForm() {
+        document.getElementById('form_grupo').reset();
+        document.getElementById('grupo_item_id').value = '';
+        document.getElementById('titulo_grupo').innerText = 'Registro Maestro';
+        document.getElementById('btn_grupo_submit').innerText = 'Guardar Grupo';
+        document.getElementById('btn_cancelar_grupo').classList.add('hidden');
+    }
+</script>

@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Sum, F, Q
 
-from .models import ClienteSaaS, Empresa, Moneda, Sucursal, PerfilUsuario
+from .models import ClienteSaaS, Empresa, Moneda, Sucursal, PerfilUsuario, Impuesto, EmpresaModulo, AccesoModuloUsuario
 from django.contrib.auth.models import User
 from .models import PerfilUsuario
 from django.contrib.auth.decorators import login_required
@@ -69,8 +69,130 @@ def home_view(request):
         return redirect('cambiar_password_obligatorio')
 
     return render(request, 'admon_empresas/home_corporativo.html', {
-        'empresa': request.empresa
+        'empresa': request.empresa,
     })
+
+
+@login_required
+def dashboard_ejecutivo_view(request):
+    """Tablero ejecutivo con los indicadores del día."""
+    from datetime import date
+    dash = _dashboard_data(request)
+    if not dash:
+        messages.info(request, "Esta empresa no tiene módulos operativos para mostrar indicadores.")
+        return redirect('home')
+    return render(request, 'admon_empresas/dashboard_ejecutivo.html', {
+        'empresa': request.empresa,
+        'dash': dash,
+        'hoy': date.today(),
+    })
+
+
+def _dashboard_data(request):
+    """Indicadores del día para la empresa activa, según módulos visibles.
+    Devuelve None si no hay empresa o módulos operativos."""
+    import decimal
+    from datetime import date
+    from .modulos import modulos_visibles
+
+    empresa = getattr(request, 'empresa', None)
+    if not empresa:
+        return None
+    mods = modulos_visibles(request.user, empresa)
+    if not (mods & {'finanzas', 'ventas', 'compras', 'inventarios'}):
+        return None
+
+    D = decimal.Decimal
+    hoy = date.today()
+    mes_ini = hoy.replace(day=1)
+    d = {'mods': mods, 'tiles': {}}
+
+    # ---- Finanzas: CxC por cobrar / CxP por pagar / flujo del mes ----
+    if 'finanzas' in mods:
+        from admon_finanzas.models import FacturaCliente, FacturaProveedor, Pago
+        cxc = FacturaCliente.objects.filter(empresa=empresa).exclude(estado='CANCELADA').select_related('cliente')
+        pend_cxc = [f for f in cxc if f.saldo > 0]
+        d['cxc_total'] = sum((f.saldo for f in pend_cxc), D('0'))
+        d['cxc_count'] = len(pend_cxc)
+        d['cxc_venc'] = sum((f.saldo for f in pend_cxc if f.fecha_vencimiento and f.fecha_vencimiento < hoy), D('0'))
+        d['cxc_top'] = sorted(pend_cxc, key=lambda f: f.saldo, reverse=True)[:5]
+
+        cxp = FacturaProveedor.objects.filter(empresa=empresa).exclude(estado='CANCELADA').select_related('proveedor')
+        pend_cxp = [f for f in cxp if f.saldo > 0]
+        d['cxp_total'] = sum((f.saldo for f in pend_cxp), D('0'))
+        d['cxp_count'] = len(pend_cxp)
+
+        pagos = Pago.objects.filter(empresa=empresa, fecha__gte=mes_ini)
+        d['cobrado_mes'] = sum((p.monto for p in pagos if p.tipo == 'INGRESO'), D('0'))
+        d['pagado_mes'] = sum((p.monto for p in pagos if p.tipo == 'EGRESO'), D('0'))
+
+    # ---- Ventas: facturado del mes + pedidos por estado + margen + top productos ----
+    if 'ventas' in mods:
+        from admon_ventas.models import Pedido, DetallePedido
+        from admon_finanzas.models import FacturaCliente
+        ventas_mes = FacturaCliente.objects.filter(
+            empresa=empresa, fecha_emision__gte=mes_ini).exclude(estado='CANCELADA')
+        d['ventas_mes'] = sum((f.total for f in ventas_mes), D('0'))
+        peds = Pedido.objects.filter(empresa=empresa)
+        d['ped_borrador'] = peds.filter(estado='BORRADOR').count()
+        d['ped_confirmado'] = peds.filter(estado__in=['CONFIRMADO', 'ENTREGADO_PARCIAL']).count()
+        d['ped_entregado'] = peds.filter(estado='ENTREGADO').count()
+
+        # Margen del mes (sobre lo entregado, sin IVA): venta − costo
+        dets = DetallePedido.objects.filter(
+            pedido__empresa=empresa,
+            pedido__estado__in=['ENTREGADO', 'ENTREGADO_PARCIAL'],
+            pedido__fecha_emision__gte=mes_ini).select_related('producto')
+        venta_neta = D('0'); costo_neto = D('0'); top = {}
+        for det in dets:
+            qty = det.cantidad_entregada or D('0')
+            if qty <= 0:
+                continue
+            v = qty * det.precio_unitario
+            c = qty * (det.producto.costo_unitario or D('0'))
+            venta_neta += v; costo_neto += c
+            t = top.setdefault(det.producto_id, {
+                'nombre': det.producto.nombre, 'sku': det.producto.sku,
+                'cant': D('0'), 'venta': D('0'), 'ganancia': D('0')})
+            t['cant'] += qty; t['venta'] += v; t['ganancia'] += (v - c)
+        d['venta_neta_mes'] = venta_neta
+        d['ganancia_mes'] = venta_neta - costo_neto
+        d['margen_mes'] = (d['ganancia_mes'] / venta_neta * 100) if venta_neta else D('0')
+        d['top_productos'] = sorted(top.values(), key=lambda x: x['venta'], reverse=True)[:5]
+
+    # ---- Compras: órdenes abiertas ----
+    if 'compras' in mods:
+        from admon_compras.models import OrdenCompra
+        abiertas = OrdenCompra.objects.filter(
+            empresa=empresa, estado__in=['BORRADOR', 'SOLICITADO', 'AUTORIZADO', 'RECIBIDO'])
+        d['oc_abiertas'] = abiertas.count()
+        d['oc_monto'] = sum((o.total for o in abiertas), D('0'))
+
+    # ---- Inventario: SKUs, valor y alertas de stock mínimo ----
+    if 'inventarios' in mods:
+        from admon_inventarios.models import Producto, Existencia, ProductoSucursal
+        from django.db.models import Sum, F
+        d['skus'] = Producto.objects.filter(empresa=empresa, activo=True).count()
+        ex = Existencia.objects.filter(producto__empresa=empresa, cantidad__gt=0)
+        d['skus_con_stock'] = ex.values('producto').distinct().count()
+        valor = ex.aggregate(v=Sum(F('cantidad') * F('producto__costo_unitario')))['v']
+        d['inv_valor'] = valor or D('0')
+
+        # Alertas: productos con stock mínimo definido y existencia por debajo
+        alertas = []
+        configs = ProductoSucursal.objects.filter(
+            producto__empresa=empresa, stock_minimo__gt=0).select_related('producto', 'sucursal')
+        for cfg in configs:
+            actual = Existencia.objects.filter(
+                producto=cfg.producto, sucursal=cfg.sucursal).aggregate(s=Sum('cantidad'))['s'] or D('0')
+            if actual < cfg.stock_minimo:
+                alertas.append({'producto': cfg.producto.nombre, 'sku': cfg.producto.sku,
+                                'sucursal': cfg.sucursal.nombre, 'actual': actual,
+                                'minimo': cfg.stock_minimo})
+        d['alertas_stock'] = alertas[:8]
+        d['alertas_count'] = len(alertas)
+
+    return d
 
 def registro_cliente_view(request, token):
     cliente = get_object_or_404(ClienteSaaS, token_invitacion=token, registro_completado=False)
@@ -258,7 +380,10 @@ class ConfiguracionView(GroupRequiredMixin, View):
             elif tipo == 'moneda':
                 obj = get_object_or_404(Moneda, id=item_id, empresa=empresa)
                 request.session['active_tab'] = 'monedas'
-                
+            elif tipo == 'impuesto':
+                obj = get_object_or_404(Impuesto, id=item_id, empresa=empresa)
+                request.session['active_tab'] = 'impuestos'
+
             obj.delete()
             messages.success(request, f"Registro eliminado correctamente.")
             return redirect('configuracion')       
@@ -319,6 +444,36 @@ class ConfiguracionView(GroupRequiredMixin, View):
             context = self.get_context(request, 'monedas')
             return render(request, self.template_name, context)
 
+        elif 'btn_modulos' in request.POST:
+            if not request.user.is_superuser:
+                messages.error(request, "Solo el administrador puede cambiar los módulos contratados.")
+                return redirect('configuracion')
+            from .modulos import MODULOS_DISPONIBLES
+            marcados = set(request.POST.getlist('modulos[]'))
+            for m in MODULOS_DISPONIBLES:
+                EmpresaModulo.objects.update_or_create(
+                    empresa=empresa, modulo=m['clave'],
+                    defaults={'activo': m['clave'] in marcados})
+            messages.success(request, "Módulos de la empresa actualizados.")
+            request.session['active_tab'] = 'modulos'
+            return redirect('configuracion')
+
+        elif 'btn_impuesto' in request.POST:
+            import decimal
+            nombre = request.POST.get('nombre_impuesto')
+            tasa = request.POST.get('tasa_impuesto') or '0'
+            tipo_factor = request.POST.get('tipo_factor') or 'TASA'
+            es_retencion = request.POST.get('es_retencion') == 'on'
+            es_default = request.POST.get('es_default') == 'on'
+            if nombre:
+                Impuesto.objects.create(
+                    empresa=empresa, nombre=nombre,
+                    tasa=decimal.Decimal(tasa), tipo_factor=tipo_factor,
+                    es_retencion=es_retencion, es_default=es_default)
+                messages.success(request, f"Impuesto '{nombre}' agregado.")
+            request.session['active_tab'] = 'impuestos'
+            return redirect('configuracion')
+
         return redirect('configuracion')
 
     def get_context(self, request, active_tab='empresa'):
@@ -329,10 +484,19 @@ class ConfiguracionView(GroupRequiredMixin, View):
             'form_empresa': EmpresaForm(instance=empresa),
             'sucursales': Sucursal.objects.filter(empresa=empresa),
             'monedas': Moneda.objects.filter(empresa=empresa),
+            'impuestos': Impuesto.objects.filter(empresa=empresa),
+            'modulos_empresa': self._modulos_empresa(empresa),
             'empresa': empresa,
             'seccion': 'config',
             'active_tab': active_tab
         }
+
+    def _modulos_empresa(self, empresa):
+        from .modulos import MODULOS_DISPONIBLES
+        activos = set(EmpresaModulo.objects.filter(
+            empresa=empresa, activo=True).values_list('modulo', flat=True))
+        return [{'clave': m['clave'], 'nombre': m['nombre'], 'icono': m['icono'],
+                 'activo': m['clave'] in activos} for m in MODULOS_DISPONIBLES]
     
 # EDITAR SUCURSAL    
 def editar_sucursal(request, pk):
@@ -385,6 +549,22 @@ def eliminar_moneda(request, pk):
         moneda.delete()
         messages.warning(request, "Moneda eliminada.")
     return redirect('configuracion')
+
+# EDITAR IMPUESTO
+def editar_impuesto(request, pk):
+    import decimal
+    impuesto = get_object_or_404(Impuesto, pk=pk, empresa=request.empresa)
+    if request.method == 'POST':
+        impuesto.nombre = request.POST.get('nombre')
+        impuesto.tasa = decimal.Decimal(request.POST.get('tasa') or '0')
+        impuesto.tipo_factor = request.POST.get('tipo_factor') or 'TASA'
+        impuesto.es_retencion = request.POST.get('es_retencion') == 'on'
+        impuesto.es_default = request.POST.get('es_default') == 'on'
+        impuesto.save()
+        messages.success(request, f"Impuesto '{impuesto.nombre}' actualizado.")
+        request.session['active_tab'] = 'impuestos'
+    return redirect('configuracion')
+
 
 # ─── GESTIÓN DE CLIENTES (solo superuser) ────────────────────────────────────
 

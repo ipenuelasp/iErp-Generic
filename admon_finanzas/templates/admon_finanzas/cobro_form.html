@@ -1,0 +1,127 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Registrar Cobro</h1>
+            <p class="text-slate-500 mt-2 font-medium">Aplica el cobro a una o varias cuentas por cobrar</p>
+        </div>
+        <a href="{% url 'admon_finanzas:cuentas_por_cobrar' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver</a>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+        <div class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 mb-8">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block ml-1">Datos del cobro</label>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Fecha</label><input type="date" name="fecha" required></div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Moneda del cobro</label>
+                    <select name="moneda" id="moneda_pago" onchange="recalc()">
+                        {% for m in monedas %}<option value="{{ m.id }}" data-cod="{{ m.codigo }}" data-sim="{{ m.simbolo }}" {% if m.es_principal %}selected{% endif %}>{{ m.codigo }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Método</label>
+                    <select name="metodo">{% for me in metodos %}<option value="{{ me.id }}">{{ me.nombre }}</option>{% endfor %}</select>
+                </div>
+                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Referencia</label><input type="text" name="referencia" placeholder="No. transferencia / cheque"></div>
+                <div class="space-y-1 md:col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Cuenta/banco (informativo)</label><input type="text" name="cuenta_banco"></div>
+                <div class="space-y-1 md:col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Notas</label><input type="text" name="notas"></div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <div class="px-8 pt-8 pb-2"><h3 class="text-sm font-black text-slate-800 uppercase italic">Cuentas por cobrar</h3>
+                <p class="text-[10px] text-slate-400 font-bold">Marca las facturas. Si la moneda de la factura difiere de la del cobro, captura el tipo de cambio.</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead><tr class="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                        <th class="px-6 py-4 w-10"></th>
+                        <th class="px-4 py-4">CxC</th>
+                        <th class="px-4 py-4">Cliente</th>
+                        <th class="px-4 py-4 text-right">Saldo</th>
+                        <th class="px-4 py-4 w-36 text-center">A cobrar</th>
+                        <th class="px-4 py-4 w-32 text-center">T.C.</th>
+                        <th class="px-4 py-4 w-36 text-right">Equiv. cobro</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for f in facturas %}
+                        <tr class="fila-fact hover:bg-slate-50/50" data-saldo="{{ f.saldo }}" data-moneda="{{ f.moneda.codigo }}" data-sim="{{ f.moneda.simbolo }}">
+                            <td class="px-6 py-4 text-center"><input type="checkbox" class="chk no-select2 w-4 h-4" onchange="toggleFila(this)"></td>
+                            <td class="px-4 py-4"><div class="font-bold text-slate-800 text-xs">{{ f.folio }}</div><div class="text-[10px] text-slate-400">{{ f.pedido.folio }}</div></td>
+                            <td class="px-4 py-4 text-xs font-bold text-slate-600">{{ f.cliente }}</td>
+                            <td class="px-4 py-4 text-right text-xs font-black text-emerald-600">{{ f.moneda.simbolo }}{{ f.saldo|floatformat:2|intcomma }} <span class="text-[9px] text-slate-400">{{ f.moneda.codigo }}</span></td>
+                            <td class="px-4 py-4">
+                                <input type="hidden" name="factura_id[]" value="{{ f.id }}">
+                                <input type="number" name="monto_aplicado[]" step="0.01" min="0" value="0" disabled oninput="recalc()" class="m-aplicado text-center font-black text-brand">
+                            </td>
+                            <td class="px-4 py-4"><input type="number" name="tipo_cambio[]" step="0.000001" min="0" value="1" disabled oninput="recalc()" class="tc text-center font-bold"></td>
+                            <td class="px-4 py-4 text-right text-xs font-bold text-slate-500 equiv">—</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="7" class="px-8 py-14 text-center text-slate-400 italic text-sm">No hay cuentas por cobrar pendientes.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-end p-8 border-t border-slate-50">
+                <div class="text-right">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total del cobro</p>
+                    <p class="text-2xl font-black text-slate-800" id="total_pago">$0.00</p>
+                </div>
+            </div>
+        </div>
+
+        {% if facturas %}
+        <div class="mt-8 flex justify-end">
+            <button type="submit" class="bg-brand text-white px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-xl shadow-brand/30 hover:-translate-y-1 transition-all">Registrar Cobro</button>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+<script>
+function monedaPago() {
+    const sel = document.getElementById('moneda_pago');
+    const opt = sel.options[sel.selectedIndex];
+    return { cod: opt.dataset.cod, sim: opt.dataset.sim };
+}
+function toggleFila(chk) {
+    const tr = chk.closest('tr');
+    const activo = chk.checked;
+    const mApl = tr.querySelector('.m-aplicado');
+    const tc = tr.querySelector('.tc');
+    mApl.disabled = !activo; tc.disabled = !activo;
+    if (activo) {
+        mApl.value = parseFloat(tr.dataset.saldo).toFixed(2);
+        tc.value = (tr.dataset.moneda === monedaPago().cod) ? 1 : tc.value;
+    } else { mApl.value = 0; }
+    recalc();
+}
+function recalc() {
+    let total = 0;
+    const mp = monedaPago();
+    document.querySelectorAll('.fila-fact').forEach(tr => {
+        const chk = tr.querySelector('.chk');
+        if (!chk.checked) { tr.querySelector('.equiv').innerText = '—'; return; }
+        const m = parseFloat(tr.querySelector('.m-aplicado').value)||0;
+        const tc = parseFloat(tr.querySelector('.tc').value)||1;
+        const equiv = m*tc;
+        tr.querySelector('.equiv').innerText = mp.sim + equiv.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+        total += equiv;
+    });
+    document.getElementById('total_pago').innerText = mp.sim + total.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+</script>
+<style>
+    input, select { width:100%; padding:0.7rem 0.9rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.9rem; outline:none; font-weight:600; color:#334155; font-size:0.8rem; }
+    input:focus, select:focus { border-color: var(--brand-color); background:#fff; box-shadow:0 0 0 4px rgba(0,171,241,0.1); }
+    input[type=checkbox] { width:auto; }
+    input:disabled { opacity:0.4; }
+</style>
+{% endblock %}

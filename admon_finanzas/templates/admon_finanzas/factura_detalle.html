@@ -1,0 +1,77 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-4xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Factura {{ factura.folio }}</h1>
+            <p class="text-slate-500 mt-2 font-medium">{{ factura.proveedor }} ·
+                <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ factura.color_estado }}-100 text-{{ factura.color_estado }}-700">{{ factura.get_estado_display }}</span>
+            </p>
+        </div>
+        <a href="{% url 'admon_finanzas:cuentas_por_pagar' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver</a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div class="lg:col-span-2 bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+            <dl class="grid grid-cols-2 gap-4 text-sm">
+                <div><dt class="text-[10px] font-black text-slate-400 uppercase">Orden de compra</dt><dd class="font-bold text-slate-700">{{ factura.orden_compra.folio }}</dd></div>
+                <div><dt class="text-[10px] font-black text-slate-400 uppercase">UUID</dt><dd class="font-bold text-slate-700 text-xs">{{ factura.uuid_cfdi|default:"—" }}</dd></div>
+                <div><dt class="text-[10px] font-black text-slate-400 uppercase">Emisión</dt><dd class="font-bold text-slate-700">{{ factura.fecha_emision|date:"d/m/Y" }}</dd></div>
+                <div><dt class="text-[10px] font-black text-slate-400 uppercase">Vencimiento</dt><dd class="font-bold text-slate-700">{{ factura.fecha_vencimiento|date:"d/m/Y"|default:"—" }}</dd></div>
+            </dl>
+            <div class="flex gap-3 mt-5 pt-4 border-t border-slate-50">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest self-center">CFDI:</span>
+                {% if factura.archivo_xml %}<a href="{{ factura.archivo_xml.url }}" target="_blank" class="text-[10px] font-black text-brand uppercase tracking-widest hover:underline"><i class="fa-solid fa-file-code mr-1"></i> XML</a>{% endif %}
+                {% if factura.archivo_pdf %}<a href="{{ factura.archivo_pdf.url }}" target="_blank" class="text-[10px] font-black text-rose-500 uppercase tracking-widest hover:underline"><i class="fa-solid fa-file-pdf mr-1"></i> PDF</a>{% endif %}
+                {% if not factura.archivo_xml and not factura.archivo_pdf %}<span class="text-[10px] text-slate-300 italic">Sin archivos adjuntos</span>{% endif %}
+            </div>
+        </div>
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 space-y-3">
+            <div class="flex justify-between text-xs font-bold text-slate-500"><span>Total</span><span>{{ factura.moneda.simbolo }}{{ factura.total|floatformat:2|intcomma }}</span></div>
+            <div class="flex justify-between text-xs font-bold text-emerald-600"><span>Pagado</span><span>{{ factura.moneda.simbolo }}{{ factura.total_pagado|floatformat:2|intcomma }}</span></div>
+            <div class="flex justify-between text-lg font-black {% if factura.saldo > 0 %}text-rose-600{% else %}text-emerald-600{% endif %} pt-2 border-t border-slate-100"><span>Saldo</span><span>{{ factura.moneda.simbolo }}{{ factura.saldo|floatformat:2|intcomma }}</span></div>
+            {% if factura.saldo > 0 and factura.estado != 'CANCELADA' %}
+            <a href="{% url 'admon_finanzas:registrar_pago' %}" class="block bg-brand text-white text-center font-black py-3 rounded-2xl text-[10px] uppercase tracking-widest mt-4 hover:-translate-y-1 transition-all">Registrar pago</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+        <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center"><i class="fa-solid fa-receipt mr-3 text-brand"></i> Pagos aplicados</h3>
+        <div class="overflow-hidden rounded-2xl border border-slate-100">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50"><tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-6 py-4 font-black">Pago</th>
+                    <th class="px-6 py-4 font-black">Fecha</th>
+                    <th class="px-6 py-4 font-black">Método</th>
+                    <th class="px-6 py-4 font-black text-center">T.C.</th>
+                    <th class="px-6 py-4 font-black text-right">Aplicado</th>
+                </tr></thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for ap in aplicaciones %}
+                    <tr>
+                        <td class="px-6 py-4 font-black text-brand text-xs">{{ ap.pago.folio }}</td>
+                        <td class="px-6 py-4 text-[10px] font-bold text-slate-400">{{ ap.pago.fecha|date:"d/m/Y" }}</td>
+                        <td class="px-6 py-4 text-[10px] font-bold text-slate-500">{{ ap.pago.metodo.nombre|default:"—" }}</td>
+                        <td class="px-6 py-4 text-center text-[10px] font-bold text-slate-400">{{ ap.tipo_cambio|floatformat:"-4" }}</td>
+                        <td class="px-6 py-4 text-right text-xs font-black text-emerald-600">{{ factura.moneda.simbolo }}{{ ap.monto_aplicado|floatformat:2|intcomma }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="px-6 py-10 text-center text-slate-400 italic text-sm">Sin pagos aplicados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if factura.total_pagado == 0 and factura.estado != 'CANCELADA' %}
+        <form method="POST" class="mt-6 flex justify-end" onsubmit="return confirm('¿Cancelar esta factura?')">{% csrf_token %}
+            <input type="hidden" name="accion" value="cancelar">
+            <button type="submit" class="text-rose-400 font-black text-[10px] uppercase tracking-widest hover:text-rose-600"><i class="fa-solid fa-ban mr-1"></i> Cancelar factura</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Órdenes de Compra</h1>
+            <p class="text-slate-500 mt-2 font-medium">Sede <span class="text-brand">{{ sucursal_activa.nombre }}</span></p>
+        </div>
+        <a href="{% url 'admon_compras:nueva_orden' %}" class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
+            <i class="fa-solid fa-plus mr-2"></i> Nueva Orden
+        </a>
+    </div>
+
+    {% if por_autorizar %}
+    <div class="bg-amber-50 border border-amber-200 rounded-[2.5rem] p-8 mb-8">
+        <h2 class="text-lg font-bold text-amber-800 mb-1"><i class="fa-solid fa-bell mr-2"></i> Pendientes de tu autorización</h2>
+        <p class="text-amber-600 text-[10px] font-bold uppercase tracking-widest mb-5">{{ por_autorizar.count }} orden(es) esperan tu firma</p>
+        <div class="space-y-2">
+            {% for o in por_autorizar %}
+            <a href="{% url 'admon_compras:orden_detalle' o.pk %}" class="flex items-center justify-between bg-white rounded-2xl p-4 hover:shadow-md transition-all">
+                <div>
+                    <span class="font-black text-brand text-xs">{{ o.folio }}</span>
+                    <span class="text-xs font-bold text-slate-600 ml-3">{{ o.proveedor }}</span>
+                    <span class="text-[10px] text-slate-400 ml-2">· {{ o.sucursal_destino.nombre }} · creó {{ o.creado_por.username }}</span>
+                </div>
+                <span class="font-black text-slate-800 text-sm">${{ o.total|floatformat:2|intcomma }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50">
+                <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-8 py-5 font-black">Folio</th>
+                    <th class="px-6 py-5 font-black">Proveedor</th>
+                    <th class="px-6 py-5 font-black text-center">Estado</th>
+                    <th class="px-6 py-5 font-black text-center">Recibido</th>
+                    <th class="px-6 py-5 font-black text-right">Total</th>
+                    <th class="px-8 py-5 font-black text-right">Emisión</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for o in ordenes %}
+                <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="window.location='{% url 'admon_compras:orden_detalle' o.pk %}'">
+                    <td class="px-8 py-4 font-black text-brand text-xs">{{ o.folio }}</td>
+                    <td class="px-6 py-4 text-xs font-bold text-slate-700">{{ o.proveedor }}</td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ o.color_estado }}-100 text-{{ o.color_estado }}-700">{{ o.get_estado_display }}</span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        {% if o.estado == 'RECIBIDO' or o.estado == 'FINALIZADO' %}
+                        <span class="text-[10px] font-black text-slate-500">{{ o.total_recibido_pct|floatformat:0 }}%</span>
+                        {% else %}<span class="text-slate-300">—</span>{% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-right font-black text-slate-800 text-sm">{{ o.moneda.simbolo }}{{ o.total|floatformat:2|intcomma }}</td>
+                    <td class="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{{ o.fecha_emision|date:"d/m/Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin órdenes en esta sucursal.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

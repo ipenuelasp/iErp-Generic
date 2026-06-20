@@ -9,6 +9,7 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('', views.home_view, name='home'), # La página del logo
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'), # Los indicadores
+    path('dashboard-ejecutivo/', views.dashboard_ejecutivo_view, name='dashboard_ejecutivo'),
     path('cambiar-sucursal/<int:sucursal_id>/', views.cambiar_contexto, name='cambiar_contexto'),
     path('cambiar-empresa/<int:empresa_id>/', views.cambiar_empresa, name='cambiar_empresa'),
 
@@ -26,4 +27,5 @@ urlpatterns = [
     path('configuracion/sucursal/eliminar/<int:pk>/', views.eliminar_sucursal, name='eliminar_sucursal'),
     path('configuracion/moneda/editar/<int:pk>/', views.editar_moneda, name='editar_moneda'),
     path('configuracion/moneda/eliminar/<int:pk>/', views.eliminar_moneda, name='eliminar_moneda'),
+    path('configuracion/impuesto/editar/<int:pk>/', views.editar_impuesto, name='editar_impuesto'),
 ]

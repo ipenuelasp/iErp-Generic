@@ -1,0 +1,93 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Recepciones de Material</h1>
+            <p class="text-slate-500 mt-2 font-medium">
+                Historial de entradas en <span class="text-brand">{{ sucursal_activa.nombre }}</span>
+            </p>
+        </div>
+        <a href="{% url 'admon_inventarios:nueva_recepcion' %}"
+           class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
+            <i class="fa-solid fa-plus mr-2"></i> Nueva Recepción Directa
+        </a>
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    <th class="pl-8 pr-2 py-6 w-8"></th>
+                    <th class="px-2 py-6">Folio</th>
+                    <th class="px-6 py-6">Proveedor</th>
+                    <th class="px-6 py-6">Remisión / Factura</th>
+                    <th class="px-6 py-6 text-center">Partidas</th>
+                    <th class="px-6 py-6">Recibido por</th>
+                    <th class="px-8 py-6 text-right">Fecha</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for rec in historico %}
+                <tr class="hover:bg-slate-50/50 transition-all cursor-pointer" onclick="toggleRec({{ rec.id }})">
+                    <td class="pl-8 pr-2 py-5 text-slate-300"><i id="chev-{{ rec.id }}" class="fa-solid fa-chevron-right text-[10px] transition-transform"></i></td>
+                    <td class="px-2 py-5 font-black text-brand italic text-xs uppercase">{{ rec.folio }}</td>
+                    <td class="px-6 py-5 text-xs font-bold text-slate-700">{{ rec.proveedor_nombre|default:"—" }}</td>
+                    <td class="px-6 py-5 text-[10px] font-bold text-slate-400">
+                        {{ rec.remision_proveedor|default:"—" }} / {{ rec.numero_factura|default:"—" }}
+                    </td>
+                    <td class="px-6 py-5 text-center">
+                        <span class="bg-slate-100 text-slate-600 text-[10px] font-black px-3 py-1 rounded-full">{{ rec.detalles.count }}</span>
+                    </td>
+                    <td class="px-6 py-5 text-[10px] font-bold text-slate-500 uppercase">{{ rec.recibido_por.username }}</td>
+                    <td class="px-8 py-5 text-right text-[10px] font-bold text-slate-400">{{ rec.fecha_recepcion|date:"d/m/Y H:i" }}</td>
+                </tr>
+                <tr id="det-{{ rec.id }}" class="hidden bg-slate-50/40">
+                    <td></td>
+                    <td colspan="6" class="px-2 py-4 pr-8">
+                        <div class="rounded-2xl border border-slate-100 overflow-hidden bg-white">
+                            <table class="w-full text-left">
+                                <thead><tr class="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    <th class="px-5 py-3">SKU</th><th class="px-5 py-3">Producto</th>
+                                    <th class="px-5 py-3">Ubicación</th><th class="px-5 py-3">Lote</th>
+                                    <th class="px-5 py-3 text-center">Cantidad</th><th class="px-5 py-3 text-right">Costo unit.</th>
+                                </tr></thead>
+                                <tbody class="divide-y divide-slate-50">
+                                    {% for d in rec.detalles.all %}
+                                    <tr>
+                                        <td class="px-5 py-3 text-[11px] font-black text-slate-600">{{ d.producto.sku }}</td>
+                                        <td class="px-5 py-3 text-[11px] font-bold text-slate-700">{{ d.producto.nombre }}</td>
+                                        <td class="px-5 py-3 text-[10px] font-bold text-slate-500">{{ d.ubicacion.codigo|default:"—" }}</td>
+                                        <td class="px-5 py-3 text-[10px] font-bold text-slate-500">{{ d.lote.numero_lote|default:"—" }}</td>
+                                        <td class="px-5 py-3 text-center text-[11px] font-black text-brand">{{ d.cantidad_recibida|floatformat:"-2" }}</td>
+                                        <td class="px-5 py-3 text-right text-[11px] font-bold text-slate-500">${{ d.costo_unitario|floatformat:2|intcomma }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-slate-300 font-black text-[10px] uppercase tracking-widest py-12 italic">
+                        Sin recepciones registradas en esta sucursal
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<script>
+function toggleRec(id){
+    const row=document.getElementById('det-'+id);
+    const chev=document.getElementById('chev-'+id);
+    row.classList.toggle('hidden');
+    if(chev) chev.style.transform = row.classList.contains('hidden') ? '' : 'rotate(90deg)';
+}
+</script>
+{% endblock %}

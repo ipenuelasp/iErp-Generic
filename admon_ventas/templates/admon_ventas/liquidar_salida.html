@@ -1,0 +1,97 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-4xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Liquidar {{ salida.folio }}</h1>
+            <p class="text-slate-500 mt-2 font-medium">{{ salida.hospital_cliente }}{% if salida.doctor_responsable %} · Dr. {{ salida.doctor_responsable }}{% endif %}</p>
+        </div>
+        <a href="{% url 'admon_ventas:liquidaciones' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver</a>
+    </div>
+
+    <form method="POST" class="space-y-6">
+        {% csrf_token %}
+
+        <div class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Cliente a facturar</label>
+                    <select name="cliente" required>
+                        <option value="">-- Seleccionar --</option>
+                        {% for c in clientes %}<option value="{{ c.id }}" {% if salida.cliente_id == c.id %}selected{% endif %}>{{ c }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Moneda</label>
+                    <select name="moneda" required>{% for m in monedas %}<option value="{{ m.id }}" {% if m.es_principal %}selected{% endif %}>{{ m.codigo }} ({{ m.simbolo }})</option>{% endfor %}</select>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <div class="px-8 pt-8 pb-2"><h3 class="text-sm font-black text-slate-800 uppercase italic">Consumo a facturar</h3>
+                <p class="text-[10px] text-slate-400 font-bold">Consumibles → venta por lo usado. Retornables → renta por lo enviado.</p>
+            </div>
+            <table class="w-full text-left">
+                <thead><tr class="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    <th class="px-8 py-4">Producto</th>
+                    <th class="px-4 py-4 text-center">Tipo</th>
+                    <th class="px-4 py-4 text-center">Enviado</th>
+                    <th class="px-4 py-4 text-center">Usado</th>
+                    <th class="px-8 py-4 text-right">Se factura</th>
+                </tr></thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for it in contenido %}
+                    <tr>
+                        <td class="px-8 py-4 text-xs font-bold text-slate-700">[{{ it.producto.sku }}] {{ it.producto.nombre }}</td>
+                        <td class="px-4 py-4 text-center text-[9px] font-black uppercase">{% if it.es_retornable %}<span class="text-amber-600">Renta</span>{% else %}<span class="text-slate-400">Venta</span>{% endif %}</td>
+                        <td class="px-4 py-4 text-center text-xs font-bold text-slate-500">{{ it.cantidad_enviada|floatformat:"-2" }}</td>
+                        <td class="px-4 py-4 text-center text-xs font-bold text-slate-600">{{ it.cantidad_usada|floatformat:"-2" }}</td>
+                        <td class="px-8 py-4 text-right text-xs font-black {% if it.es_retornable %}text-amber-600{% else %}text-emerald-600{% endif %}">
+                            {% if it.es_retornable %}{{ it.cantidad_enviada|floatformat:"-2" }} (renta){% else %}{{ it.cantidad_usada|floatformat:"-2" }}{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h3 class="text-sm font-black text-slate-800 uppercase italic">Comisiones (internas)</h3>
+                    <p class="text-[10px] text-slate-400 font-bold">No aparecen en el documento al cliente.</p>
+                </div>
+                <button type="button" onclick="addComision()" class="bg-brand/10 text-brand px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-brand hover:text-white transition-all"><i class="fa-solid fa-plus mr-1"></i> Agregar</button>
+            </div>
+            <div id="comisiones" class="space-y-3"></div>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="bg-brand text-white px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-xl shadow-brand/30 hover:-translate-y-1 transition-all">
+                <i class="fa-solid fa-file-invoice-dollar mr-2"></i> Liquidar y generar CxC
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function addComision() {
+    const div = document.createElement('div');
+    div.className = 'grid grid-cols-12 gap-3 items-center';
+    div.innerHTML = `
+        <select name="com_tipo[]" class="col-span-3"><option value="TECNICO">Técnico</option><option value="DOCTOR">Doctor</option><option value="VENDEDOR">Vendedor</option><option value="OTRO">Otro</option></select>
+        <input type="text" name="com_beneficiario[]" placeholder="Nombre" class="col-span-6">
+        <input type="number" name="com_monto[]" step="0.01" min="0" placeholder="Monto" class="col-span-2 text-right font-black text-brand">
+        <button type="button" onclick="this.closest('div').remove()" class="col-span-1 w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-trash-can text-xs"></i></button>`;
+    document.getElementById('comisiones').appendChild(div);
+}
+</script>
+<style>
+    input, select, textarea { width:100%; padding:0.7rem 0.9rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.9rem; outline:none; font-weight:600; color:#334155; font-size:0.8rem; }
+    input:focus, select:focus { border-color: var(--brand-color); background:#fff; box-shadow:0 0 0 4px rgba(0,171,241,0.1); }
+</style>
+{% endblock %}

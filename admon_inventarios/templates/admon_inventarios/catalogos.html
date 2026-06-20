@@ -1,0 +1,148 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load static %}
+
+{% block main_content %}
+<div class="max-w-[1700px] mx-auto p-8">
+
+    <div class="mb-10 text-center">
+        <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Maestro de Inventarios</h1>
+        <p class="text-slate-500 mt-2 font-medium">Productos y catálogos de <span class="text-brand">{{ empresa.nombre_fiscal }}</span> · Sede <span class="text-brand">{{ sucursal_activa.nombre }}</span></p>
+        {% if not puede_editar_maestro %}
+        <p class="mt-3 inline-flex items-center gap-2 bg-amber-50 text-amber-600 border border-amber-100 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">
+            <i class="fa-solid fa-lock"></i> El maestro se administra desde la sucursal matriz
+        </p>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-8">
+        <div class="md:col-span-1 space-y-2">
+            <button onclick="switchTab('productos')" id="btn-productos"
+                class="tab-btn w-full text-left p-4 rounded-2xl bg-white border border-brand text-brand font-bold shadow-sm transition-all">
+                <i class="fa-solid fa-box mr-2"></i> Productos
+            </button>
+            <button onclick="switchTab('clases')" id="btn-clases"
+                class="tab-btn w-full text-left p-4 rounded-2xl bg-transparent text-slate-400 font-medium hover:bg-slate-100 transition-all">
+                <i class="fa-solid fa-layer-group mr-2"></i> Clases
+            </button>
+            <button onclick="switchTab('grupos')" id="btn-grupos"
+                class="tab-btn w-full text-left p-4 rounded-2xl bg-transparent text-slate-400 font-medium hover:bg-slate-100 transition-all">
+                <i class="fa-solid fa-tags mr-2"></i> Grupos
+            </button>
+            <button onclick="switchTab('tipos')" id="btn-tipos"
+                class="tab-btn w-full text-left p-4 rounded-2xl bg-transparent text-slate-400 font-medium hover:bg-slate-100 transition-all">
+                <i class="fa-solid fa-list-ul mr-2"></i> Tipos
+            </button>
+            <button onclick="switchTab('unidades')" id="btn-unidades"
+                class="tab-btn w-full text-left p-4 rounded-2xl bg-transparent text-slate-400 font-medium hover:bg-slate-100 transition-all">
+                <i class="fa-solid fa-ruler-combined mr-2"></i> Unidades
+            </button>
+
+            <div class="border-t border-slate-200 my-3"></div>
+            <p class="px-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Estructura local · {{ sucursal_activa.nombre }}</p>
+
+            <button onclick="switchTab('almacenes')" id="btn-almacenes"
+                class="tab-btn w-full text-left p-4 rounded-2xl bg-transparent text-slate-400 font-medium hover:bg-slate-100 transition-all">
+                <i class="fa-solid fa-warehouse mr-2"></i> Almacenes
+            </button>
+            <button onclick="switchTab('ubicaciones')" id="btn-ubicaciones"
+                class="tab-btn w-full text-left p-4 rounded-2xl bg-transparent text-slate-400 font-medium hover:bg-slate-100 transition-all">
+                <i class="fa-solid fa-map-location-dot mr-2"></i> Ubicaciones
+            </button>
+
+            <div class="pt-4">
+                <div class="relative">
+                    <input type="text" id="globalSearch" onkeyup="filterTable()"
+                        placeholder="Buscar en la pestaña..."
+                        class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl shadow-sm focus:border-brand transition-all font-bold text-xs outline-none">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-xs"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="md:col-span-4">
+            <div id="tab-productos" class="tab-content space-y-8">{% include 'admon_inventarios/tabs/_productos.html' %}</div>
+            <div id="tab-clases" class="tab-content hidden space-y-8">{% include 'admon_inventarios/tabs/_clases.html' %}</div>
+            <div id="tab-grupos" class="tab-content hidden space-y-8">{% include 'admon_inventarios/tabs/_grupos.html' %}</div>
+            <div id="tab-tipos" class="tab-content hidden space-y-8">{% include 'admon_inventarios/tabs/_tipos.html' %}</div>
+            <div id="tab-unidades" class="tab-content hidden space-y-8">{% include 'admon_inventarios/tabs/_unidades.html' %}</div>
+            <div id="tab-almacenes" class="tab-content hidden space-y-8">{% include 'admon_inventarios/tabs/_almacenes.html' %}</div>
+            <div id="tab-ubicaciones" class="tab-content hidden space-y-8">{% include 'admon_inventarios/tabs/_ubicaciones.html' %}</div>
+        </div>
+    </div>
+</div>
+
+<script>
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    const activeContent = document.getElementById('tab-' + tabId);
+    if (activeContent) activeContent.classList.remove('hidden');
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'border', 'border-brand', 'text-brand', 'font-bold', 'shadow-sm');
+        btn.classList.add('bg-transparent', 'text-slate-400', 'font-medium');
+    });
+
+    const activeBtn = document.getElementById('btn-' + tabId);
+    if (activeBtn) {
+        activeBtn.classList.remove('bg-transparent', 'text-slate-400', 'font-medium');
+        activeBtn.classList.add('bg-white', 'border', 'border-brand', 'text-brand', 'font-bold', 'shadow-sm');
+    }
+}
+
+function filterTable() {
+    const filter = document.getElementById("globalSearch").value.toUpperCase();
+    const activeContent = document.querySelector('.tab-content:not(.hidden)');
+    if (!activeContent) return;
+    activeContent.querySelectorAll("tbody tr").forEach(row => {
+        const text = row.textContent || row.innerText;
+        row.style.display = text.toUpperCase().includes(filter) ? "" : "none";
+    });
+}
+
+{% if active_tab %}
+switchTab('{{ active_tab }}');
+{% else %}
+switchTab('productos');
+{% endif %}
+</script>
+
+<div id="modalDelete" class="fixed inset-0 z-[120] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4 text-center">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl">
+            <div class="w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fa-solid fa-trash-can text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-black text-slate-800 uppercase italic">¿Confirmar eliminación?</h3>
+            <p class="text-slate-400 text-xs font-bold mt-2 uppercase tracking-widest">Esta acción no se puede deshacer.</p>
+            <form method="POST" class="mt-8 flex gap-3">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_item">
+                <input type="hidden" name="item_id" id="delete_item_id">
+                <input type="hidden" name="tipo_objeto" id="delete_tipo_objeto">
+                <button type="button" onclick="closeDeleteModal()" class="flex-1 py-4 text-[10px] font-black uppercase text-slate-400">Cancelar</button>
+                <button type="submit" class="flex-1 bg-rose-500 text-white py-4 rounded-2xl text-[10px] font-black uppercase shadow-lg shadow-rose-200">Eliminar</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openDeleteModal(id, tipo) {
+        document.getElementById('delete_item_id').value = id;
+        document.getElementById('delete_tipo_objeto').value = tipo;
+        document.getElementById('modalDelete').classList.remove('hidden');
+    }
+    function closeDeleteModal() { document.getElementById('modalDelete').classList.add('hidden'); }
+</script>
+
+<style>
+    input, select, textarea {
+        width: 100%; padding: 1rem; background-color: #f8fafc; border: 1px solid #e2e8f0;
+        border-radius: 1.25rem; outline: none; transition: all 0.2s; font-weight: 600;
+        color: #334155; font-size: 0.875rem;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--brand-color); background-color: white; box-shadow: 0 0 0 4px rgba(0, 171, 241, 0.1); }
+    input[type="checkbox"] { width: 1.25rem; height: 1.25rem; padding: 0; border-radius: 0.375rem; }
+</style>
+{% endblock %}

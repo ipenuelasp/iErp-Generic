@@ -100,7 +100,8 @@
                                     '{{ empleado.first_name|escapejs }}',
                                     '{{ empleado.email|escapejs }}',
                                     [{% for s in empleado.perfil.sucursales.all %}'{{ s.id }}'{% if not forloop.last %},{% endif %}{% endfor %}],
-                                    [{% for g in empleado.groups.all %}'{{ g.id }}'{% if not forloop.last %},{% endif %}{% endfor %}]
+                                    [{% for g in empleado.groups.all %}'{{ g.id }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+                                    [{% for mod in modulos_por_usuario|get_item:empleado.id %}'{{ mod }}'{% if not forloop.last %},{% endif %}{% endfor %}]
                                 )" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-brand hover:border-brand shadow-sm transition-all">
                                     <i class="fa-solid fa-pen-to-square text-[10px]"></i>
                                 </button>
@@ -138,6 +139,9 @@
                 </button>
                 <button type="button" onclick="switchTab('tab-grupos')" id="btn-tab-grupos" class="tab-btn flex-1">
                     <i class="fa-solid fa-users-gear mr-2"></i>Roles
+                </button>
+                <button type="button" onclick="switchTab('tab-modulos')" id="btn-tab-modulos" class="tab-btn flex-1">
+                    <i class="fa-solid fa-puzzle-piece mr-2"></i>Módulos
                 </button>
             </div>
             
@@ -222,6 +226,21 @@
                             </div>
                             <span class="text-xs font-black text-slate-600 uppercase">{{ grupo.name }}</span>
                         </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div id="tab-modulos" class="tab-content hidden">
+                    <p class="text-[10px] text-slate-400 font-semibold mb-3">Módulos que este usuario podrá ver. El dueño y el admin ven todos automáticamente.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {% for m in modulos_empresa %}
+                        <label class="flex items-center p-4 bg-white rounded-2xl border border-slate-100 cursor-pointer hover:border-brand transition-all">
+                            <input type="checkbox" name="modulos" value="{{ m.clave }}" id="modulo_{{ m.clave }}" class="modulo-checkbox w-5 h-5 rounded mr-3">
+                            <i class="fa-solid {{ m.icono }} text-slate-400 mr-2"></i>
+                            <span class="text-xs font-black text-slate-600 uppercase">{{ m.nombre }}</span>
+                        </label>
+                        {% empty %}
+                        <p class="text-xs text-slate-300 italic col-span-2">No hay módulos contratados en esta empresa.</p>
                         {% endfor %}
                     </div>
                 </div>
@@ -354,10 +373,11 @@
         document.getElementById('field-username').classList.remove('hidden');
         resetSucursales();
         document.querySelectorAll('input[name="grupos"]').forEach(cb => cb.checked = false);
+        document.querySelectorAll('input[name="modulos"]').forEach(cb => cb.checked = false);
         modal.classList.remove('hidden');
     }
 
-    function abrirEdicion(id, nombre, email, sIds, gIds) {
+    function abrirEdicion(id, nombre, email, sIds, gIds, mods) {
         switchTab('tab-datos');
         document.getElementById('modal-titulo').innerText = "Editar Colaborador";
         form.action = `/usuarios/editar-usuario/${id}/`;
@@ -367,6 +387,10 @@
         marcarSucursales(sIds);
         document.querySelectorAll('input[name="grupos"]').forEach(cb => {
             cb.checked = gIds.includes(cb.value) || gIds.includes(parseInt(cb.value));
+        });
+        const modulos = mods || [];
+        document.querySelectorAll('input[name="modulos"]').forEach(cb => {
+            cb.checked = modulos.includes(cb.value);
         });
         modal.classList.remove('hidden');
     }

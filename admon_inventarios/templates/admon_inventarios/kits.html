@@ -1,0 +1,268 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Kits / Cajas</h1>
+            <p class="text-slate-500 mt-2 font-medium">Plantillas y cajas físicas · Sede <span class="text-brand">{{ sucursal_activa.nombre }}</span></p>
+        </div>
+        {% if puede_editar_maestro %}
+        <div class="flex gap-3">
+            {% if user.is_superuser %}
+            <a href="{% url 'admon_inventarios:plantilla_kits' %}" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all">
+                <i class="fa-solid fa-file-arrow-down mr-2"></i> Plantilla
+            </a>
+            <button type="button" onclick="document.getElementById('modalImportKit').classList.remove('hidden')" class="bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-200 hover:-translate-y-1 transition-all">
+                <i class="fa-solid fa-file-arrow-up mr-2"></i> Carga masiva
+            </button>
+            {% endif %}
+            <button onclick="document.getElementById('modalKit').classList.remove('hidden')"
+                class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
+                <i class="fa-solid fa-plus mr-2"></i> Nueva Plantilla de Kit
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if user.is_superuser and puede_editar_maestro %}
+    <div id="modalImportKit" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalImportKit').classList.add('hidden')"></div>
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-10">
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold text-slate-800">Carga masiva de kits</h2>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Una fila por componente</p>
+                </div>
+                <ol class="text-[11px] font-bold text-slate-500 mb-5 space-y-1 list-decimal ml-4">
+                    <li>Descarga la plantilla y llénala (borra las filas de ejemplo).</li>
+                    <li>Repite el código del kit en cada producto que lo compone.</li>
+                    <li>Si un kit ya existe, se reemplazan sus componentes.</li>
+                </ol>
+                <form method="POST" action="{% url 'admon_inventarios:importar_kits' %}" enctype="multipart/form-data" class="space-y-5">
+                    {% csrf_token %}
+                    <input type="file" name="archivo" accept=".xlsx" required
+                        class="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-5 py-6 text-xs font-bold text-slate-600">
+                    <div class="flex justify-between items-center pt-2">
+                        <a href="{% url 'admon_inventarios:plantilla_kits' %}" class="text-[10px] font-black uppercase text-brand hover:underline"><i class="fa-solid fa-file-arrow-down mr-1"></i> Descargar plantilla</a>
+                        <div class="flex gap-3">
+                            <button type="button" onclick="document.getElementById('modalImportKit').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 px-4">Cancelar</button>
+                            <button type="submit" class="bg-emerald-600 text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">Cargar</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {% for kit in kits %}
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 {% if not kit.activo %}opacity-50{% endif %}">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="font-bold text-slate-800">[{{ kit.codigo }}] {{ kit.nombre }}</h3>
+                    {% if kit.descripcion %}<p class="text-[10px] text-slate-400 font-bold mt-1">{{ kit.descripcion }}</p>{% endif %}
+                </div>
+                <div class="flex items-center gap-3">
+                    {% if not kit.activo %}<span class="text-[9px] font-black bg-slate-100 text-slate-400 px-2 py-1 rounded-lg uppercase">Inactivo</span>{% endif %}
+                    {% if puede_editar_maestro %}
+                    <form method="POST" onsubmit="return confirm('¿Eliminar/desactivar este kit?')">{% csrf_token %}
+                        <input type="hidden" name="accion" value="eliminar_kit">
+                        <input type="hidden" name="kit_id" value="{{ kit.id }}">
+                        <button type="submit" class="text-slate-300 hover:text-rose-500 transition-all"><i class="fa-solid fa-trash-can"></i></button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-100 overflow-hidden mb-4">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50">
+                        <tr class="text-slate-400 text-[9px] uppercase tracking-[0.2em]">
+                            <th class="px-5 py-3 font-black">Componente</th>
+                            <th class="px-5 py-3 font-black text-center">Cant.</th>
+                            <th class="px-5 py-3 font-black text-center">Tipo</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        {% for c in kit.componentes.all %}
+                        <tr>
+                            <td class="px-5 py-3 text-xs font-bold text-slate-700">[{{ c.producto.sku }}] {{ c.producto.nombre }}</td>
+                            <td class="px-5 py-3 text-center text-xs font-black text-brand">{{ c.cantidad_requerida|floatformat:0 }}</td>
+                            <td class="px-5 py-3 text-center">
+                                {% if c.es_retornable %}
+                                <span class="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-lg uppercase">Préstamo</span>
+                                {% else %}
+                                <span class="text-[9px] font-black bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg uppercase">Consumible</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="px-5 py-4 text-center text-slate-300 italic text-xs">Sin componentes</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="border-t border-slate-50 pt-4 mt-2">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cajas físicas</span>
+                    {% if kit.activo %}
+                    <button onclick="abrirModalCaja({{ kit.id }}, '{{ kit.nombre|escapejs }}')"
+                        class="text-brand text-[10px] font-black uppercase tracking-widest hover:underline">
+                        <i class="fa-solid fa-plus mr-1"></i> Caja
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="space-y-2">
+                    {% for caja in kit.instancias.all %}
+                    <div class="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2">
+                        <span class="inline-flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-widest
+                            {% if caja.estado == 'DISPONIBLE' %}bg-emerald-100 text-emerald-700
+                            {% elif caja.estado == 'EN_CAMPO' %}bg-amber-100 text-amber-700
+                            {% elif caja.estado == 'EN_PREPARACION' %}bg-blue-100 text-blue-700
+                            {% else %}bg-slate-200 text-slate-600{% endif %}">
+                            <i class="fa-solid fa-box"></i> {{ caja.codigo_caja }} · {{ caja.get_estado_display }}
+                        </span>
+                        <span class="text-[10px] font-bold text-slate-500">{{ caja.contenido.count }} producto(s) en caja</span>
+                        {% if puede_editar_maestro %}
+                        <a href="{% url 'admon_inventarios:reabastecer_caja' caja.id %}" class="text-[10px] font-black uppercase tracking-widest text-brand hover:underline"><i class="fa-solid fa-box-open mr-1"></i> Reabastecer</a>
+                        {% endif %}
+                    </div>
+                    {% empty %}
+                    <span class="text-[10px] text-slate-300 italic">Sin cajas físicas registradas</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-100 p-16 text-center">
+            <i class="fa-solid fa-box-open text-4xl text-slate-200 mb-4 block"></i>
+            <p class="text-slate-400 font-bold italic text-sm">No hay kits registrados.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if puede_editar_maestro %}
+<div id="modalKit" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalKit').classList.add('hidden')"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-10">
+            <button onclick="document.getElementById('modalKit').classList.add('hidden')"
+                class="absolute top-8 right-8 w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-slate-800">Nueva Plantilla de Kit</h2>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Composición estándar de la caja</p>
+            </div>
+            <form method="POST" class="space-y-5">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="crear_kit">
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="space-y-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Código</label>
+                        <input type="text" name="codigo" required placeholder="KIT-ROD">
+                    </div>
+                    <div class="col-span-2 space-y-2">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nombre</label>
+                        <input type="text" name="nombre" required placeholder="Kit cirugía de rodilla">
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Descripción</label>
+                    <textarea name="descripcion" rows="2"></textarea>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Componentes</label>
+                        <button type="button" onclick="agregarComponente()" class="text-brand text-[10px] font-black uppercase tracking-widest hover:underline">
+                            <i class="fa-solid fa-plus mr-1"></i> Agregar
+                        </button>
+                    </div>
+                    <div id="componentesKit" class="space-y-2"></div>
+                    <p class="text-[9px] text-slate-400 font-bold ml-1">Préstamo = herramienta que siempre regresa · Consumible = se usa en cirugía y se factura</p>
+                </div>
+
+                <div class="pt-4 border-t border-slate-50 flex justify-end">
+                    <button type="submit" class="bg-brand hover:bg-brand-dark text-white font-black py-4 px-10 rounded-2xl shadow-lg shadow-cyan-100 transition-all transform hover:-translate-y-1 text-xs uppercase tracking-widest">
+                        Guardar Kit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- MODAL: NUEVA CAJA -->
+<div id="modalCaja" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalCaja').classList.add('hidden')"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-10">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-slate-800">Nueva Caja Física</h2>
+                <p id="cajaKitNombre" class="text-slate-400 text-xs font-bold uppercase tracking-widest"></p>
+            </div>
+            <form method="POST" class="space-y-5">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="crear_caja">
+                <input type="hidden" name="kit_id" id="caja_kit_id">
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Código de la caja</label>
+                    <input type="text" name="codigo_caja" required placeholder="CAJA-001">
+                </div>
+                <p class="text-[10px] text-slate-400 font-bold">La caja quedará registrada en {{ sucursal_activa.nombre }}.</p>
+                <div class="pt-4 border-t border-slate-50 flex justify-end gap-3">
+                    <button type="button" onclick="document.getElementById('modalCaja').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 px-4">Cancelar</button>
+                    <button type="submit" class="bg-brand text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<select id="templateProductosKit" class="hidden no-select2">
+    <option value="">-- Producto --</option>
+    {% for p in productos %}<option value="{{ p.id }}">[{{ p.sku }}] {{ p.nombre }}</option>{% endfor %}
+</select>
+
+<script>
+function agregarComponente() {
+    const cont = document.getElementById('componentesKit');
+    const opciones = document.getElementById('templateProductosKit').innerHTML;
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-center';
+    div.innerHTML = `
+        <select name="producto_id[]" required class="flex-1">${opciones}</select>
+        <input type="number" name="cantidad[]" step="1" min="1" value="1" required style="width:90px" class="text-center font-bold">
+        <select name="es_retornable[]" style="width:140px">
+            <option value="0">Consumible</option>
+            <option value="1">Préstamo</option>
+        </select>
+        <button type="button" onclick="this.parentElement.remove()" class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+        </button>`;
+    cont.appendChild(div);
+}
+{% if puede_editar_maestro %}agregarComponente();{% endif %}
+
+function abrirModalCaja(kitId, kitNombre) {
+    document.getElementById('caja_kit_id').value = kitId;
+    document.getElementById('cajaKitNombre').innerText = kitNombre;
+    document.getElementById('modalCaja').classList.remove('hidden');
+}
+</script>
+
+<style>
+    input, select, textarea {
+        width: 100%; padding: 0.85rem 1rem; background-color: #f8fafc; border: 1px solid #e2e8f0;
+        border-radius: 1rem; outline: none; transition: all 0.2s; font-weight: 600;
+        color: #334155; font-size: 0.8rem;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--brand-color); background-color: white; box-shadow: 0 0 0 4px rgba(0, 171, 241, 0.1); }
+</style>
+{% endblock %}

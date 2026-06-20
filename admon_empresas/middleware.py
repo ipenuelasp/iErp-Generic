@@ -34,5 +34,31 @@ class TenantMiddleware:
                     request.sucursal_activa = Sucursal.objects.filter(id=sucursal_id, empresa=empresa).first()
                 else:
                     request.sucursal_activa = perfil.sucursal_defecto
-        
+
         return self.get_response(request)
+
+
+class ModuloAccessMiddleware:
+    """Bloquea el acceso directo por URL a un módulo que el usuario no puede ver
+    (no basta con ocultarlo del sidebar). Debe ir después de TenantMiddleware."""
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)
+
+    def process_view(self, request, view_func, view_args, view_kwargs):
+        from django.shortcuts import redirect
+        from django.contrib import messages
+        from .modulos import modulo_de_resolver, modulos_visibles
+
+        if not request.user.is_authenticated:
+            return None
+        modulo = modulo_de_resolver(request.resolver_match)
+        if not modulo:
+            return None  # ruta sin módulo (home, config, usuarios, etc.)
+
+        if modulo not in modulos_visibles(request.user, request.empresa):
+            messages.error(request, "No tienes acceso a este módulo.")
+            return redirect('home')
+        return None
