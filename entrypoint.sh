@@ -4,6 +4,9 @@ set -e
 echo "==> Corriendo migraciones..."
 python manage.py migrate --noinput
 
+echo "==> Recolectando estáticos..."
+python manage.py collectstatic --noinput
+
 echo "==> Creando superusuario si no existe..."
 python manage.py shell -c "
 from django.contrib.auth.models import User

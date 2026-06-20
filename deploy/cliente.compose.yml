@@ -1,0 +1,25 @@
+# Plantilla de servicio por cliente. nuevo-cliente.sh la copia a
+# clientes/<slug>/docker-compose.yml y la levanta con su propio .env.
+# Usa la imagen ierp-app:latest (se construye una vez con build-imagen.sh).
+services:
+  web:
+    image: ierp-app:latest
+    container_name: ierp_${SLUG}
+    restart: always
+    env_file: .env
+    volumes:
+      - ./media:/app/media
+      - ./staticfiles:/app/staticfiles
+      - ./logs:/app/logs
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${SLUG}.rule=Host(`${SUBDOMINIO}`)
+      - traefik.http.routers.${SLUG}.entrypoints=websecure
+      - traefik.http.routers.${SLUG}.tls.certresolver=le
+      - traefik.http.services.${SLUG}.loadbalancer.server.port=8000
+
+networks:
+  web:
+    external: true

@@ -30,5 +30,10 @@ COPY . /app/
 # Exponer puerto
 EXPOSE 8000
 
+# El entrypoint corre migraciones, collectstatic y crea el superusuario,
+# luego ejecuta el CMD (gunicorn).
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]
+
 # Comando para ejecutar Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "60", "--access-logfile", "-", "--error-logfile", "-", "iErp.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "iErp.wsgi:application"]

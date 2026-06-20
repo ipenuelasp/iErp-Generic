@@ -31,6 +31,13 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
+# Detrás de Traefik (HTTPS): confía en el proto reenviado y en los orígenes https.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_TRUSTED_ORIGINS = [
+    f"https://{h.strip()}" for h in ALLOWED_HOSTS
+    if h.strip() and h.strip() not in ('localhost', '127.0.0.1')
+]
+
 
 # URL base del sitio — usada en correos cuando no hay request disponible
 SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8005').rstrip('/')
@@ -66,6 +73,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -167,6 +175,13 @@ STATICFILES_DIRS = [
 
 # Esta carpeta es la que usa Docker para servir en "producción"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
+# WhiteNoise sirve los estáticos comprimidos en producción (sin manifest para
+# no romper si una plantilla referencia un estático ausente).
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
 
 # Ruta donde se guardarán los archivos subidos (logos, etc)
 MEDIA_URL = '/media/'

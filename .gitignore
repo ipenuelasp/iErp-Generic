@@ -7,3 +7,7 @@ media/
 staticfiles/
 *.log
 .DS_Store
+
+# Datos y secretos por cliente en el droplet (no se versionan)
+deploy/clientes/
+deploy/traefik/letsencrypt/
