@@ -8,26 +8,32 @@ def empresa_context(request):
             if not perfil:
                 return {}
 
-            # 1. Determinar la Empresa Actual
+            # Tenant del subdominio (lo resuelve TenantMiddleware). Acota TODO.
+            tenant = getattr(request, 'tenant', None)
+            empresas_permitidas = perfil.empresas.all()
+            if tenant:
+                empresas_permitidas = empresas_permitidas.filter(cliente=tenant)
+
+            # 1. Determinar la Empresa Actual (siempre dentro de lo permitido/acotado)
             empresa_id = request.session.get('empresa_id')
             if empresa_id:
-                empresa = perfil.empresas.filter(id=empresa_id).first()
-                if not empresa: # Seguridad: Si la empresa en sesión no es del usuario
-                    empresa = perfil.empresa_default
+                empresa = empresas_permitidas.filter(id=empresa_id).first()
+                if not empresa: # Seguridad: si la empresa en sesión no es del tenant/usuario
+                    empresa = empresas_permitidas.first()
             else:
-                empresa = perfil.empresa_default
-            
-            # Si aún no hay empresa (raro), intentamos la primera permitida
-            if not empresa:
-                empresa = perfil.empresas.first()
+                dflt = perfil.empresa_default
+                empresa = (empresas_permitidas.filter(id=dflt.id).first() if dflt else None) \
+                    or empresas_permitidas.first()
 
             if empresa:
                 request.session['empresa_id'] = empresa.id
 
-            # 2. FILTRADO CRÍTICO: Solo empresas donde el usuario tiene al menos una sucursal
+            # 2. FILTRADO CRÍTICO: empresas del usuario (con sucursal) acotadas al tenant
             mis_empresas = Empresa.objects.filter(
                 id__in=perfil.sucursales.values('empresa_id')
             ).distinct()
+            if tenant:
+                mis_empresas = mis_empresas.filter(cliente=tenant)
             # Filtramos sucursales: Solo las que pertenecen a la empresa actual Y el usuario tiene permiso
             sucursales_nav = perfil.sucursales.filter(empresa=empresa).distinct()
 

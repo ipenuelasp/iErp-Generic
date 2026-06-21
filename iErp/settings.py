@@ -31,12 +31,18 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
+# Dominio base de la plataforma SaaS. Si está vacío (dev), no hay scoping por
+# subdominio. En prod: BASE_DOMAIN=ierp.mx → cada cliente vive en <slug>.ierp.mx.
+BASE_DOMAIN = os.environ.get('BASE_DOMAIN', '').strip()
+
 # Detrás de Traefik (HTTPS): confía en el proto reenviado y en los orígenes https.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 CSRF_TRUSTED_ORIGINS = [
     f"https://{h.strip()}" for h in ALLOWED_HOSTS
     if h.strip() and h.strip() not in ('localhost', '127.0.0.1')
 ]
+if BASE_DOMAIN:
+    CSRF_TRUSTED_ORIGINS.append(f"https://*.{BASE_DOMAIN}")
 
 
 # URL base del sitio — usada en correos cuando no hay request disponible
