@@ -59,7 +59,7 @@
         </table>
     </div>
 
-    {% if puede_editar_extras %}
+    {% if puede_editar_extras and 'cirugias' in modulos_visibles %}
     <!-- Agregar producto extra ("gol") -->
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-6">
         <h3 class="text-sm font-black text-slate-800 uppercase italic mb-4"><i class="fa-solid fa-futbol mr-2 text-fuchsia-500"></i> Agregar producto extra</h3>
@@ -79,7 +79,7 @@
     {% endif %}
 
     <!-- Comisiones internas -->
-    {% if comisiones or puede_editar_extras %}
+    {% if 'cirugias' in modulos_visibles %}
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-6">
         <h3 class="text-sm font-black text-slate-800 uppercase italic mb-4"><i class="fa-solid fa-user-secret mr-2 text-slate-400"></i> Comisiones internas <span class="text-[9px] text-slate-400 normal-case">(no visibles al cliente)</span></h3>
         <div class="space-y-2 mb-4">

@@ -36,6 +36,26 @@
         </div>
     </div>
 
+    <!-- CFDI emitido al cliente -->
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center"><i class="fa-solid fa-file-invoice mr-3 text-brand"></i> CFDI (factura al cliente)</h3>
+            <div class="flex gap-3">
+                {% if factura.archivo_xml %}<a href="{{ factura.archivo_xml.url }}" target="_blank" class="text-[10px] font-black text-brand uppercase tracking-widest hover:underline"><i class="fa-solid fa-file-code mr-1"></i> XML</a>{% endif %}
+                {% if factura.archivo_pdf %}<a href="{{ factura.archivo_pdf.url }}" target="_blank" class="text-[10px] font-black text-rose-500 uppercase tracking-widest hover:underline"><i class="fa-solid fa-file-pdf mr-1"></i> PDF</a>{% endif %}
+                {% if not factura.archivo_xml and not factura.archivo_pdf %}<span class="text-[10px] text-slate-300 italic">Sin CFDI adjunto</span>{% endif %}
+            </div>
+        </div>
+        <form method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="subir_cfdi">
+            <div><label class="text-[9px] font-black text-slate-400 uppercase ml-1">XML</label><input type="file" name="archivo_xml" accept=".xml" class="w-full mt-1 text-[11px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"></div>
+            <div><label class="text-[9px] font-black text-slate-400 uppercase ml-1">PDF</label><input type="file" name="archivo_pdf" accept=".pdf" class="w-full mt-1 text-[11px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"></div>
+            <div><label class="text-[9px] font-black text-slate-400 uppercase ml-1">UUID (opcional)</label><input type="text" name="uuid_cfdi" value="{{ factura.uuid_cfdi|default:'' }}" placeholder="UUID del CFDI" class="w-full mt-1 text-[11px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono"></div>
+            <button type="submit" class="bg-brand text-white py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-paperclip mr-1"></i> Adjuntar</button>
+        </form>
+    </div>
+
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
         <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center"><i class="fa-solid fa-receipt mr-3 text-brand"></i> Cobros aplicados</h3>
         <div class="overflow-hidden rounded-2xl border border-slate-100">

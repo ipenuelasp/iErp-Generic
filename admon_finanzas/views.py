@@ -368,7 +368,20 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
             return redirect('home')
         empresa, sucursal = ctx
         factura = get_object_or_404(FacturaCliente, pk=pk, empresa=empresa)
-        if request.POST.get('accion') == 'cancelar' and factura.total_pagado == 0:
+        accion = request.POST.get('accion')
+        if accion == 'subir_cfdi':
+            xml = request.FILES.get('archivo_xml')
+            pdf = request.FILES.get('archivo_pdf')
+            uuid = (request.POST.get('uuid_cfdi') or '').strip()
+            if xml:
+                factura.archivo_xml = xml
+            if pdf:
+                factura.archivo_pdf = pdf
+            if uuid:
+                factura.uuid_cfdi = uuid
+            factura.save()
+            messages.success(request, "CFDI adjuntado a la cuenta por cobrar.")
+        elif accion == 'cancelar' and factura.total_pagado == 0:
             factura.estado = 'CANCELADA'
             factura.save(update_fields=['estado'])
             messages.info(request, f"CxC {factura.folio} cancelada.")
