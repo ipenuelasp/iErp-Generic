@@ -80,7 +80,21 @@ def entregar_pedido(*, pedido, request):
     hubo_entrega = False
     productos_tocados = set()
 
-    for det in pedido.detalles.select_related('producto', 'impuesto'):
+    for det in pedido.detalles.select_related('producto', 'producto__grupo', 'impuesto'):
+        # Servicios (renta, horas, proyectos): no mueven inventario; se entregan
+        # automáticamente por lo pendiente y entran directo a la CxC.
+        if det.producto.es_servicio:
+            entregado_det = det.pendiente_por_entregar
+            if entregado_det > 0:
+                det.cantidad_entregada += entregado_det
+                det.save(update_fields=['cantidad_entregada'])
+                hubo_entrega = True
+                sub = entregado_det * det.precio_unitario
+                monto = sub * (det.iva_porcentaje / 100)
+                subtotal += sub
+                imp_total += (-monto if det.es_retencion else monto)
+            continue
+
         exist_ids = request.POST.getlist(f'ent_exist_{det.id}[]')
         cants = request.POST.getlist(f'ent_cant_{det.id}[]')
 

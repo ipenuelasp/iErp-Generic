@@ -188,6 +188,12 @@ class Producto(models.Model):
     class Meta:
         unique_together = ('empresa', 'sku')
 
+    @property
+    def es_servicio(self):
+        """True si el producto NO mueve inventario (renta, horas, proyectos):
+        su grupo está marcado como no inventariable."""
+        return bool(self.grupo_id) and not self.grupo.es_inventariable
+
     def __str__(self):
         return f"[{self.sku}] {self.nombre}"
 

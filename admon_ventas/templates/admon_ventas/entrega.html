@@ -23,6 +23,11 @@
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pendiente: {{ det.pendiente_por_entregar|floatformat:"-2" }} {{ det.producto.unidad_medida.abreviatura|default:'' }}</p>
                 </div>
             </div>
+            {% if det.producto.es_servicio %}
+            <div class="bg-brand/5 border border-brand/10 rounded-2xl px-5 py-4 text-[11px] font-bold text-slate-500">
+                <i class="fa-solid fa-bolt text-brand mr-2"></i> Servicio — no mueve inventario. Se factura automáticamente al confirmar.
+            </div>
+            {% else %}
             <div class="overflow-hidden rounded-2xl border border-slate-100">
                 <table class="w-full text-left">
                     <thead class="bg-slate-50"><tr class="text-slate-400 text-[9px] uppercase tracking-[0.2em]">
@@ -53,6 +58,7 @@
                     </tbody>
                 </table>
             </div>
+            {% endif %}
         </div>
         {% endif %}
         {% endfor %}
