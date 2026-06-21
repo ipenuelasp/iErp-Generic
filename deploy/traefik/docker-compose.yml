@@ -19,6 +19,8 @@ services:
       - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
     environment:
       - DO_AUTH_TOKEN=${DO_AUTH_TOKEN}
+      # Fuerza la versión del API de Docker (evita "client version 1.24 is too old")
+      - DOCKER_API_VERSION=1.44
     ports:
       - "80:80"
       - "443:443"
