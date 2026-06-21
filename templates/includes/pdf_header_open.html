@@ -1,0 +1,22 @@
+{% comment %}
+Encabezado compartido de PDFs. Abre la tabla y rinde 2 celdas:
+  - Izquierda: isotipo (o logo de respaldo)
+  - Centro: datos de la empresa
+Cada PDF debe AGREGAR su celda derecha y cerrar la fila/tabla:
+
+  {% include 'includes/pdf_header_open.html' %}
+        <td width="38%" align="right"> ...info del documento... </td>
+    </tr></table>
+    <div class="bar">&nbsp;</div>
+{% endcomment %}
+<table>
+    <tr>
+        <td width="16%" valign="top">
+            {% if empresa.isotipo %}<img src="{{ empresa.isotipo.path }}" style="height:52px;">
+            {% elif empresa.logo %}<img src="{{ empresa.logo.path }}" style="height:40px;">{% endif %}
+        </td>
+        <td width="46%" valign="top">
+            <div style="font-size:13px; font-weight:bold; color:#0f172a;">{{ empresa.nombre_fiscal }}</div>
+            <div style="font-size:9px; color:#94a3b8;">RFC: {{ empresa.rfc }}</div>
+            {% if empresa.moneda_principal %}<div style="font-size:9px; color:#94a3b8;">Moneda: {{ empresa.moneda_principal.codigo }}</div>{% endif %}
+        </td>

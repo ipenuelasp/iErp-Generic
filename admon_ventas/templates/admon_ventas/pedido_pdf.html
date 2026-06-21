@@ -38,14 +38,8 @@
 <body>
 
     <!-- ENCABEZADO -->
-    <table>
-        <tr>
-            <td width="55%">
-                {% if empresa.logo %}<img src="{{ empresa.logo.path }}" style="height:34px; margin-bottom:8px;"><br>{% endif %}
-                <div class="empresa" style="margin-top:6px;">{{ empresa.nombre_fiscal }}</div>
-                <div class="muted">RFC: {{ empresa.rfc }}</div>
-            </td>
-            <td width="45%" class="right" align="right">
+    {% include 'includes/pdf_header_open.html' %}
+            <td width="38%" class="right" align="right">
                 <div class="doc-title">PEDIDO / NOTA DE VENTA</div>
                 <div class="doc-folio">{{ pedido.folio }}</div>
                 <div class="muted" style="margin-top:8px;">Fecha de emisión: <b style="color:#334155;">{{ pedido.fecha_emision|date:"d/m/Y" }}</b></div>
