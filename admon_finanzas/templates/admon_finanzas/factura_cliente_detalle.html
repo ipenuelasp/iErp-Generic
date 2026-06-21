@@ -2,7 +2,7 @@
 {% load humanize %}
 
 {% block main_content %}
-<div class="max-w-4xl mx-auto p-8">
+<div class="max-w-6xl mx-auto p-8">
 
     <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
@@ -38,7 +38,7 @@
 
     <!-- CFDI emitido al cliente -->
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-8">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-bold text-slate-800 flex items-center"><i class="fa-solid fa-file-invoice mr-3 text-brand"></i> CFDI (factura al cliente)</h3>
             <div class="flex gap-3">
                 {% if factura.archivo_xml %}<a href="{{ factura.archivo_xml.url }}" target="_blank" class="text-[10px] font-black text-brand uppercase tracking-widest hover:underline"><i class="fa-solid fa-file-code mr-1"></i> XML</a>{% endif %}
@@ -46,15 +46,103 @@
                 {% if not factura.archivo_xml and not factura.archivo_pdf %}<span class="text-[10px] text-slate-300 italic">Sin CFDI adjunto</span>{% endif %}
             </div>
         </div>
-        <form method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+
+        <form method="POST" enctype="multipart/form-data"
+              data-rfc="{{ factura.cliente.rfc|default:''|upper }}" data-total="{{ factura.total|floatformat:2 }}">
             {% csrf_token %}
             <input type="hidden" name="accion" value="subir_cfdi">
-            <div><label class="text-[9px] font-black text-slate-400 uppercase ml-1">XML</label><input type="file" name="archivo_xml" accept=".xml" class="w-full mt-1 text-[11px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"></div>
-            <div><label class="text-[9px] font-black text-slate-400 uppercase ml-1">PDF</label><input type="file" name="archivo_pdf" accept=".pdf" class="w-full mt-1 text-[11px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"></div>
-            <div><label class="text-[9px] font-black text-slate-400 uppercase ml-1">UUID (opcional)</label><input type="text" name="uuid_cfdi" value="{{ factura.uuid_cfdi|default:'' }}" placeholder="UUID del CFDI" class="w-full mt-1 text-[11px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono"></div>
-            <button type="submit" class="bg-brand text-white py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-paperclip mr-1"></i> Adjuntar</button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                <!-- XML dropzone -->
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Archivo XML (CFDI)</label>
+                    <div class="relative h-[60px] mt-1">
+                        <input type="file" name="archivo_xml" id="cfdiXml" accept=".xml" onchange="leerCFDICliente(this)"
+                               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                        <div class="absolute inset-0 flex items-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-4 hover:border-brand transition-all z-10">
+                            <i class="fa-solid fa-file-code text-slate-400 mr-3"></i>
+                            <span id="cfdiXmlName" class="text-sm text-slate-500 font-medium truncate">Subir XML (lee RFC, total y UUID)</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- PDF dropzone -->
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Archivo PDF</label>
+                    <div class="relative h-[60px] mt-1">
+                        <input type="file" name="archivo_pdf" id="cfdiPdf" accept=".pdf"
+                               onchange="document.getElementById('cfdiPdfName').textContent = this.files[0] ? this.files[0].name : 'Subir PDF de la factura';"
+                               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                        <div class="absolute inset-0 flex items-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-4 hover:border-brand transition-all z-10">
+                            <i class="fa-solid fa-file-pdf text-slate-400 mr-3"></i>
+                            <span id="cfdiPdfName" class="text-sm text-slate-500 font-medium truncate">Subir PDF de la factura</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de validación (se llena al leer el XML) -->
+            <div id="cfdiValida" class="hidden rounded-2xl border p-4 mb-5 text-[11px] font-bold space-y-1"></div>
+
+            <div class="flex items-end gap-4">
+                <div class="flex-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">UUID</label>
+                    <input type="text" name="uuid_cfdi" id="cfdiUuid" value="{{ factura.uuid_cfdi|default:'' }}" placeholder="Se autocompleta del XML"
+                           class="w-full mt-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-mono">
+                </div>
+                <button type="submit" class="bg-brand text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-paperclip mr-2"></i> Adjuntar CFDI</button>
+            </div>
         </form>
     </div>
+
+    <script>
+    function leerCFDICliente(input) {
+        const file = input.files[0];
+        const form = input.closest('form');
+        const nameEl = document.getElementById('cfdiXmlName');
+        const panel = document.getElementById('cfdiValida');
+        if (file) nameEl.textContent = file.name;
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            panel.classList.remove('hidden');
+            try {
+                const xml = new DOMParser().parseFromString(e.target.result, 'application/xml');
+                const tag = (ln) => xml.getElementsByTagNameNS('*', ln)[0];
+                const comp = tag('Comprobante');
+                if (!comp) throw new Error('No es un CFDI válido');
+                const receptor = tag('Receptor');
+                const tfd = tag('TimbreFiscalDigital');
+                const rfcXml = ((receptor && receptor.getAttribute('Rfc')) || '').toUpperCase();
+                const totalXml = parseFloat(comp.getAttribute('Total') || '0');
+                const uuid = tfd ? (tfd.getAttribute('UUID') || '') : '';
+
+                if (uuid) document.getElementById('cfdiUuid').value = uuid;
+
+                const rfcEsperado = (form.dataset.rfc || '').toUpperCase();
+                const totalEsperado = parseFloat(form.dataset.total || '0');
+                const okRfc = rfcEsperado && rfcXml === rfcEsperado;
+                const okTotal = Math.abs(totalXml - totalEsperado) < 0.01;
+                const fmt = (n) => '$' + n.toLocaleString('es-MX', {minimumFractionDigits: 2});
+
+                let html = '';
+                html += okRfc
+                    ? `<div class="text-emerald-600"><i class="fa-solid fa-circle-check mr-2"></i>RFC del cliente coincide (${rfcXml})</div>`
+                    : `<div class="text-rose-600"><i class="fa-solid fa-triangle-exclamation mr-2"></i>RFC no coincide — XML: ${rfcXml || '—'} vs cliente: ${rfcEsperado || '—'}</div>`;
+                html += okTotal
+                    ? `<div class="text-emerald-600"><i class="fa-solid fa-circle-check mr-2"></i>Total coincide (${fmt(totalXml)})</div>`
+                    : `<div class="text-rose-600"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Total no coincide — XML: ${fmt(totalXml)} vs CxC: ${fmt(totalEsperado)}</div>`;
+                if (uuid) html += `<div class="text-slate-500"><i class="fa-solid fa-fingerprint mr-2"></i>UUID: ${uuid}</div>`;
+
+                panel.className = "rounded-2xl border p-4 mb-5 text-[11px] font-bold space-y-1 " +
+                    ((okRfc && okTotal) ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100");
+                panel.innerHTML = html;
+            } catch (err) {
+                panel.className = "rounded-2xl border p-4 mb-5 text-[11px] font-bold bg-rose-50 border-rose-100 text-rose-600";
+                panel.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i>No se pudo leer el XML: ' + err.message;
+            }
+        };
+        reader.readAsText(file);
+    }
+    </script>
 
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
         <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center"><i class="fa-solid fa-receipt mr-3 text-brand"></i> Cobros aplicados</h3>
