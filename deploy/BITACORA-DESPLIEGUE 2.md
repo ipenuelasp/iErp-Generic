@@ -135,11 +135,8 @@ grep -o '"main":"[^"]*"' deploy/traefik/letsencrypt/acme.json   # cert emitido
 - Medios/estáticos de la app: `/var/www/ierp/` en el droplet APP.
 
 ---
-### Estado
-- ✅ Certificado wildcard emitido (tras desactivar DNSSEC).
-- ✅ Fase 2: panel del proveedor + invitación de clientes.
-- ✅ Servido de `/media/` en producción (logos/isotipos).
-- ✅ Fase 3: auto-deploy con GitHub Actions (push a `main` → SSH → pull/build/restart).
-
-### Pendiente menor
-- Quitar `--log.level=DEBUG` de `deploy/traefik/docker-compose.yml` cuando se quiera dejar limpio.
+### Pendientes
+- Esperar propagación del DS para que se emita el cert wildcard (en curso).
+- Quitar `--log.level=DEBUG` de `deploy/traefik/docker-compose.yml` cuando ya esté estable.
+- Fase 2: panel del proveedor para alta de clientes desde la app.
+- Auto-deploy con GitHub Actions (push → SSH → pull/build/restart).
