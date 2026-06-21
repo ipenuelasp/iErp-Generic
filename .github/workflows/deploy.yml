@@ -1,0 +1,28 @@
+name: Deploy a producción (ierp.mx)
+
+# Cada push a main actualiza el droplet de la app.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:        # permite dispararlo a mano desde la pestaña Actions
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Actualizar droplet por SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd ~/iErp-Generic
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+            docker compose -f docker-compose.prod.yml up -d --build
+            docker image prune -f
+            echo "==> Deploy OK"
