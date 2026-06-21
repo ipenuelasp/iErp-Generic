@@ -1,105 +1,99 @@
-# Despliegue iErp — un droplet de app (Traefik + contenedor por cliente) + droplet de SQL Server
+# Despliegue iErp SaaS — Opción A (BD compartida, aislamiento por subdominio)
 
 Arquitectura:
 
 ```
-                 *.ierp.mx (DNS -> IP droplet APP)
-   ┌─────────────────── Droplet APP (Docker) ───────────────────┐
-   │  Traefik (80/443, SSL Let's Encrypt)                        │
-   │   ├─ ierp_ipenuelas   -> ipenuelas.ierp.mx                  │
-   │   ├─ ierp_insermed    -> insermed.ierp.mx                   │
-   │   └─ ierp_acuagro     -> acuagro.ierp.mx                    │
-   └───────────────────────────┬─────────────────────────────────┘
-                               │ red privada (1433)
-                    ┌──────────┴───────────┐
-                    │ Droplet SQL SERVER   │  BDs: ierp_ipenuelas,
-                    │ (mssql en Docker)    │       ierp_insermed, ...
-                    └──────────────────────┘
+                 *.ierp.mx  (DNS -> IP pública del droplet APP)
+   ┌──────────────── Droplet APP (iErp-saas-app-prod) ────────────────┐
+   │  Traefik (80/443, cert wildcard *.ierp.mx por DNS-01)            │
+   │     └─ ierp_app  (UNA app, UNA BD; el tenant se resuelve por      │
+   │                   subdominio: <slug>.ierp.mx -> ClienteSaaS)      │
+   └───────────────────────────┬──────────────────────────────────────┘
+                               │ red privada (VPC, 1433)
+                    ┌──────────┴────────────────┐
+                    │ Droplet SQL SERVER         │  BD única: ierp_saas
+                    │ (iErp-saas-sqlserver-prod) │
+                    └────────────────────────────┘
 ```
 
-Cada cliente = su contenedor + su BD + su subdominio. La BD **no** se crea desde la
-app: se provisiona aquí con `nuevo-cliente.sh` + un `CREATE DATABASE`.
+- **Una sola app + una sola BD** (`ierp_saas`). Los clientes se dan de alta
+  **desde la app** (no por script); el subdominio sólo enfoca al tenant.
+- Cada cliente (`ClienteSaaS`) tiene su `slug_instancia` = subdominio.
 
 ---
 
-## Tamaños sugeridos
-- **Droplet APP:** 4 GB / 2 vCPU.
-- **Droplet SQL Server:** 4 GB / 2 vCPU + Volume SSD para datos.
-- Ambos en la **misma región** y usa **red privada (VPC)** para que se hablen por IP interna.
-
----
-
-## 1. Droplet SQL Server
+## 1. Droplet SQL Server (iErp-saas-sqlserver-prod)
 ```bash
-# En el droplet SQL Server (Ubuntu + Docker):
 docker run -d --name sqlserver --restart always \
-  -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=UnaClaveFuerte!2026" \
+  -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=<ClaveSA>" \
   -p 1433:1433 -v sqlvol:/var/opt/mssql \
   mcr.microsoft.com/mssql/server:2022-latest
 ```
-- Firewall (DO): permite el puerto **1433 solo desde la IP privada del droplet APP**.
-- Crea un login de app (una vez):
-```sql
-CREATE LOGIN ierp_app WITH PASSWORD = 'OtraClaveFuerte!2026';
-```
-
-## 2. Droplet APP
+Crear login y BD (con el contenedor de herramientas):
 ```bash
-# Docker + compose ya instalados. Clona el repo:
+docker run --rm --network host mcr.microsoft.com/mssql-tools /opt/mssql-tools/bin/sqlcmd \
+  -S localhost,1433 -U sa -P '<ClaveSA>' \
+  -Q "CREATE LOGIN ierp_app WITH PASSWORD='<ClaveApp>'; CREATE DATABASE ierp_saas;"
+docker run --rm --network host mcr.microsoft.com/mssql-tools /opt/mssql-tools/bin/sqlcmd \
+  -S localhost,1433 -U sa -P '<ClaveSA>' -d ierp_saas \
+  -Q "CREATE USER ierp_app FOR LOGIN ierp_app; ALTER ROLE db_owner ADD MEMBER ierp_app;"
+```
+Firewall: 1433 sólo desde el droplet APP (usar el Droplet como source).
+
+## 2. DNS de ierp.mx en DigitalOcean
+- Networking → Domains → agrega `ierp.mx`. En tu registrador, apunta los
+  nameservers a `ns1/ns2/ns3.digitalocean.com`.
+- Registros A (a la **IP pública del droplet APP**):
+  - `@`  → IP_APP   (dominio raíz)
+  - `*`  → IP_APP   (todos los subdominios de clientes)
+- Crea un **token de API** (Networking/API, read+write) para el reto DNS.
+
+## 3. Droplet APP (iErp-saas-app-prod)
+```bash
 git clone https://github.com/ipenuelasp/iErp-Generic.git
 cd iErp-Generic
-docker network create web                 # red compartida con Traefik
+git checkout feat/erp-comercializadora-deploy
+docker network create web
+docker build -t ierp-app:latest -f Dockerfile.prod .
 
-# Traefik
-cd deploy/traefik
-ACME_EMAIL=tu-correo@dominio.com docker compose up -d
-cd ../..
+# .env de la app (raíz del repo)
+cat > .env <<'EOF'
+DEBUG=False
+SECRET_KEY=<openssl rand -base64 48>
+BASE_DOMAIN=ierp.mx
+ALLOWED_HOSTS=.ierp.mx
+DB_HOST=10.10.0.11
+DB_PORT=1433
+DB_NAME=ierp_saas
+DB_USER=ierp_app
+DB_PASS=<ClaveApp>
+DJANGO_SUPERUSER_USERNAME=admin
+DJANGO_SUPERUSER_EMAIL=admin@ierp.mx
+DJANGO_SUPERUSER_PASSWORD=<ClaveAdmin>
+EOF
 
-# Imagen base de la app (una vez; repite tras cada git pull):
-./deploy/build-imagen.sh
+# Traefik (cert wildcard por DNS-01)
+cp deploy/traefik/.env.example deploy/traefik/.env
+nano deploy/traefik/.env        # ACME_EMAIL + DO_AUTH_TOKEN
+docker compose -f deploy/traefik/docker-compose.yml up -d
+
+# La app
+docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml logs -f   # ver migraciones/arranque
 ```
 
-## 3. Crear la BD de un cliente (en el droplet SQL Server)
-```sql
-CREATE DATABASE ierp_ipenuelas;
-USE ierp_ipenuelas;
-CREATE USER ierp_app FOR LOGIN ierp_app;
-ALTER ROLE db_owner ADD MEMBER ierp_app;
-```
+## 4. Probar
+- `https://admin.ierp.mx` → portal del proveedor (superadmin) → login.
+- Crea un `ClienteSaaS` con `slug_instancia=ipenuelas` → entra a `https://ipenuelas.ierp.mx`.
 
-## 4. Levantar el cliente (en el droplet APP)
+## 5. Actualizar (deploy de cambios)
 ```bash
-cd deploy
-./nuevo-cliente.sh ipenuelas          # 1ra vez: genera clientes/ipenuelas/.env
-nano clientes/ipenuelas/.env          # pon SECRET_KEY, DB_HOST (IP privada SQL), DB_PASS, password admin
-./nuevo-cliente.sh ipenuelas          # 2da vez: lo levanta
+cd iErp-Generic && git pull
+docker compose -f docker-compose.prod.yml up -d --build
 ```
-El `entrypoint.sh` corre migraciones (crea tablas), `collectstatic` y crea el superusuario.
-Repite los pasos 3–4 para `insermed`, `acuagro`, etc.
-
-## 5. DNS
-En tu proveedor de DNS de **ierp.mx**, apunta a la **IP pública del droplet APP**:
-- `A  ipenuelas.ierp.mx  -> IP_APP`
-- `A  insermed.ierp.mx   -> IP_APP`
-- `A  acuagro.ierp.mx    -> IP_APP`
-(o un registro comodín `A  *.ierp.mx -> IP_APP`)
-
-Al primer acceso por HTTPS, Traefik emite el certificado SSL automáticamente.
-
-## 6. Entrar y configurar
-Abre `https://ipenuelas.ierp.mx`, entra con el superusuario del `.env`, y crea
-ahí la(s) Empresa(s), sucursales, módulos y usuarios de ese cliente.
-
-## 7. Actualizar (deploy de cambios)
-```bash
-cd iErp-Generic
-git pull
-./deploy/build-imagen.sh
-# recrear cada cliente con la imagen nueva:
-for c in deploy/clientes/*/; do (cd "$c" && docker compose -p "ierp-$(basename "$c")" up -d); done
-```
-> El auto-deploy por GitHub Actions (push -> SSH -> pull -> build -> up) se configura aparte.
+Las migraciones corren solas (entrypoint) sobre `ierp_saas`. Un push = todos los clientes actualizados (misma app/BD).
 
 ## Notas
-- Los `.env` y datos de cada cliente viven en `deploy/clientes/<slug>/` y **no** se suben a git.
-- Backups: respalda las BD en el droplet SQL Server (`BACKUP DATABASE ...` o dump del volumen).
+- `.env` (raíz) y `deploy/traefik/.env` **no** se versionan.
+- Estáticos/medios persisten en `/var/www/ierp/` del droplet APP.
+- Backup: respalda la BD `ierp_saas` en el droplet SQL Server.
