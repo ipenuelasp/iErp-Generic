@@ -27,7 +27,7 @@
 </head>
 <body>
     {% include 'includes/pdf_header_open.html' %}
-            <td width="38%" class="right" align="right">
+            <td width="42%" class="right" align="right">
                 <div class="doc-title">{% if es_ingreso %}RECIBO DE COBRO{% else %}COMPROBANTE DE PAGO{% endif %}</div>
                 <div class="doc-folio">{{ pago.folio }}</div>
                 <div class="muted" style="margin-top:8px;">Fecha: <b style="color:#334155;">{{ pago.fecha|date:"d/m/Y" }}</b></div>

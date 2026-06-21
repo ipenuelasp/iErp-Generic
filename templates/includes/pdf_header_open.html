@@ -11,12 +11,12 @@ Cada PDF debe AGREGAR su celda derecha y cerrar la fila/tabla:
 {% endcomment %}
 <table>
     <tr>
-        <td width="16%" valign="top">
-            {% if empresa.isotipo %}<img src="{{ empresa.isotipo.path }}" style="height:52px;">
-            {% elif empresa.logo %}<img src="{{ empresa.logo.path }}" style="height:40px;">{% endif %}
+        <td width="18%" valign="middle">
+            {% if empresa.isotipo %}<img src="{{ empresa.isotipo.path }}" style="height:78px;">
+            {% elif empresa.logo %}<img src="{{ empresa.logo.path }}" style="height:48px;">{% endif %}
         </td>
-        <td width="46%" valign="top">
-            <div style="font-size:13px; font-weight:bold; color:#0f172a;">{{ empresa.nombre_fiscal }}</div>
+        <td width="40%" valign="middle" align="center">
+            <div style="font-size:14px; font-weight:bold; color:#0f172a;">{{ empresa.nombre_fiscal }}</div>
             <div style="font-size:9px; color:#94a3b8;">RFC: {{ empresa.rfc }}</div>
             {% if empresa.moneda_principal %}<div style="font-size:9px; color:#94a3b8;">Moneda: {{ empresa.moneda_principal.codigo }}</div>{% endif %}
         </td>
