@@ -219,27 +219,8 @@ def guardar_perfil_usuario(sender, instance, **kwargs):
 @receiver(post_save, sender=ClienteSaaS)
 def enviar_invitacion_cliente(sender, instance, created, **kwargs):
     if created and instance.email_contacto:
-        from admon_empresas.emails import send_html, _build_url
-        import base64, os
-        url_registro = f"{settings.SITE_URL}/registro-cliente/{instance.token_invitacion}/"
-        # Logo iErp en base64 para que se vea en cualquier cliente de correo
-        logo_url = ''
-        try:
-            path = os.path.join(settings.BASE_DIR, 'static', 'img', 'iErp_4k_sinfondo.png')
-            with open(path, 'rb') as f:
-                logo_url = f'data:image/png;base64,{base64.b64encode(f.read()).decode()}'
-        except Exception:
-            pass
-        send_html(
-            subject=f"Bienvenido a iErp — Configura tu empresa: {instance.nombre_comercial}",
-            template='admon_empresas/emails/bienvenida_cliente.html',
-            context={
-                'nombre_comercial': instance.nombre_comercial,
-                'url_registro': url_registro,
-                'logo_url': logo_url,
-            },
-            to=instance.email_contacto,
-        )
+        from admon_empresas.emails import enviar_invitacion_cliente as _enviar
+        _enviar(instance)
 
 @receiver(post_save, sender=Empresa)
 def asignar_superusers_a_empresa(sender, instance, created, **kwargs):

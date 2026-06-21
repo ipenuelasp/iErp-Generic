@@ -17,6 +17,7 @@ urlpatterns = [
     path('clientes/nuevo/', views.crear_cliente, name='crear_cliente'),
     path('clientes/<int:pk>/editar/', views.editar_cliente, name='editar_cliente'),
     path('clientes/<int:pk>/eliminar/', views.eliminar_cliente, name='eliminar_cliente'),
+    path('clientes/<int:pk>/reenviar/', views.reenviar_invitacion, name='reenviar_invitacion'),
     path('clientes/<int:cliente_pk>/empresa/nueva/', views.crear_empresa, name='crear_empresa'),
     path('clientes/empresa/<int:empresa_pk>/sucursal/nueva/', views.crear_sucursal_cliente, name='crear_sucursal_cliente'),
     path('clientes/sucursal/<int:pk>/editar/', views.editar_sucursal_cliente, name='editar_sucursal_cliente'),

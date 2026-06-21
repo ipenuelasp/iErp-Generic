@@ -581,8 +581,26 @@ def _superuser_required(view_func):
 
 @_superuser_required
 def lista_clientes(request):
-    clientes = ClienteSaaS.objects.prefetch_related('empresas__sucursales').all()
+    from .emails import url_registro_cliente
+    clientes = list(ClienteSaaS.objects.prefetch_related('empresas__sucursales').all())
+    for c in clientes:
+        c.registro_url = url_registro_cliente(c)
     return render(request, 'admon_empresas/clientes/lista.html', {'clientes': clientes})
+
+
+@_superuser_required
+def reenviar_invitacion(request, pk):
+    cliente = get_object_or_404(ClienteSaaS, pk=pk)
+    from .emails import enviar_invitacion_cliente
+    if cliente.registro_completado:
+        messages.info(request, "Este cliente ya completó su registro.")
+    elif not cliente.email_contacto:
+        messages.error(request, "El cliente no tiene email de contacto; copia el link e invítalo manualmente.")
+    elif enviar_invitacion_cliente(cliente):
+        messages.success(request, f"Invitación reenviada a {cliente.email_contacto}.")
+    else:
+        messages.error(request, "No se pudo enviar el correo. Copia el link de invitación manualmente.")
+    return redirect('lista_clientes')
 
 
 @_superuser_required

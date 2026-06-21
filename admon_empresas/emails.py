@@ -10,6 +10,38 @@ def _build_url(path, request=None):
     return f"{settings.SITE_URL}{path}"
 
 
+def url_registro_cliente(cliente):
+    """Link de invitación que apunta al subdominio del cliente en producción
+    (https://<slug>.ierp.mx/registro-cliente/<token>/) o a SITE_URL en dev."""
+    base = (getattr(settings, 'BASE_DOMAIN', '') or '').strip()
+    host = f"https://{cliente.slug_instancia}.{base}" if base else settings.SITE_URL
+    return f"{host}/registro-cliente/{cliente.token_invitacion}/"
+
+
+def enviar_invitacion_cliente(cliente):
+    """Envía (o reenvía) el correo de invitación al cliente. Devuelve True/False."""
+    import base64, os
+    if not cliente.email_contacto:
+        return False
+    logo_url = ''
+    try:
+        path = os.path.join(settings.BASE_DIR, 'static', 'img', 'iErp_4k_sinfondo.png')
+        with open(path, 'rb') as f:
+            logo_url = f'data:image/png;base64,{base64.b64encode(f.read()).decode()}'
+    except Exception:
+        pass
+    return send_html(
+        subject=f"Bienvenido a iErp — Configura tu empresa: {cliente.nombre_comercial}",
+        template='admon_empresas/emails/bienvenida_cliente.html',
+        context={
+            'nombre_comercial': cliente.nombre_comercial,
+            'url_registro': url_registro_cliente(cliente),
+            'logo_url': logo_url,
+        },
+        to=cliente.email_contacto,
+    )
+
+
 def send_html(subject, template, context, to, request=None):
     """Envía un correo HTML via Resend. Retorna True si fue exitoso."""
     try:

@@ -57,6 +57,19 @@
                 </div>
             </div>
 
+            <!-- Invitación (solo si aún no completa registro) -->
+            {% if not cliente.registro_completado %}
+            <div class="px-6 py-3 bg-amber-50/60 border-b border-amber-100 flex items-center gap-3 flex-wrap">
+                <span class="text-[10px] font-black uppercase text-amber-600"><i class="fa-solid fa-paper-plane mr-1"></i> Invitación pendiente</span>
+                <input type="text" readonly value="{{ cliente.registro_url }}"
+                       class="flex-1 min-w-[200px] text-[11px] font-mono bg-white border border-amber-200 rounded-lg px-3 py-1.5 text-slate-600">
+                <button type="button" onclick="navigator.clipboard.writeText('{{ cliente.registro_url }}'); this.innerHTML='¡Copiado!'; setTimeout(()=>this.innerHTML='<i class=\'fa-solid fa-copy mr-1\'></i>Copiar',1500);"
+                        class="text-[11px] font-bold text-amber-700 border border-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-100"><i class="fa-solid fa-copy mr-1"></i>Copiar</button>
+                <a href="{% url 'reenviar_invitacion' cliente.pk %}"
+                   class="text-[11px] font-bold text-white bg-amber-500 px-3 py-1.5 rounded-lg hover:bg-amber-600"><i class="fa-solid fa-envelope mr-1"></i> Reenviar correo</a>
+            </div>
+            {% endif %}
+
             <!-- Empresas del cliente -->
             {% if cliente.empresas.all %}
             <div class="divide-y divide-slate-50">
