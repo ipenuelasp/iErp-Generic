@@ -15,9 +15,9 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
-from django.conf.urls.static import static
+from django.views.static import serve as _media_serve
 from . import views as core_views
 
 urlpatterns = [
@@ -32,4 +32,7 @@ urlpatterns = [
     path('ventas/', include('admon_ventas.urls')),
     path('cirugias/', include('admon_cirugias.urls')),
     path('', include('admon_empresas.urls')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Sirve archivos subidos (logos, isotipos, constancias) también en producción
+    # (static() solo funciona con DEBUG=True; esta ruta funciona siempre).
+    re_path(r'^media/(?P<path>.*)$', _media_serve, {'document_root': settings.MEDIA_ROOT}),
+]
