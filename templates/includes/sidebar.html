@@ -92,6 +92,10 @@
            class="block p-3 rounded-xl flex items-center transition-all {% if 'pago' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-money-bill-wave mr-3"></i> Pagos
         </a>
+        <a href="{% url 'admon_finanzas:gastos' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'gastos' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-receipt mr-3"></i> Gastos
+        </a>
         <a href="{% url 'admon_finanzas:estado_resultados' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'estado_resultados' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-file-invoice-dollar mr-3"></i> Estado de Resultados

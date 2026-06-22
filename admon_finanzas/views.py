@@ -595,8 +595,34 @@ class EstadoResultadosView(LoginRequiredMixin, View):
             m = meses.setdefault(k, {'ventas': D('0'), 'costo': D('0')})
             m['ventas'] += v; m['costo'] += c
 
-        util = ventas - costo
-        margen = (util / ventas * 100) if ventas else D('0')
+        util_bruta = ventas - costo
+        margen = (util_bruta / ventas * 100) if ventas else D('0')
+
+        # ---- Gastos de operación del periodo, por clasificación y categoría ----
+        from .models import Gasto, CategoriaGasto
+        gastos = Gasto.objects.filter(
+            empresa=empresa, fecha__gte=desde, fecha__lte=hasta
+        ).select_related('categoria')
+        clasif_labels = dict(CategoriaGasto.CLASIF_CHOICES)
+        grupos = {}  # clasif -> {'total': D, 'cats': {nombre: D}}
+        total_gastos = D('0')
+        for g in gastos:
+            clasif = g.categoria.clasificacion
+            grp = grupos.setdefault(clasif, {'total': D('0'), 'cats': {}})
+            grp['total'] += g.subtotal
+            grp['cats'][g.categoria.nombre] = grp['cats'].get(g.categoria.nombre, D('0')) + g.subtotal
+            total_gastos += g.subtotal
+
+        gastos_grupos = []
+        for clasif, _lbl in CategoriaGasto.CLASIF_CHOICES:
+            if clasif in grupos:
+                grp = grupos[clasif]
+                gastos_grupos.append({
+                    'clasificacion': clasif_labels[clasif], 'total': grp['total'],
+                    'cats': sorted(grp['cats'].items())})
+
+        util_operacion = util_bruta - total_gastos
+        margen_op = (util_operacion / ventas * 100) if ventas else D('0')
 
         filas_mes = []
         for k in sorted(meses):
@@ -612,18 +638,148 @@ class EstadoResultadosView(LoginRequiredMixin, View):
             resp['Content-Disposition'] = f'attachment; filename="estado_resultados_{desde}_a_{hasta}.csv"'
             resp.write('﻿')
             w = _csv.writer(resp)
+            w.writerow(['Concepto', 'Importe'])
+            w.writerow(['Ventas netas', ventas.quantize(D('0.01'))])
+            w.writerow(['Costo de ventas', (-costo).quantize(D('0.01'))])
+            w.writerow(['Utilidad bruta', util_bruta.quantize(D('0.01'))])
+            for grp in gastos_grupos:
+                w.writerow([f"({grp['clasificacion']})", (-grp['total']).quantize(D('0.01'))])
+                for nombre, monto in grp['cats']:
+                    w.writerow([f"   {nombre}", (-monto).quantize(D('0.01'))])
+            w.writerow(['Total gastos de operación', (-total_gastos).quantize(D('0.01'))])
+            w.writerow(['Utilidad de operación', util_operacion.quantize(D('0.01'))])
+            w.writerow([])
             w.writerow(['Mes', 'Ventas netas', 'Costo de ventas', 'Utilidad bruta', 'Margen %'])
             for f in filas_mes:
                 w.writerow([f['mes'], f['ventas'].quantize(D('0.01')), f['costo'].quantize(D('0.01')),
                             f['utilidad'].quantize(D('0.01')), f"{f['margen']:.1f}"])
-            w.writerow(['TOTAL', ventas.quantize(D('0.01')), costo.quantize(D('0.01')),
-                        util.quantize(D('0.01')), f"{margen:.1f}"])
             return resp
 
         context = {
             'desde': desde, 'hasta': hasta,
-            'ventas': ventas, 'costo': costo, 'utilidad': util, 'margen': margen,
+            'ventas': ventas, 'costo': costo, 'utilidad': util_bruta, 'margen': margen,
+            'gastos_grupos': gastos_grupos, 'total_gastos': total_gastos,
+            'util_operacion': util_operacion, 'margen_op': margen_op,
             'filas_mes': filas_mes,
             'sucursal_activa': sucursal, 'seccion': 'finanzas',
         }
         return render(request, self.template_name, context)
+
+
+# --------------------------------------------------------------------------
+# GASTOS DE OPERACIÓN (Fase 2)
+# --------------------------------------------------------------------------
+CATEGORIAS_SEED = [
+    ('Comisiones de venta', 'VENTA'), ('Envíos y paquetería', 'VENTA'),
+    ('Publicidad y marketing', 'VENTA'),
+    ('Renta', 'ADMIN'), ('Servicios (luz, agua, internet)', 'ADMIN'),
+    ('Sueldos y honorarios', 'ADMIN'), ('Papelería y oficina', 'ADMIN'),
+    ('Software y suscripciones', 'ADMIN'),
+    ('Comisiones bancarias', 'FINANCIERO'), ('Intereses', 'FINANCIERO'),
+    ('Otros gastos', 'OTRO'),
+]
+
+
+def _seed_categorias(empresa):
+    from .models import CategoriaGasto
+    if not CategoriaGasto.objects.filter(empresa=empresa).exists():
+        CategoriaGasto.objects.bulk_create([
+            CategoriaGasto(empresa=empresa, nombre=n, clasificacion=c)
+            for n, c in CATEGORIAS_SEED])
+
+
+class GastosView(LoginRequiredMixin, View):
+    template_name = 'admon_finanzas/gastos.html'
+
+    def get(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        from .models import Gasto, CategoriaGasto
+        from admon_empresas import listas
+        from django.urls import reverse
+        _seed_categorias(empresa)
+
+        qs = Gasto.objects.filter(empresa=empresa).select_related('categoria', 'metodo')
+        cats = CategoriaGasto.objects.filter(empresa=empresa, activo=True)
+        res = listas.construir(
+            request, qs,
+            placeholder='Descripción, proveedor o referencia',
+            search_header=('descripcion', 'proveedor_nombre', 'referencia'),
+            date_field='fecha',
+            exactos={'categoria': 'categoria_id', 'clasificacion': 'categoria__clasificacion'},
+            filtros_ui=[
+                {'name': 'categoria', 'label': 'Categoría', 'tipo': 'select',
+                 'opciones': [(c.id, c.nombre) for c in cats]},
+                {'name': 'clasificacion', 'label': 'Clasificación', 'tipo': 'select',
+                 'opciones': CategoriaGasto.CLASIF_CHOICES},
+                {'name': 'desde', 'label': 'Desde', 'tipo': 'date'},
+                {'name': 'hasta', 'label': 'Hasta', 'tipo': 'date'},
+            ],
+            sum_fields=('subtotal', 'iva', 'total'),
+            clear_url=reverse('admon_finanzas:gastos'),
+            export_nombre='gastos', export_order=('-fecha', '-id'),
+            export_columnas=[
+                ('Fecha', lambda o: o.fecha.strftime('%d/%m/%Y') if o.fecha else ''),
+                ('Categoría', lambda o: o.categoria.nombre),
+                ('Clasificación', lambda o: o.categoria.get_clasificacion_display()),
+                ('Descripción', 'descripcion'), ('Proveedor', 'proveedor_nombre'),
+                ('Subtotal', 'subtotal'), ('IVA', 'iva'), ('Total', 'total'),
+                ('Referencia', 'referencia')],
+        )
+        if res['export']:
+            return res['export']
+        context = {
+            'gastos': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
+            'categorias': cats,
+            'sucursal_activa': sucursal, 'seccion': 'finanzas',
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        from .models import Gasto, CategoriaGasto
+        accion = request.POST.get('accion')
+
+        if accion == 'eliminar':
+            g = get_object_or_404(Gasto, id=request.POST.get('gasto_id'), empresa=empresa)
+            g.delete()
+            messages.success(request, "Gasto eliminado.")
+            return redirect('admon_finanzas:gastos')
+
+        if accion == 'nueva_categoria':
+            nombre = (request.POST.get('cat_nombre') or '').strip()
+            clasif = request.POST.get('cat_clasificacion') or 'ADMIN'
+            if nombre:
+                CategoriaGasto.objects.get_or_create(
+                    empresa=empresa, nombre=nombre, defaults={'clasificacion': clasif})
+                messages.success(request, f"Categoría '{nombre}' creada.")
+            return redirect('admon_finanzas:gastos')
+
+        # Alta de gasto
+        try:
+            categoria = get_object_or_404(
+                CategoriaGasto, id=request.POST.get('categoria'), empresa=empresa)
+            subtotal = decimal.Decimal(request.POST.get('subtotal') or '0')
+            iva = decimal.Decimal(request.POST.get('iva') or '0')
+            if iva == 0 and request.POST.get('aplica_iva') == 'on':
+                iva = (subtotal * decimal.Decimal('0.16')).quantize(decimal.Decimal('0.01'))
+            g = Gasto.objects.create(
+                empresa=empresa, sucursal=sucursal, categoria=categoria,
+                fecha=request.POST.get('fecha'),
+                descripcion=(request.POST.get('descripcion') or '').strip(),
+                proveedor_nombre=(request.POST.get('proveedor_nombre') or '').strip(),
+                subtotal=subtotal, iva=iva, total=subtotal + iva,
+                referencia=(request.POST.get('referencia') or '').strip(),
+                uuid_cfdi=(request.POST.get('uuid_cfdi') or '').strip() or None,
+                comprobante=request.FILES.get('comprobante'),
+                creado_por=request.user)
+            messages.success(request, f"Gasto registrado: ${g.total}.")
+        except Exception as e:
+            messages.error(request, f"No se pudo registrar el gasto: {e}")
+        return redirect('admon_finanzas:gastos')

@@ -39,13 +39,29 @@
                     <td class="py-4 text-sm font-bold text-slate-600">(−) Costo de ventas</td>
                     <td class="py-4 text-right text-lg font-black text-rose-500">−${{ costo|floatformat:2|intcomma }}</td>
                 </tr>
-                <tr class="bg-emerald-50/50">
-                    <td class="py-5 px-3 text-sm font-black text-emerald-700 uppercase tracking-widest">= Utilidad bruta</td>
-                    <td class="py-5 px-3 text-right text-2xl font-black text-emerald-600">${{ utilidad|floatformat:2|intcomma }}</td>
+                <tr class="bg-slate-50/70">
+                    <td class="py-4 px-3 text-sm font-black text-slate-700 uppercase tracking-widest">= Utilidad bruta</td>
+                    <td class="py-4 px-3 text-right text-lg font-black text-slate-800">${{ utilidad|floatformat:2|intcomma }} <span class="text-[10px] text-slate-400">({{ margen|floatformat:1 }}%)</span></td>
                 </tr>
+                {% for grp in gastos_grupos %}
                 <tr>
-                    <td class="py-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Margen bruto</td>
-                    <td class="py-3 text-right text-sm font-black text-slate-500">{{ margen|floatformat:1 }}%</td>
+                    <td class="pt-4 pb-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">(−) {{ grp.clasificacion }}</td>
+                    <td class="pt-4 pb-1 text-right text-sm font-bold text-rose-500">−${{ grp.total|floatformat:2|intcomma }}</td>
+                </tr>
+                {% for nombre, monto in grp.cats %}
+                <tr>
+                    <td class="py-1 pl-6 text-[11px] font-bold text-slate-400">{{ nombre }}</td>
+                    <td class="py-1 text-right text-[11px] font-bold text-slate-400">−${{ monto|floatformat:2|intcomma }}</td>
+                </tr>
+                {% endfor %}
+                {% endfor %}
+                <tr>
+                    <td class="py-3 text-sm font-bold text-slate-600">(−) Total gastos de operación</td>
+                    <td class="py-3 text-right text-lg font-black text-rose-500">−${{ total_gastos|floatformat:2|intcomma }}</td>
+                </tr>
+                <tr class="bg-emerald-50/50">
+                    <td class="py-5 px-3 text-sm font-black text-emerald-700 uppercase tracking-widest">= Utilidad de operación</td>
+                    <td class="py-5 px-3 text-right text-2xl font-black {% if util_operacion < 0 %}text-rose-600{% else %}text-emerald-600{% endif %}">${{ util_operacion|floatformat:2|intcomma }} <span class="text-[11px] text-slate-400">({{ margen_op|floatformat:1 }}%)</span></td>
                 </tr>
             </tbody>
         </table>

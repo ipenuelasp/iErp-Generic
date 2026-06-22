@@ -18,6 +18,9 @@ urlpatterns = [
     path('estado-cuenta/<int:cliente_id>/', views.EstadoCuentaClientePDFView.as_view(), name='estado_cuenta_cliente'),
     path('cobros/nuevo/', views.RegistrarCobroView.as_view(), name='registrar_cobro'),
 
+    # Gastos de operación
+    path('gastos/', views.GastosView.as_view(), name='gastos'),
+
     # Reportes
     path('estado-resultados/', views.EstadoResultadosView.as_view(), name='estado_resultados'),
 ]

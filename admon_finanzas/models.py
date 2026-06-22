@@ -3,7 +3,7 @@ import decimal
 from django.db import models
 from django.conf import settings
 
-from admon_empresas.models import Empresa, Moneda
+from admon_empresas.models import Empresa, Moneda, Sucursal
 
 
 class MetodoPago(models.Model):
@@ -241,3 +241,61 @@ class AplicacionPago(models.Model):
     def __str__(self):
         doc = self.documento
         return f"{self.pago.folio} → {doc.folio if doc else '?'}: {self.monto_aplicado}"
+
+
+class CategoriaGasto(models.Model):
+    """Categoría para clasificar gastos de operación (renta, sueldos, etc.)."""
+    CLASIF_CHOICES = [
+        ('VENTA', 'Gastos de venta'),
+        ('ADMIN', 'Gastos de administración'),
+        ('FINANCIERO', 'Gastos financieros'),
+        ('OTRO', 'Otros gastos'),
+    ]
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='categorias_gasto')
+    nombre = models.CharField(max_length=80)
+    clasificacion = models.CharField(max_length=12, choices=CLASIF_CHOICES, default='ADMIN')
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Categoría de gasto"
+        verbose_name_plural = "Categorías de gasto"
+        ordering = ['clasificacion', 'nombre']
+        unique_together = ('empresa', 'nombre')
+
+    def __str__(self):
+        return self.nombre
+
+
+class Gasto(models.Model):
+    """Gasto de operación (no inventario): renta, servicios, sueldos, comisiones,
+    envíos, financieros, etc. Importes sin IVA para el estado de resultados."""
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='gastos')
+    sucursal = models.ForeignKey(Sucursal, on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='gastos')
+    categoria = models.ForeignKey(CategoriaGasto, on_delete=models.PROTECT, related_name='gastos')
+
+    fecha = models.DateField()
+    descripcion = models.CharField(max_length=255)
+    proveedor_nombre = models.CharField(max_length=160, blank=True, help_text="A quién se le pagó")
+
+    subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=0,
+                                   help_text="Importe sin IVA")
+    iva = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+
+    metodo = models.ForeignKey(MetodoPago, on_delete=models.SET_NULL, null=True, blank=True)
+    referencia = models.CharField(max_length=80, blank=True)
+    comprobante = models.FileField(upload_to='gastos/', null=True, blank=True)
+    uuid_cfdi = models.CharField(max_length=40, blank=True, null=True)
+
+    creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+                                   related_name='gastos_registrados')
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Gasto"
+        verbose_name_plural = "Gastos"
+        ordering = ['-fecha', '-id']
+
+    def __str__(self):
+        return f"{self.fecha} · {self.descripcion} · ${self.total}"
