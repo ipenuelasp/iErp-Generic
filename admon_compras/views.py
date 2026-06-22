@@ -372,10 +372,20 @@ class HistorialOrdenesView(LoginRequiredMixin, View):
         agg = qs.aggregate(n=Count('id'), subtotal=Sum('subtotal'),
                            impuestos=Sum('impuestos'), total=Sum('total'))
 
+        # --- Exportar a Excel (CSV) el resultado filtrado completo ---
+        if request.GET.get('export') == 'csv':
+            return self._exportar_csv(qs)
+
         # --- Paginación server-side ---
         from django.core.paginator import Paginator
+        try:
+            per_page = int(request.GET.get('per_page') or 25)
+        except ValueError:
+            per_page = 25
+        if per_page not in (25, 50, 100, 200):
+            per_page = 25
         qs = qs.prefetch_related('detalles__producto')
-        paginator = Paginator(qs, 25)
+        paginator = Paginator(qs, per_page)
         page_obj = paginator.get_page(request.GET.get('page'))
 
         # Querystring sin 'page' para conservar filtros al paginar
@@ -396,12 +406,31 @@ class HistorialOrdenesView(LoginRequiredMixin, View):
             'estados': OrdenCompra.ESTADO_CHOICES,
             'filtros': {'q': q, 'estado': f_estado, 'proveedor': f_prov,
                         'desde': f_desde, 'hasta': f_hasta, 'personal': f_personal},
+            'per_page': per_page,
             'querystring': querystring,
             'por_autorizar': por_autorizar,
             'sucursal_activa': sucursal,
             'seccion': 'compras',
         }
         return render(request, self.template_name, context)
+
+    def _exportar_csv(self, qs):
+        import csv as _csv
+        resp = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+        resp['Content-Disposition'] = (
+            f'attachment; filename="ordenes_compra_{timezone.now():%Y%m%d_%H%M}.csv"')
+        resp.write('﻿')  # BOM para que Excel respete acentos
+        w = _csv.writer(resp)
+        w.writerow(['Folio', 'Proveedor', 'Estado', 'Uso', 'Emisión',
+                    'Subtotal', 'Impuestos', 'Total', 'Moneda'])
+        for o in qs.order_by('-fecha_emision', '-id'):
+            w.writerow([
+                o.folio, str(o.proveedor), o.get_estado_display(),
+                'Personal' if o.uso_personal else 'Negocio',
+                o.fecha_emision.strftime('%d/%m/%Y') if o.fecha_emision else '',
+                o.subtotal, o.impuestos, o.total,
+                o.moneda.codigo if o.moneda else ''])
+        return resp
 
 
 class OrdenDetalleView(LoginRequiredMixin, View):
