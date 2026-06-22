@@ -89,9 +89,13 @@
         {% endif %}
         {% if 'inventarios' in dash.mods %}
         <a href="{% url 'admon_inventarios:existencias' %}" class="bg-white rounded-[1.75rem] border border-slate-100 shadow-sm p-6 hover:shadow-lg transition-all">
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-boxes-stacked mr-2 text-brand"></i>Inventario</p>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-boxes-stacked mr-2 text-brand"></i>Inventario vendible</p>
             <p class="text-2xl font-black text-slate-800">${{ dash.inv_valor|floatformat:2|intcomma }}</p>
-            <p class="text-[10px] font-bold text-slate-400 mt-1">{{ dash.skus_con_stock }} de {{ dash.skus }} SKU con stock{% if dash.alertas_count %} · <span class="text-rose-500">{{ dash.alertas_count }} bajo mínimo</span>{% endif %}</p>
+            <p class="text-[10px] font-bold text-slate-400 mt-1">a costo · {{ dash.skus_con_stock }} de {{ dash.skus }} SKU con stock{% if dash.alertas_count %} · <span class="text-rose-500">{{ dash.alertas_count }} bajo mínimo</span>{% endif %}</p>
+            <div class="mt-3 pt-3 border-t border-slate-50 flex justify-between text-[10px] font-bold">
+                <span class="text-slate-400">Valor venta <span class="text-slate-700">${{ dash.inv_valor_venta|floatformat:2|intcomma }}</span></span>
+                <span class="text-emerald-600">+${{ dash.inv_ganancia_latente|floatformat:2|intcomma }} ({{ dash.inv_margen_latente|floatformat:1 }}%)</span>
+            </div>
         </a>
         {% endif %}
     </div>

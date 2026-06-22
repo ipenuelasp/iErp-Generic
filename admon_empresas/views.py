@@ -178,11 +178,19 @@ def _dashboard_data(request):
     if 'inventarios' in mods:
         from admon_inventarios.models import Producto, Existencia, ProductoSucursal
         from django.db.models import Sum, F
-        d['skus'] = Producto.objects.filter(empresa=empresa, activo=True).count()
-        ex = Existencia.objects.filter(producto__empresa=empresa, cantidad__gt=0)
+        # Solo productos vendibles (excluye los de uso personal y no vendibles)
+        d['skus'] = Producto.objects.filter(
+            empresa=empresa, activo=True, es_vendible=True).count()
+        ex = Existencia.objects.filter(
+            producto__empresa=empresa, cantidad__gt=0, producto__es_vendible=True)
         d['skus_con_stock'] = ex.values('producto').distinct().count()
         valor = ex.aggregate(v=Sum(F('cantidad') * F('producto__costo_unitario')))['v']
         d['inv_valor'] = valor or D('0')
+        # Valor potencial de venta y ganancia latente (a precio de lista)
+        valor_venta = ex.aggregate(v=Sum(F('cantidad') * F('producto__precio_venta')))['v'] or D('0')
+        d['inv_valor_venta'] = valor_venta
+        d['inv_ganancia_latente'] = valor_venta - d['inv_valor']
+        d['inv_margen_latente'] = (d['inv_ganancia_latente'] / valor_venta * 100) if valor_venta else D('0')
 
         # Alertas: productos con stock mínimo definido y existencia por debajo
         alertas = []
