@@ -27,8 +27,10 @@
         {% endif %}
     </div>
 
+    {% include "includes/lista_filtros.html" %}
+
     <div class="overflow-x-auto">
-        <table class="w-full text-left border-separate border-spacing-y-3"> 
+        <table class="w-full text-left border-separate border-spacing-y-3">
             <thead>
                 <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
                     <th class="px-6 py-4 w-32">SKU</th> 
@@ -120,10 +122,14 @@
                         {% endif %}
                     </td>
                 </tr>
+                {% empty %}
+                <tr><td colspan="7" class="px-6 py-14 text-center text-slate-400 italic text-sm">Sin productos que coincidan con los filtros.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+
+    {% include "includes/lista_paginacion.html" %}
 </div>
 
 <div id="modalProducto" class="fixed inset-0 z-[100] hidden overflow-y-auto">

@@ -79,12 +79,53 @@ class CatalogoProductosView(LoginRequiredMixin, View):
 
         active_tab = request.session.pop('active_tab_prod', 'productos')
 
+        from admon_empresas import listas
+        from django.urls import reverse
+        prod_params = ('q', 'clase', 'grupo', 'tipo', 'activo', 'page', 'per_page')
+        if any(request.GET.get(p) for p in prod_params):
+            active_tab = 'productos'
+
+        prod_qs = Producto.objects.filter(empresa=empresa).select_related(
+            'clase', 'grupo', 'tipo', 'unidad_medida', 'ubicacion_defecto',
+            'grupo__ubicacion_defecto').order_by('sku')
+        prod_res = listas.construir(
+            request, prod_qs,
+            placeholder='SKU, nombre, descripción o código de barras',
+            search_header=('sku', 'nombre', 'descripcion', 'codigo_barras'),
+            exactos={'clase': 'clase_id', 'grupo': 'grupo_id', 'tipo': 'tipo_id',
+                     'activo': 'activo'},
+            filtros_ui=[
+                {'name': 'clase', 'label': 'Clase', 'tipo': 'select',
+                 'opciones': [(c.id, str(c)) for c in Clase.objects.filter(empresa=empresa)]},
+                {'name': 'grupo', 'label': 'Grupo', 'tipo': 'select',
+                 'opciones': [(g.id, str(g)) for g in Grupo.objects.filter(empresa=empresa)]},
+                {'name': 'tipo', 'label': 'Tipo', 'tipo': 'select',
+                 'opciones': [(t.id, str(t)) for t in Tipo.objects.filter(empresa=empresa)]},
+                {'name': 'activo', 'label': 'Estatus', 'tipo': 'select', 'todos': 'Todos',
+                 'opciones': [('1', 'Activos'), ('0', 'Inactivos')]},
+            ],
+            clear_url=reverse('admon_inventarios:catalogos_productos'),
+            export_nombre='productos',
+            export_order=('sku',),
+            export_columnas=[
+                ('SKU', 'sku'), ('Nombre', 'nombre'), ('Descripción', 'descripcion'),
+                ('Unidad', lambda o: o.unidad_medida.codigo if o.unidad_medida else ''),
+                ('Clase', lambda o: str(o.clase) if o.clase else ''),
+                ('Grupo', lambda o: str(o.grupo) if o.grupo else ''),
+                ('Tipo', lambda o: str(o.tipo) if o.tipo else ''),
+                ('Costo', 'costo_unitario'), ('Venta', 'precio_venta'),
+                ('Activo', lambda o: 'Sí' if o.activo else 'No')],
+        )
+        if prod_res['export']:
+            return prod_res['export']
+
         context = {
             'almacenes': Almacen.objects.filter(sucursal=sucursal_actual),
             'ubicaciones': Ubicacion.objects.filter(almacen__sucursal=sucursal_actual),
-            'productos': Producto.objects.filter(empresa=empresa).select_related(
-                'clase', 'grupo', 'tipo', 'unidad_medida', 'ubicacion_defecto', 'grupo__ubicacion_defecto'
-            ),
+            'productos': prod_res['page_obj'],
+            'page_obj': prod_res['page_obj'],
+            'totales': prod_res['totales'],
+            'lista': prod_res['lista'],
             'clases': Clase.objects.filter(empresa=empresa),
             'grupos': Grupo.objects.filter(empresa=empresa),
             'tipos': Tipo.objects.filter(empresa=empresa),
@@ -475,6 +516,21 @@ class ExistenciasView(LoginRequiredMixin, View):
             'producto__unidad_medida__codigo',
         ).annotate(total_stock=Sum('cantidad')).order_by('producto__nombre')
 
+        # Exportar a Excel (CSV) el resumen de existencias
+        if request.GET.get('export') == 'csv':
+            import csv as _csv
+            from django.utils import timezone as _tz
+            resp = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+            resp['Content-Disposition'] = (
+                f'attachment; filename="existencias_{_tz.now():%Y%m%d_%H%M}.csv"')
+            resp.write('﻿')
+            w = _csv.writer(resp)
+            w.writerow(['SKU', 'Producto', 'Unidad', 'Stock total'])
+            for it in stock:
+                w.writerow([it['producto__sku'], it['producto__nombre'],
+                            it['producto__unidad_medida__codigo'], it['total_stock']])
+            return resp
+
         detalle_existencias = Existencia.objects.filter(
             ubicacion__almacen__sucursal=sucursal,
             producto__empresa=empresa,
@@ -484,6 +540,7 @@ class ExistenciasView(LoginRequiredMixin, View):
         context = {
             'stock_resumen': stock,
             'detalle': detalle_existencias,
+            'total_productos': len(stock),
             'sucursal_activa': sucursal,
             'seccion': 'inventarios',
         }
