@@ -187,6 +187,21 @@ def _dashboard_data(request):
         d['venta_neta_mes'] = venta_neta
         d['ganancia_mes'] = venta_neta - costo_neto
         d['margen_mes'] = (d['ganancia_mes'] / venta_neta * 100) if venta_neta else D('0')
+
+        # Ganancia GENERAL (histórica, todo lo entregado, sin IVA): venta − costo
+        dets_tot = DetallePedido.objects.filter(
+            pedido__empresa=empresa,
+            pedido__estado__in=['ENTREGADO', 'ENTREGADO_PARCIAL']).select_related('producto')
+        vt = D('0'); ct = D('0')
+        for det in dets_tot:
+            qty = det.cantidad_entregada or D('0')
+            if qty <= 0:
+                continue
+            vt += qty * det.precio_unitario
+            ct += qty * (det.producto.costo_unitario or D('0'))
+        d['venta_total'] = vt
+        d['ganancia_total'] = vt - ct
+        d['margen_total'] = ((vt - ct) / vt * 100) if vt else D('0')
         d['top_productos'] = sorted(top.values(), key=lambda x: x['venta'], reverse=True)[:5]
 
     # ---- Compras: órdenes abiertas ----
