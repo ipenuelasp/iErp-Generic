@@ -116,6 +116,23 @@ def importar(archivo, empresa, sucursal, usuario):
             continue
         ordenes.setdefault(oid, []).append(row)
 
+    # El export de Amazon a veces repite la MISMA línea (mismo pedido, ASIN,
+    # cantidad y precio): es un artefacto del CSV, no una compra real. Se colapsa
+    # a una sola para no duplicar stock ni la CxP.
+    for oid, filas in ordenes.items():
+        vistos = set()
+        unicas = []
+        for r in filas:
+            clave = (r.get('ASIN', '').strip(),
+                     (r.get('Cantidad de producto') or '').strip(),
+                     (r.get('PPU de la compra') or '').strip(),
+                     (r.get('Título') or '').strip())
+            if clave in vistos:
+                continue
+            vistos.add(clave)
+            unicas.append(r)
+        ordenes[oid] = unicas
+
     last = OrdenCompra.objects.filter(empresa=empresa).order_by('consecutivo').last()
     consec = last.consecutivo if last else 0
 
@@ -125,6 +142,13 @@ def importar(archivo, empresa, sucursal, usuario):
     for oid, filas in ordenes.items():
         folio_oc = f"AMZ-OC-{oid}"
         if OrdenCompra.objects.filter(empresa=empresa, folio=folio_oc).exists():
+            res['omitidas'] += 1
+            continue
+
+        # Órdenes a $0 (reposiciones/garantías) no entran a inventario ni a CxP.
+        total_orden = sum((_num(r.get('PPU de la compra')) * (_num(r.get('Cantidad de producto')) or decimal.Decimal('1'))
+                           for r in filas), D0)
+        if total_orden <= 0:
             res['omitidas'] += 1
             continue
 

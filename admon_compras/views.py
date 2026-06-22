@@ -411,6 +411,48 @@ class OrdenDetalleView(LoginRequiredMixin, View):
                 orden.autorizador_actual = None
                 orden.save()
                 messages.info(request, f"{orden.folio} cancelada.")
+            elif accion == 'cancelar_revertir':
+                from django.db import transaction as _tx
+                from admon_inventarios.models import MovimientoInventario
+                from admon_inventarios.services import registrar_movimiento, StockInsuficiente
+                from admon_finanzas.models import FacturaProveedor
+                if orden.estado == 'CANCELADO':
+                    messages.info(request, f"{orden.folio} ya estaba cancelada.")
+                else:
+                    with _tx.atomic():
+                        revertidos = 0
+                        no_revertidos = 0
+                        movs = MovimientoInventario.objects.filter(
+                            empresa=empresa, referencia=orden.folio, tipo='ENTRADA')
+                        for m in movs:
+                            try:
+                                registrar_movimiento(
+                                    empresa=empresa, sucursal=m.sucursal, producto=m.producto,
+                                    ubicacion=m.ubicacion, tipo='AJUSTE_NEG', origen='AJUSTE',
+                                    cantidad=m.cantidad, usuario=request.user, lote=m.lote, serie=m.serie,
+                                    referencia=f"CANCEL {orden.folio}", costo_unitario=m.costo_unitario,
+                                    propiedad=m.propiedad, consignante=m.consignante)
+                                revertidos += 1
+                            except StockInsuficiente:
+                                no_revertidos += 1
+                        # Cancela CxP y borra sus egresos
+                        for fp in FacturaProveedor.objects.filter(orden_compra=orden):
+                            for ap in fp.aplicaciones.all():
+                                pago = ap.pago
+                                ap.delete()
+                                if not pago.aplicaciones.exists():
+                                    pago.delete()
+                            fp.estado = 'CANCELADA'
+                            fp.save(update_fields=['estado'])
+                        orden.estado = 'CANCELADO'
+                        orden.fecha_cancelacion = timezone.now()
+                        orden.usuario_cancelacion = request.user
+                        orden.motivo_cancelacion = request.POST.get('motivo') or 'Cancelación con reversa'
+                        orden.save()
+                    msg = f"{orden.folio} cancelada: {revertidos} líneas revertidas de inventario, CxP/egreso cancelados."
+                    if no_revertidos:
+                        msg += f" {no_revertidos} no se pudieron revertir (ya se vendieron)."
+                    messages.info(request, msg)
             elif accion == 'toggle_personal':
                 orden.uso_personal = not orden.uso_personal
                 orden.save(update_fields=['uso_personal'])
