@@ -258,11 +258,37 @@ class RecepcionesView(LoginRequiredMixin, View):
         if not ctx:
             return redirect('home')
         empresa, sucursal = ctx
+        from admon_empresas import listas
+        from django.urls import reverse
 
+        qs = RecepcionMaterial.objects.filter(
+            empresa=empresa, sucursal=sucursal
+        ).select_related('recibido_por', 'orden_compra').prefetch_related('detalles__producto')
+
+        res = listas.construir(
+            request, qs,
+            placeholder='Factura, proveedor, OC o producto (SKU / nombre)',
+            search_header=('numero_factura', 'remision_proveedor', 'proveedor_nombre',
+                           'orden_compra__folio', 'notas'),
+            detail_model=DetalleRecepcion,
+            detail_search=('producto__sku', 'producto__nombre'),
+            date_field='fecha_recepcion',
+            clear_url=reverse('admon_inventarios:recepciones'),
+            export_nombre='recepciones',
+            export_order=('-fecha_recepcion',),
+            export_columnas=[
+                ('Folio', 'folio'), ('Proveedor', 'proveedor_nombre'),
+                ('Factura', 'numero_factura'),
+                ('OC', lambda o: o.orden_compra.folio if o.orden_compra else ''),
+                ('Partidas', lambda o: o.detalles.count()),
+                ('Recibió', lambda o: o.recibido_por.username if o.recibido_por else ''),
+                ('Fecha', lambda o: o.fecha_recepcion.strftime('%d/%m/%Y %H:%M') if o.fecha_recepcion else '')],
+        )
+        if res['export']:
+            return res['export']
         context = {
-            'historico': RecepcionMaterial.objects.filter(
-                empresa=empresa, sucursal=sucursal
-            ).select_related('recibido_por').prefetch_related('detalles'),
+            'historico': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
             'sucursal_activa': sucursal,
             'seccion': 'inventarios',
         }
