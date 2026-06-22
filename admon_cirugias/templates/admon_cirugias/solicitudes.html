@@ -10,6 +10,8 @@
         <a href="{% url 'admon_cirugias:nueva_solicitud' %}" class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-1 transition-all"><i class="fa-solid fa-plus mr-2"></i> Nueva Solicitud</a>
     </div>
 
+    {% include "includes/lista_filtros.html" %}
+
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         <table class="w-full text-left">
             <thead class="bg-slate-50"><tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
@@ -26,9 +28,11 @@
                     <td class="px-6 py-4 text-center text-[10px] font-bold text-slate-400">{{ s.fecha_cirugia|date:"d/m/Y"|default:"—" }}</td>
                     <td class="px-8 py-4 text-center"><span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ s.color_estado }}-100 text-{{ s.color_estado }}-700">{{ s.get_estado_display }}</span></td>
                 </tr>
-                {% empty %}<tr><td colspan="5" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin solicitudes de cirugía.</td></tr>{% endfor %}
+                {% empty %}<tr><td colspan="5" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin solicitudes que coincidan con los filtros.</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>
+
+    {% include "includes/lista_paginacion.html" %}
 </div>
 {% endblock %}

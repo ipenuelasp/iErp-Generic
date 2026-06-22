@@ -23,9 +23,29 @@ class RecetasView(LoginRequiredMixin, View):
             return redirect('home')
         empresa, sucursal = ctx
 
+        from admon_empresas import listas
+        from django.urls import reverse
+        res = listas.construir(
+            request,
+            Receta.objects.filter(empresa=empresa).select_related(
+                'producto_terminado').prefetch_related('insumos__insumo').order_by('nombre'),
+            placeholder='Receta, versión o producto terminado (SKU / nombre)',
+            search_header=('nombre', 'version', 'producto_terminado__sku',
+                           'producto_terminado__nombre'),
+            clear_url=reverse('admon_produccion:recetas'),
+            export_nombre='recetas',
+            export_order=('nombre',),
+            export_columnas=[
+                ('Receta', 'nombre'), ('Versión', 'version'),
+                ('Producto terminado', lambda o: str(o.producto_terminado) if o.producto_terminado else ''),
+                ('Rendimiento', 'rendimiento'),
+                ('Activa', lambda o: 'Sí' if o.activa else 'No')],
+        )
+        if res['export']:
+            return res['export']
         context = {
-            'recetas': Receta.objects.filter(empresa=empresa).select_related(
-                'producto_terminado').prefetch_related('insumos__insumo'),
+            'recetas': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
             'producibles': Producto.objects.filter(empresa=empresa, es_producible=True, activo=True),
             'materias_primas': Producto.objects.filter(empresa=empresa, es_materia_prima=True, activo=True),
             'puede_editar_maestro': puede_editar_maestro(request),
@@ -92,9 +112,39 @@ class OrdenesProduccionView(LoginRequiredMixin, View):
             return redirect('home')
         empresa, sucursal = ctx
 
-        context = {
-            'ordenes': OrdenProduccion.objects.filter(empresa=empresa, sucursal=sucursal).select_related(
+        from admon_empresas import listas
+        from django.urls import reverse
+        res = listas.construir(
+            request,
+            OrdenProduccion.objects.filter(empresa=empresa, sucursal=sucursal).select_related(
                 'receta__producto_terminado', 'responsable'),
+            placeholder='Folio, receta o producto terminado',
+            search_header=('folio', 'receta__nombre',
+                           'receta__producto_terminado__sku',
+                           'receta__producto_terminado__nombre'),
+            date_field='fecha_creacion',
+            exactos={'estado': 'estado'},
+            filtros_ui=[
+                {'name': 'estado', 'label': 'Estado', 'tipo': 'select',
+                 'opciones': OrdenProduccion.ESTADO_CHOICES},
+                {'name': 'desde', 'label': 'Desde', 'tipo': 'date'},
+                {'name': 'hasta', 'label': 'Hasta', 'tipo': 'date'},
+            ],
+            clear_url=reverse('admon_produccion:ordenes_produccion'),
+            export_nombre='ordenes_produccion',
+            export_order=('-fecha_creacion',),
+            export_columnas=[
+                ('Folio', 'folio'),
+                ('Producto', lambda o: str(o.receta.producto_terminado) if o.receta and o.receta.producto_terminado else ''),
+                ('A producir', 'cantidad_a_producir'), ('Producido', 'cantidad_producida'),
+                ('Estado', 'get_estado_display'),
+                ('Creada', lambda o: o.fecha_creacion.strftime('%d/%m/%Y') if o.fecha_creacion else '')],
+        )
+        if res['export']:
+            return res['export']
+        context = {
+            'ordenes': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
             'recetas': Receta.objects.filter(empresa=empresa, activa=True).select_related('producto_terminado'),
             'sucursal_activa': sucursal,
             'seccion': 'produccion',

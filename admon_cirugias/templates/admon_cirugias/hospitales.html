@@ -16,6 +16,8 @@
         </div>
     </div>
 
+    {% include "includes/lista_filtros.html" %}
+
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         <table class="w-full text-left">
             <thead class="bg-slate-50"><tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
@@ -35,10 +37,12 @@
                         </div>
                     </td>
                 </tr>
-                {% empty %}<tr><td colspan="4" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin hospitales registrados.</td></tr>{% endfor %}
+                {% empty %}<tr><td colspan="4" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin hospitales que coincidan con los filtros.</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>
+
+    {% include "includes/lista_paginacion.html" %}
 </div>
 
 <div id="modal" class="fixed inset-0 z-[100] hidden overflow-y-auto">

@@ -42,8 +42,24 @@ class DoctoresView(LoginRequiredMixin, View):
         if not ctx:
             return redirect('home')
         empresa, sucursal = ctx
+        from admon_empresas import listas
+        from django.urls import reverse
+        res = listas.construir(
+            request, Doctor.objects.filter(empresa=empresa).order_by('nombre'),
+            placeholder='Nombre, RFC, cédula, email o teléfono',
+            search_header=('nombre', 'rfc', 'cedula', 'email', 'telefono', 'celular'),
+            clear_url=reverse('admon_cirugias:doctores'),
+            export_nombre='doctores',
+            export_order=('nombre',),
+            export_columnas=[
+                ('Nombre', 'nombre'), ('RFC', 'rfc'), ('Cédula', 'cedula'),
+                ('Email', 'email'), ('Teléfono', 'telefono'), ('Celular', 'celular')],
+        )
+        if res['export']:
+            return res['export']
         return render(request, self.template_name, {
-            'doctores': Doctor.objects.filter(empresa=empresa),
+            'doctores': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
             'sucursal_activa': sucursal, 'seccion': 'cirugias',
         })
 
@@ -116,8 +132,29 @@ class HospitalesView(LoginRequiredMixin, View):
         if not ctx:
             return redirect('home')
         empresa, sucursal = ctx
+        from admon_empresas import listas
+        from django.urls import reverse
+        res = listas.construir(
+            request, Hospital.objects.filter(empresa=empresa).order_by('nombre'),
+            placeholder='Nombre, código o ciudad',
+            search_header=('nombre', 'codigo', 'ciudad'),
+            exactos={'activo': 'activo'},
+            filtros_ui=[
+                {'name': 'activo', 'label': 'Estatus', 'tipo': 'select', 'todos': 'Todos',
+                 'opciones': [('1', 'Activos'), ('0', 'Inactivos')]},
+            ],
+            clear_url=reverse('admon_cirugias:hospitales'),
+            export_nombre='hospitales',
+            export_order=('nombre',),
+            export_columnas=[
+                ('Código', 'codigo'), ('Nombre', 'nombre'), ('Ciudad', 'ciudad'),
+                ('Activo', lambda o: 'Sí' if o.activo else 'No')],
+        )
+        if res['export']:
+            return res['export']
         return render(request, self.template_name, {
-            'hospitales': Hospital.objects.filter(empresa=empresa),
+            'hospitales': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
             'sucursal_activa': sucursal, 'seccion': 'cirugias',
         })
 
@@ -186,9 +223,39 @@ class SolicitudesView(LoginRequiredMixin, View):
         if not ctx:
             return redirect('home')
         empresa, sucursal = ctx
+        from admon_empresas import listas
+        from django.urls import reverse
+        qs = SolicitudCirugia.objects.filter(
+            empresa=empresa, sucursal=sucursal).select_related('doctor', 'hospital', 'cliente')
+        res = listas.construir(
+            request, qs,
+            placeholder='Folio, paciente, doctor, hospital o cliente',
+            search_header=('folio', 'paciente', 'doctor__nombre', 'hospital__nombre',
+                           'cliente__nombre_fiscal', 'cliente__nombre_comercial'),
+            date_field='fecha_cirugia',
+            exactos={'estado': 'estado'},
+            filtros_ui=[
+                {'name': 'estado', 'label': 'Estado', 'tipo': 'select',
+                 'opciones': SolicitudCirugia.ESTADO_CHOICES},
+                {'name': 'desde', 'label': 'Cirugía desde', 'tipo': 'date'},
+                {'name': 'hasta', 'label': 'Cirugía hasta', 'tipo': 'date'},
+            ],
+            clear_url=reverse('admon_cirugias:solicitudes'),
+            export_nombre='solicitudes_cirugia',
+            export_order=('-id',),
+            export_columnas=[
+                ('Folio', 'folio'), ('Paciente', 'paciente'),
+                ('Doctor', lambda o: str(o.doctor) if o.doctor else ''),
+                ('Hospital', lambda o: str(o.hospital) if o.hospital else ''),
+                ('Cliente', lambda o: str(o.cliente) if o.cliente else ''),
+                ('Cirugía', lambda o: o.fecha_cirugia.strftime('%d/%m/%Y') if o.fecha_cirugia else ''),
+                ('Estado', 'get_estado_display')],
+        )
+        if res['export']:
+            return res['export']
         return render(request, self.template_name, {
-            'solicitudes': SolicitudCirugia.objects.filter(empresa=empresa, sucursal=sucursal).select_related(
-                'doctor', 'hospital', 'cliente'),
+            'solicitudes': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
             'sucursal_activa': sucursal, 'seccion': 'cirugias',
         })
 

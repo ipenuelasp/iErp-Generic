@@ -21,6 +21,8 @@
         {% endif %}
     </div>
 
+    {% include "includes/lista_filtros.html" %}
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {% for receta in recetas %}
         <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 {% if not receta.activa %}opacity-50{% endif %}">
@@ -70,6 +72,8 @@
         </div>
         {% endfor %}
     </div>
+
+    {% include "includes/lista_paginacion.html" %}
 </div>
 
 {% if puede_editar_maestro %}
