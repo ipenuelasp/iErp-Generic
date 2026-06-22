@@ -879,3 +879,105 @@ class OtrosResultadosView(LoginRequiredMixin, View):
         except Exception as e:
             messages.error(request, f"No se pudo registrar: {e}")
         return redirect('admon_finanzas:otros_resultados')
+
+
+# --------------------------------------------------------------------------
+# CONCILIACIÓN SAT (CFDI emitidos/recibidos vs sistema)
+# --------------------------------------------------------------------------
+class ConciliacionSATView(LoginRequiredMixin, View):
+    template_name = 'admon_finanzas/conciliacion_sat.html'
+
+    def get(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        from . import conciliacion as conc
+
+        filtro = (request.GET.get('estado') or '').strip()  # '', CONCILIADO, SIN_UUID, FALTANTE
+        direccion = (request.GET.get('direccion') or '').strip()
+        filas = conc.conciliar(empresa)
+
+        resumen = {'CONCILIADO': 0, 'SIN_UUID': 0, 'FALTANTE': 0,
+                   'EMITIDO': 0, 'RECIBIDO': 0}
+        for f in filas:
+            resumen[f['estado']] += 1
+            resumen[f['comp'].direccion] += 1
+
+        if filtro:
+            filas = [f for f in filas if f['estado'] == filtro]
+        if direccion:
+            filas = [f for f in filas if f['comp'].direccion == direccion]
+
+        context = {
+            'filas': filas, 'resumen': resumen,
+            'filtro': filtro, 'direccion_f': direccion,
+            'rfc_empresa': empresa.rfc,
+            'sucursal_activa': sucursal, 'seccion': 'finanzas',
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        from . import conciliacion as conc
+        from .models import ComprobanteSAT, Gasto, CategoriaGasto, FacturaCliente, FacturaProveedor
+        accion = request.POST.get('accion')
+
+        if accion == 'cargar':
+            archivos = request.FILES.getlist('archivos')
+            if not archivos:
+                messages.error(request, "Selecciona uno o más XML (o un ZIP) del SAT.")
+                return redirect('admon_finanzas:conciliacion_sat')
+            try:
+                r = conc.cargar_comprobantes(archivos, empresa)
+            except Exception as e:
+                messages.error(request, f"No se pudieron procesar los archivos: {e}")
+                return redirect('admon_finanzas:conciliacion_sat')
+            messages.success(
+                request, f"CFDI leídos: {r['leidos']} ({r['emitidos']} emitidos, "
+                f"{r['recibidos']} recibidos, {r['nuevos']} nuevos). "
+                f"Ajenos a tu RFC: {r['ajenos']}, no-CFDI: {r['no_cfdi']}.")
+            return redirect('admon_finanzas:conciliacion_sat')
+
+        if accion == 'limpiar':
+            ComprobanteSAT.objects.filter(empresa=empresa).delete()
+            messages.info(request, "Comprobantes SAT borrados (puedes volver a cargar).")
+            return redirect('admon_finanzas:conciliacion_sat')
+
+        comp = get_object_or_404(ComprobanteSAT, id=request.POST.get('comprobante_id'), empresa=empresa)
+
+        if accion == 'marcar_uuid':
+            # Buscar el documento candidato y ponerle el UUID
+            doc = None
+            if comp.direccion == 'EMITIDO':
+                doc = conc.FacturaClienteCand(empresa, comp)
+            else:
+                cand = conc.FacturaProvCand(empresa, comp) or conc.GastoCand(empresa, comp)
+                doc = cand[0] if cand else None
+            if doc:
+                doc.uuid_cfdi = comp.uuid
+                doc.save(update_fields=['uuid_cfdi'])
+                messages.success(request, f"UUID asignado a {doc.folio if hasattr(doc,'folio') else doc}.")
+            else:
+                messages.error(request, "Ya no se encontró un documento que coincida por monto y fecha.")
+            return redirect('admon_finanzas:conciliacion_sat')
+
+        if accion == 'alta_gasto':
+            if comp.direccion != 'RECIBIDO':
+                messages.error(request, "Solo los CFDI recibidos se dan de alta como gasto.")
+                return redirect('admon_finanzas:conciliacion_sat')
+            cat, _ = CategoriaGasto.objects.get_or_create(
+                empresa=empresa, nombre='Gastos por CFDI', defaults={'clasificacion': 'ADMIN'})
+            Gasto.objects.create(
+                empresa=empresa, sucursal=sucursal, categoria=cat, fecha=comp.fecha,
+                descripcion=(comp.serie_folio and f"CFDI {comp.serie_folio}") or "Gasto CFDI",
+                proveedor_nombre=comp.nombre_emisor[:160],
+                subtotal=comp.subtotal, iva=comp.iva, total=comp.total,
+                uuid_cfdi=comp.uuid, referencia=comp.serie_folio, creado_por=request.user)
+            messages.success(request, f"Gasto creado desde el CFDI por ${comp.total} (revisa su categoría en Gastos).")
+            return redirect('admon_finanzas:conciliacion_sat')
+
+        return redirect('admon_finanzas:conciliacion_sat')

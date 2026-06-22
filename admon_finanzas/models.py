@@ -327,3 +327,36 @@ class PartidaResultado(models.Model):
 
     def __str__(self):
         return f"{self.get_naturaleza_display()} · {self.concepto} · ${self.monto}"
+
+
+class ComprobanteSAT(models.Model):
+    """CFDI descargado del SAT (emitido o recibido) para conciliar contra el
+    sistema. Se sube el XML manualmente; se guarda su metadata por UUID."""
+    DIRECCION_CHOICES = [('EMITIDO', 'Emitido (venta)'), ('RECIBIDO', 'Recibido (compra/gasto)')]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='comprobantes_sat')
+    uuid = models.CharField(max_length=40)
+    direccion = models.CharField(max_length=8, choices=DIRECCION_CHOICES)
+    tipo = models.CharField(max_length=2, blank=True, help_text="I/E/P/N (ingreso, egreso, pago, nómina)")
+    fecha = models.DateField(null=True, blank=True)
+
+    rfc_emisor = models.CharField(max_length=15, blank=True)
+    nombre_emisor = models.CharField(max_length=200, blank=True)
+    rfc_receptor = models.CharField(max_length=15, blank=True)
+    nombre_receptor = models.CharField(max_length=200, blank=True)
+
+    subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    iva = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    serie_folio = models.CharField(max_length=60, blank=True)
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Comprobante SAT"
+        verbose_name_plural = "Comprobantes SAT"
+        ordering = ['-fecha', '-id']
+        unique_together = ('empresa', 'uuid')
+
+    def __str__(self):
+        return f"{self.uuid} · {self.get_direccion_display()} · ${self.total}"

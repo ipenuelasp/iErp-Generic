@@ -21,6 +21,7 @@ urlpatterns = [
     # Gastos de operación
     path('gastos/', views.GastosView.as_view(), name='gastos'),
     path('otros-resultados/', views.OtrosResultadosView.as_view(), name='otros_resultados'),
+    path('conciliacion-sat/', views.ConciliacionSATView.as_view(), name='conciliacion_sat'),
 
     # Reportes
     path('estado-resultados/', views.EstadoResultadosView.as_view(), name='estado_resultados'),

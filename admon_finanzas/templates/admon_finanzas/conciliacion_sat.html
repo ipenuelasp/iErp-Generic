@@ -1,0 +1,115 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Conciliación SAT</h1>
+            <p class="text-slate-500 mt-2 font-medium">CFDI emitidos y recibidos vs el sistema · RFC <span class="text-brand">{{ rfc_empresa }}</span></p>
+        </div>
+        <div class="flex gap-3">
+            <form method="POST" enctype="multipart/form-data" class="flex items-center gap-2">
+                {% csrf_token %}<input type="hidden" name="accion" value="cargar">
+                <input type="file" name="archivos" accept=".xml,.zip" multiple required
+                    class="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-4 py-3 text-[11px] font-bold text-slate-600">
+                <button type="submit" class="bg-brand text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20"><i class="fa-solid fa-upload mr-1"></i> Cargar XML/ZIP</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resumen -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <a href="?" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-center hover:shadow-md transition">
+            <p class="text-2xl font-black text-slate-800">{{ resumen.EMITIDO|add:resumen.RECIBIDO }}</p>
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Total CFDI</p>
+        </a>
+        <a href="?estado=CONCILIADO" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-center hover:shadow-md transition">
+            <p class="text-2xl font-black text-emerald-600">{{ resumen.CONCILIADO }}</p>
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Conciliados</p>
+        </a>
+        <a href="?estado=SIN_UUID" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-center hover:shadow-md transition">
+            <p class="text-2xl font-black text-amber-500">{{ resumen.SIN_UUID }}</p>
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Sin UUID en sistema</p>
+        </a>
+        <a href="?estado=FALTANTE" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-center hover:shadow-md transition">
+            <p class="text-2xl font-black text-rose-500">{{ resumen.FALTANTE }}</p>
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Faltan en sistema</p>
+        </a>
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-center">
+            <p class="text-sm font-black text-slate-600">{{ resumen.EMITIDO }} / {{ resumen.RECIBIDO }}</p>
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Emitidos / Recibidos</p>
+        </div>
+    </div>
+
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex gap-2">
+            <a href="?" class="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl {% if not filtro and not direccion_f %}bg-brand text-white{% else %}bg-white border border-slate-200 text-slate-500{% endif %}">Todos</a>
+            <a href="?direccion=EMITIDO" class="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl {% if direccion_f == 'EMITIDO' %}bg-brand text-white{% else %}bg-white border border-slate-200 text-slate-500{% endif %}">Emitidos (ventas)</a>
+            <a href="?direccion=RECIBIDO" class="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl {% if direccion_f == 'RECIBIDO' %}bg-brand text-white{% else %}bg-white border border-slate-200 text-slate-500{% endif %}">Recibidos (compras)</a>
+        </div>
+        {% if resumen.CONCILIADO or resumen.FALTANTE %}
+        <form method="POST" onsubmit="return confirm('¿Borrar todos los comprobantes SAT cargados? (no toca tus CxC/CxP/Gastos)')">
+            {% csrf_token %}<input type="hidden" name="accion" value="limpiar">
+            <button class="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500"><i class="fa-solid fa-trash-can mr-1"></i> Limpiar cargados</button>
+        </form>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50">
+                <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-6 py-5 font-black">Fecha</th>
+                    <th class="px-6 py-5 font-black">Tipo</th>
+                    <th class="px-6 py-5 font-black">Emisor / Receptor</th>
+                    <th class="px-6 py-5 font-black">UUID</th>
+                    <th class="px-6 py-5 font-black text-right">Total</th>
+                    <th class="px-6 py-5 font-black text-center">Estado</th>
+                    <th class="px-6 py-5 font-black text-center">Acción</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for f in filas %}
+                <tr class="hover:bg-slate-50/80 transition">
+                    <td class="px-6 py-4 text-[11px] font-bold text-slate-500">{{ f.comp.fecha|date:"d/m/Y"|default:"—" }}</td>
+                    <td class="px-6 py-4">
+                        {% if f.comp.direccion == 'EMITIDO' %}<span class="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded uppercase">Venta</span>
+                        {% else %}<span class="text-[9px] font-black bg-purple-50 text-purple-600 px-2 py-1 rounded uppercase">Compra</span>{% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-[11px] font-bold text-slate-700">{% if f.comp.direccion == 'EMITIDO' %}{{ f.comp.nombre_receptor|default:f.comp.rfc_receptor|truncatechars:34 }}{% else %}{{ f.comp.nombre_emisor|default:f.comp.rfc_emisor|truncatechars:34 }}{% endif %}</td>
+                    <td class="px-6 py-4 text-[9px] font-mono text-slate-400">{{ f.comp.uuid|truncatechars:16 }}</td>
+                    <td class="px-6 py-4 text-right text-sm font-black text-slate-800">${{ f.comp.total|floatformat:2|intcomma }}</td>
+                    <td class="px-6 py-4 text-center">
+                        {% if f.estado == 'CONCILIADO' %}<span class="text-[9px] font-black bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full uppercase">✓ {{ f.doc_tipo }}</span>
+                        {% elif f.estado == 'SIN_UUID' %}<span class="text-[9px] font-black bg-amber-50 text-amber-600 px-3 py-1 rounded-full uppercase">Sin UUID</span>
+                        {% else %}<span class="text-[9px] font-black bg-rose-50 text-rose-600 px-3 py-1 rounded-full uppercase">Falta</span>{% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        {% if f.estado == 'SIN_UUID' %}
+                        <form method="POST" class="inline">{% csrf_token %}<input type="hidden" name="accion" value="marcar_uuid"><input type="hidden" name="comprobante_id" value="{{ f.comp.id }}">
+                            <button class="text-[10px] font-black uppercase text-brand hover:underline" title="Asignar UUID al {{ f.doc_tipo }} que coincide">Asignar UUID</button>
+                        </form>
+                        {% elif f.estado == 'FALTANTE' and f.comp.direccion == 'RECIBIDO' %}
+                        <form method="POST" class="inline" onsubmit="return confirm('¿Crear gasto desde este CFDI?')">{% csrf_token %}<input type="hidden" name="accion" value="alta_gasto"><input type="hidden" name="comprobante_id" value="{{ f.comp.id }}">
+                            <button class="text-[10px] font-black uppercase text-emerald-600 hover:underline"><i class="fa-solid fa-plus mr-1"></i> Alta gasto</button>
+                        </form>
+                        {% elif f.estado == 'FALTANTE' %}
+                        <span class="text-[9px] font-bold text-slate-300 italic">Registrar venta</span>
+                        {% else %}<span class="text-slate-300">—</span>{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="px-8 py-16 text-center text-slate-400 italic text-sm">Sube los XML (o un ZIP) descargados del SAT para iniciar la conciliación.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <p class="text-[10px] font-bold text-slate-400 mt-4 italic">
+        * "Falta" = el CFDI está en el SAT pero no en el sistema. Recibidos → "Alta gasto" lo crea desde el XML. Emitidos faltantes = ventas por registrar.
+        "Sin UUID" = hay una CxC/CxP/Gasto que coincide en monto y fecha pero sin UUID; "Asignar UUID" lo vincula.
+    </p>
+</div>
+{% endblock %}
