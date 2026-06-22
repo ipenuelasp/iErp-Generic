@@ -1,4 +1,4 @@
-{# Paginación reutilizable. Espera `page_obj` y `lista.querystring`. #}
+{% comment %}Paginación reutilizable. Espera `page_obj` y `lista.querystring`.{% endcomment %}
 {% if page_obj.paginator.num_pages > 1 %}
 <div class="flex items-center justify-between mt-6 px-2">
     <p class="text-[11px] font-bold text-slate-400">

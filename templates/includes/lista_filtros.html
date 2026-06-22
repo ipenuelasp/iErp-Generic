@@ -1,6 +1,6 @@
-{# Barra de filtros reutilizable. Espera en contexto `lista`:
-   lista.placeholder, lista.q, lista.filtros (lista de dicts), lista.per_page,
-   lista.querystring, lista.export_url (url base para limpiar). #}
+{% comment %}Barra de filtros reutilizable. Espera en contexto `lista`:
+lista.placeholder, lista.q, lista.filtros (lista de dicts), lista.per_page,
+lista.querystring, lista.clear_url (url base para limpiar).{% endcomment %}
 <form method="GET" class="bg-white rounded-[2rem] shadow-lg shadow-slate-200/40 border border-slate-100 p-6 mb-6 space-y-4">
     <div class="flex flex-col md:flex-row gap-3 md:items-end">
         <div class="flex-1">
