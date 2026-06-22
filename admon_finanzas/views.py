@@ -551,3 +551,79 @@ class RegistrarCobroView(LoginRequiredMixin, View):
 
         messages.success(request, f"Cobro {cobro.folio} registrado por {moneda.simbolo}{cobro.monto}.")
         return redirect('admon_finanzas:cuentas_por_cobrar')
+
+
+# --------------------------------------------------------------------------
+# ESTADO DE RESULTADOS (Fase 1: utilidad bruta por periodo)
+# --------------------------------------------------------------------------
+class EstadoResultadosView(LoginRequiredMixin, View):
+    """Estado de resultados simplificado: Ventas netas − Costo de ventas =
+    Utilidad bruta, por rango de fechas, con desglose mensual. Base: lo
+    entregado (pedidos ENTREGADO/parcial), todo sin IVA."""
+    template_name = 'admon_finanzas/estado_resultados.html'
+
+    def get(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        from datetime import date
+        from admon_ventas.models import DetallePedido
+        D = decimal.Decimal
+
+        hoy = date.today()
+        desde = (request.GET.get('desde') or date(hoy.year, 1, 1).isoformat()).strip()
+        hasta = (request.GET.get('hasta') or hoy.isoformat()).strip()
+
+        dets = DetallePedido.objects.filter(
+            pedido__empresa=empresa,
+            pedido__estado__in=['ENTREGADO', 'ENTREGADO_PARCIAL'],
+            pedido__fecha_emision__gte=desde,
+            pedido__fecha_emision__lte=hasta,
+        ).select_related('producto', 'pedido')
+
+        ventas = D('0'); costo = D('0')
+        meses = {}  # 'YYYY-MM' -> {ventas, costo}
+        for det in dets:
+            qty = det.cantidad_entregada or D('0')
+            if qty <= 0:
+                continue
+            v = qty * det.precio_unitario
+            c = qty * (det.producto.costo_unitario or D('0'))
+            ventas += v; costo += c
+            k = det.pedido.fecha_emision.strftime('%Y-%m')
+            m = meses.setdefault(k, {'ventas': D('0'), 'costo': D('0')})
+            m['ventas'] += v; m['costo'] += c
+
+        util = ventas - costo
+        margen = (util / ventas * 100) if ventas else D('0')
+
+        filas_mes = []
+        for k in sorted(meses):
+            mv = meses[k]['ventas']; mc = meses[k]['costo']
+            filas_mes.append({
+                'mes': k, 'ventas': mv, 'costo': mc, 'utilidad': mv - mc,
+                'margen': ((mv - mc) / mv * 100) if mv else D('0')})
+
+        # Exportar a Excel (CSV)
+        if request.GET.get('export') == 'csv':
+            import csv as _csv
+            resp = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+            resp['Content-Disposition'] = f'attachment; filename="estado_resultados_{desde}_a_{hasta}.csv"'
+            resp.write('﻿')
+            w = _csv.writer(resp)
+            w.writerow(['Mes', 'Ventas netas', 'Costo de ventas', 'Utilidad bruta', 'Margen %'])
+            for f in filas_mes:
+                w.writerow([f['mes'], f['ventas'].quantize(D('0.01')), f['costo'].quantize(D('0.01')),
+                            f['utilidad'].quantize(D('0.01')), f"{f['margen']:.1f}"])
+            w.writerow(['TOTAL', ventas.quantize(D('0.01')), costo.quantize(D('0.01')),
+                        util.quantize(D('0.01')), f"{margen:.1f}"])
+            return resp
+
+        context = {
+            'desde': desde, 'hasta': hasta,
+            'ventas': ventas, 'costo': costo, 'utilidad': util, 'margen': margen,
+            'filas_mes': filas_mes,
+            'sucursal_activa': sucursal, 'seccion': 'finanzas',
+        }
+        return render(request, self.template_name, context)

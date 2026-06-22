@@ -1,0 +1,86 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-7xl mx-auto p-8">
+
+    <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Estado de Resultados</h1>
+            <p class="text-slate-500 mt-2 font-medium">Utilidad bruta de <span class="text-brand">{{ empresa.nombre_fiscal }}</span> · sin IVA</p>
+        </div>
+    </div>
+
+    <!-- Filtro de periodo -->
+    <form method="GET" class="bg-white rounded-[2rem] shadow-lg shadow-slate-200/40 border border-slate-100 p-6 mb-6">
+        <div class="flex flex-col md:flex-row gap-3 md:items-end">
+            <div>
+                <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Desde</label>
+                <input type="date" name="desde" value="{{ desde }}" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700">
+            </div>
+            <div>
+                <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Hasta</label>
+                <input type="date" name="hasta" value="{{ hasta }}" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700">
+            </div>
+            <button type="submit" class="bg-brand text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest"><i class="fa-solid fa-filter mr-1"></i> Aplicar</button>
+            <a href="?desde={{ desde }}&hasta={{ hasta }}&export=csv" class="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest"><i class="fa-solid fa-file-excel mr-1"></i> Excel</a>
+        </div>
+    </form>
+
+    <!-- Resumen -->
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-6">
+        <table class="w-full">
+            <tbody class="divide-y divide-slate-100">
+                <tr>
+                    <td class="py-4 text-sm font-bold text-slate-600">Ventas netas</td>
+                    <td class="py-4 text-right text-lg font-black text-slate-800">${{ ventas|floatformat:2|intcomma }}</td>
+                </tr>
+                <tr>
+                    <td class="py-4 text-sm font-bold text-slate-600">(−) Costo de ventas</td>
+                    <td class="py-4 text-right text-lg font-black text-rose-500">−${{ costo|floatformat:2|intcomma }}</td>
+                </tr>
+                <tr class="bg-emerald-50/50">
+                    <td class="py-5 px-3 text-sm font-black text-emerald-700 uppercase tracking-widest">= Utilidad bruta</td>
+                    <td class="py-5 px-3 text-right text-2xl font-black text-emerald-600">${{ utilidad|floatformat:2|intcomma }}</td>
+                </tr>
+                <tr>
+                    <td class="py-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Margen bruto</td>
+                    <td class="py-3 text-right text-sm font-black text-slate-500">{{ margen|floatformat:1 }}%</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Desglose mensual -->
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50">
+                <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-8 py-5 font-black">Mes</th>
+                    <th class="px-6 py-5 font-black text-right">Ventas netas</th>
+                    <th class="px-6 py-5 font-black text-right">Costo de ventas</th>
+                    <th class="px-6 py-5 font-black text-right">Utilidad bruta</th>
+                    <th class="px-8 py-5 font-black text-right">Margen</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for f in filas_mes %}
+                <tr class="hover:bg-slate-50/80 transition">
+                    <td class="px-8 py-4 text-xs font-black text-slate-700">{{ f.mes }}</td>
+                    <td class="px-6 py-4 text-right text-xs font-bold text-slate-600">${{ f.ventas|floatformat:2|intcomma }}</td>
+                    <td class="px-6 py-4 text-right text-xs font-bold text-rose-400">${{ f.costo|floatformat:2|intcomma }}</td>
+                    <td class="px-6 py-4 text-right text-sm font-black text-emerald-600">${{ f.utilidad|floatformat:2|intcomma }}</td>
+                    <td class="px-8 py-4 text-right text-[11px] font-black text-slate-500">{{ f.margen|floatformat:1 }}%</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin ventas entregadas en este periodo.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <p class="text-[10px] font-bold text-slate-400 mt-4 italic">
+        * Base: pedidos entregados (total o parcial) en el periodo. Importes sin IVA. La utilidad bruta no incluye gastos de operación (próxima fase).
+    </p>
+</div>
+{% endblock %}
