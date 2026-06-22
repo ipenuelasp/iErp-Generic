@@ -100,8 +100,34 @@ class ProveedoresView(LoginRequiredMixin, View):
         if not ctx:
             return redirect('home')
         empresa, sucursal = ctx
+        from admon_empresas import listas
+        from django.urls import reverse
+        qs = Proveedor.objects.filter(empresa=empresa).prefetch_related(
+            'sucursales_acceso').order_by('nombre_fiscal')
+        res = listas.construir(
+            request, qs,
+            placeholder='Nombre, RFC, email o contacto',
+            search_header=('nombre_fiscal', 'nombre_comercial', 'rfc',
+                           'email', 'contacto_nombre', 'telefono', 'celular'),
+            exactos={'activo': 'activo'},
+            filtros_ui=[
+                {'name': 'activo', 'label': 'Estatus', 'tipo': 'select', 'todos': 'Todos',
+                 'opciones': [('1', 'Activos'), ('0', 'Inactivos')]},
+            ],
+            clear_url=reverse('admon_compras:proveedores'),
+            export_nombre='proveedores',
+            export_order=('nombre_fiscal',),
+            export_columnas=[
+                ('Razón social', 'nombre_fiscal'), ('Comercial', 'nombre_comercial'),
+                ('RFC', 'rfc'), ('Email', 'email'), ('Teléfono', 'telefono'),
+                ('Contacto', 'contacto_nombre'), ('Días crédito', 'dias_credito'),
+                ('Activo', lambda o: 'Sí' if o.activo else 'No')],
+        )
+        if res['export']:
+            return res['export']
         context = {
-            'proveedores': Proveedor.objects.filter(empresa=empresa).prefetch_related('sucursales_acceso'),
+            'proveedores': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
             'form': ProveedorForm(empresa=empresa),
             'sucursal_activa': sucursal,
             'seccion': 'compras',

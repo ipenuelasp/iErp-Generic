@@ -23,6 +23,8 @@
         </div>
     </div>
 
+    {% include "includes/lista_filtros.html" %}
+
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         <table class="w-full text-left">
             <thead class="bg-slate-50">
@@ -67,11 +69,13 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="6" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin clientes registrados.</td></tr>
+                <tr><td colspan="6" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin clientes que coincidan con los filtros.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+
+    {% include "includes/lista_paginacion.html" %}
 </div>
 
 <!-- MODAL CLIENTE -->

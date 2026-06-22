@@ -100,8 +100,33 @@ class ClientesView(LoginRequiredMixin, View):
         if not ctx:
             return redirect('home')
         empresa, sucursal = ctx
+        from admon_empresas import listas
+        from django.urls import reverse
+        qs = Cliente.objects.filter(empresa=empresa).prefetch_related(
+            'sucursales_acceso').order_by('nombre_fiscal')
+        res = listas.construir(
+            request, qs,
+            placeholder='Nombre, RFC, email o contacto',
+            search_header=('nombre_fiscal', 'nombre_comercial', 'rfc',
+                           'email', 'contacto_nombre'),
+            exactos={'activo': 'activo'},
+            filtros_ui=[
+                {'name': 'activo', 'label': 'Estatus', 'tipo': 'select', 'todos': 'Todos',
+                 'opciones': [('1', 'Activos'), ('0', 'Inactivos')]},
+            ],
+            clear_url=reverse('admon_ventas:clientes'),
+            export_nombre='clientes',
+            export_order=('nombre_fiscal',),
+            export_columnas=[
+                ('Razón social', 'nombre_fiscal'), ('Comercial', 'nombre_comercial'),
+                ('RFC', 'rfc'), ('Email', 'email'), ('Contacto', 'contacto_nombre'),
+                ('Activo', lambda o: 'Sí' if o.activo else 'No')],
+        )
+        if res['export']:
+            return res['export']
         context = {
-            'clientes': Cliente.objects.filter(empresa=empresa).prefetch_related('sucursales_acceso'),
+            'clientes': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
             'form': ClienteForm(empresa=empresa),
             'sucursal_activa': sucursal,
             'seccion': 'ventas',
