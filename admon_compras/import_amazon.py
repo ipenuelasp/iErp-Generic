@@ -7,8 +7,22 @@ Idempotente: si una orden ya se importó (por su folio), se omite.
 import csv
 import io
 import decimal
+from datetime import datetime
 
 from django.db import transaction
+from django.utils import timezone
+
+
+def _fecha(s):
+    """Convierte la fecha del pedido (dd/mm/aaaa) a datetime aware (mediodía)."""
+    s = (s or '').strip()
+    for fmt in ('%d/%m/%Y', '%Y-%m-%d', '%m/%d/%Y'):
+        try:
+            dt = datetime.strptime(s, fmt).replace(hour=12)
+            return timezone.make_aware(dt) if timezone.is_naive(dt) else dt
+        except ValueError:
+            continue
+    return None
 
 
 def _num(s):
@@ -43,7 +57,8 @@ def _grupo_codigo(titulo, categoria):
 def importar(archivo, empresa, sucursal, usuario):
     """Procesa el CSV de Amazon. Devuelve dict con el resumen."""
     from admon_inventarios.models import (Producto, Grupo, UnidadMedida, Almacen,
-                                          Ubicacion, RecepcionMaterial, DetalleRecepcion)
+                                          Ubicacion, RecepcionMaterial, DetalleRecepcion,
+                                          MovimientoInventario)
     from admon_inventarios.services import registrar_movimiento
     from admon_empresas.models import Impuesto
 
@@ -90,10 +105,15 @@ def importar(archivo, empresa, sucursal, usuario):
             omitidas += 1
             continue
 
+        fecha_dt = _fecha(filas[0].get('Fecha del pedido'))
         rec = RecepcionMaterial.objects.create(
             empresa=empresa, sucursal=sucursal, proveedor_nombre='Amazon',
             numero_factura=folio_ref, recibido_por=usuario,
             notas=f"Importación Amazon · orden {oid}")
+        # fecha_recepcion es auto_now_add; se fija con update a la fecha real
+        if fecha_dt:
+            RecepcionMaterial.objects.filter(pk=rec.pk).update(fecha_recepcion=fecha_dt)
+        mov_ids = []
 
         for row in filas:
             asin = row['ASIN'].strip()
@@ -123,11 +143,16 @@ def importar(archivo, empresa, sucursal, usuario):
             DetalleRecepcion.objects.create(
                 recepcion=rec, producto=prod, cantidad_recibida=cant,
                 ubicacion=ubic, costo_unitario=costo)
-            registrar_movimiento(
+            mov = registrar_movimiento(
                 empresa=empresa, sucursal=sucursal, producto=prod, ubicacion=ubic,
                 tipo='ENTRADA', origen='RECEPCION', cantidad=cant, usuario=usuario,
                 costo_unitario=costo, referencia=folio_ref, notas='Import Amazon')
+            mov_ids.append(mov.pk)
             lineas += 1
+
+        # Fija la fecha real del pedido en los movimientos (kardex) de esta orden
+        if fecha_dt and mov_ids:
+            MovimientoInventario.objects.filter(pk__in=mov_ids).update(fecha=fecha_dt)
         recepciones += 1
 
     return {
