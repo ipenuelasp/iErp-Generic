@@ -178,9 +178,9 @@ class ImportarAmazonView(LoginRequiredMixin, View):
             return redirect('admon_compras:historial_ordenes')
         messages.success(
             request,
-            f"Amazon importado: {res['recepciones']} recepciones, "
+            f"Amazon importado: {res['ordenes']} órdenes de compra (con recepción + CxP pagada), "
             f"{res['prod_creados']} productos nuevos, {res['prod_actualizados']} actualizados, "
-            f"{res['lineas']} líneas de stock."
+            f"gasto ${res['gasto']:,.2f}."
             + (f" ({res['omitidas']} órdenes ya estaban importadas)" if res['omitidas'] else ""))
         return redirect('admon_compras:historial_ordenes')
 
