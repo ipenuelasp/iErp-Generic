@@ -131,6 +131,29 @@ def _dashboard_data(request):
         ).values_list('id', flat=True))
         d['pagado_mes'] = sum((p.monto for p in pagos
                                if p.tipo == 'EGRESO' and p.id not in personales), D('0'))
+        d['flujo_neto_mes'] = d['cobrado_mes'] - d['pagado_mes']
+
+        # ---- Antigüedad (aging) de CxC y CxP: por vencer vs vencido por tramos ----
+        def _aging(pendientes):
+            b = {'por_vencer': D('0'), 'd1_30': D('0'), 'd31_60': D('0'),
+                 'd60': D('0'), 'vencido': D('0')}
+            for f in pendientes:
+                venc = f.fecha_vencimiento
+                if not venc or venc >= hoy:
+                    b['por_vencer'] += f.saldo
+                else:
+                    dias = (hoy - venc).days
+                    b['vencido'] += f.saldo
+                    if dias <= 30:
+                        b['d1_30'] += f.saldo
+                    elif dias <= 60:
+                        b['d31_60'] += f.saldo
+                    else:
+                        b['d60'] += f.saldo
+            return b
+        d['cxc_aging'] = _aging(pend_cxc)
+        d['cxp_aging'] = _aging(pend_cxp)
+        d['cxp_venc'] = d['cxp_aging']['vencido']
 
     # ---- Ventas: facturado del mes + pedidos por estado + margen + top productos ----
     if 'ventas' in mods:
