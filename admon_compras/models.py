@@ -95,6 +95,8 @@ class OrdenCompra(models.Model):
 
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='BORRADOR')
     notas = models.TextField(blank=True)
+    # Compra de uso personal (no afecta reportes de la comercializadora)
+    uso_personal = models.BooleanField(default=False)
 
     subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     impuestos = models.DecimalField(max_digits=14, decimal_places=2, default=0)

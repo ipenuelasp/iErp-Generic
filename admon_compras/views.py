@@ -411,6 +411,17 @@ class OrdenDetalleView(LoginRequiredMixin, View):
                 orden.autorizador_actual = None
                 orden.save()
                 messages.info(request, f"{orden.folio} cancelada.")
+            elif accion == 'toggle_personal':
+                orden.uso_personal = not orden.uso_personal
+                orden.save(update_fields=['uso_personal'])
+                # Sus productos no se venden (uso personal); al revertir, se reactivan
+                from admon_inventarios.models import Producto
+                pids = orden.detalles.values_list('producto_id', flat=True)
+                Producto.objects.filter(id__in=pids).update(es_vendible=not orden.uso_personal)
+                if orden.uso_personal:
+                    messages.info(request, f"{orden.folio} marcada como uso personal: excluida de reportes y sus productos quedan no vendibles.")
+                else:
+                    messages.success(request, f"{orden.folio} ya no es uso personal: vuelve a contar en reportes y sus productos son vendibles.")
             else:
                 messages.error(request, "Acción no válida para el estado actual.")
         except services.ErrorAutorizacion as e:

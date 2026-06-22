@@ -82,7 +82,7 @@
             <tbody class="divide-y divide-slate-50">
                 {% for o in ordenes %}
                 <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="toggleOC({{ o.pk }})">
-                    <td class="px-8 py-4 font-black text-brand text-xs"><i id="chev{{ o.pk }}" class="fa-solid fa-chevron-right text-slate-300 mr-2 transition-transform"></i>{{ o.folio }}</td>
+                    <td class="px-8 py-4 font-black text-brand text-xs"><i id="chev{{ o.pk }}" class="fa-solid fa-chevron-right text-slate-300 mr-2 transition-transform"></i>{{ o.folio }}{% if o.uso_personal %} <span class="ml-1 text-[8px] font-black bg-slate-200 text-slate-500 px-2 py-0.5 rounded uppercase">Personal</span>{% endif %}</td>
                     <td class="px-6 py-4 text-xs font-bold text-slate-700">{{ o.proveedor }}</td>
                     <td class="px-6 py-4 text-center">
                         <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ o.color_estado }}-100 text-{{ o.color_estado }}-700">{{ o.get_estado_display }}</span>
@@ -118,7 +118,15 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
-                            <div class="flex justify-end px-5 py-3 border-t border-slate-50">
+                            <div class="flex justify-between items-center px-5 py-3 border-t border-slate-50" onclick="event.stopPropagation()">
+                                <form method="POST" action="{% url 'admon_compras:orden_detalle' o.pk %}">
+                                    {% csrf_token %}<input type="hidden" name="accion" value="toggle_personal">
+                                    {% if o.uso_personal %}
+                                    <button class="text-[10px] font-black uppercase text-emerald-600 hover:underline"><i class="fa-solid fa-rotate-left mr-1"></i> Quitar uso personal</button>
+                                    {% else %}
+                                    <button class="text-[10px] font-black uppercase text-slate-500 hover:text-slate-700"><i class="fa-solid fa-user mr-1"></i> Marcar uso personal</button>
+                                    {% endif %}
+                                </form>
                                 <a href="{% url 'admon_compras:orden_detalle' o.pk %}" class="text-[10px] font-black uppercase text-brand hover:underline"><i class="fa-solid fa-up-right-from-square mr-1"></i> Abrir orden completa</a>
                             </div>
                         </div>

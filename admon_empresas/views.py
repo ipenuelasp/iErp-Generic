@@ -124,7 +124,13 @@ def _dashboard_data(request):
 
         pagos = Pago.objects.filter(empresa=empresa, fecha__gte=mes_ini)
         d['cobrado_mes'] = sum((p.monto for p in pagos if p.tipo == 'INGRESO'), D('0'))
-        d['pagado_mes'] = sum((p.monto for p in pagos if p.tipo == 'EGRESO'), D('0'))
+        # Egresos del mes excluyendo compras de uso personal
+        personales = set(Pago.objects.filter(
+            empresa=empresa, tipo='EGRESO',
+            aplicaciones__factura__orden_compra__uso_personal=True
+        ).values_list('id', flat=True))
+        d['pagado_mes'] = sum((p.monto for p in pagos
+                               if p.tipo == 'EGRESO' and p.id not in personales), D('0'))
 
     # ---- Ventas: facturado del mes + pedidos por estado + margen + top productos ----
     if 'ventas' in mods:
