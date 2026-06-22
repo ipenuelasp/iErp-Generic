@@ -624,6 +624,22 @@ class EstadoResultadosView(LoginRequiredMixin, View):
         util_operacion = util_bruta - total_gastos
         margen_op = (util_operacion / ventas * 100) if ventas else D('0')
 
+        # ---- Partidas no operativas e impuestos (Fase 3) ----
+        from .models import PartidaResultado
+        partidas = PartidaResultado.objects.filter(
+            empresa=empresa, fecha__gte=desde, fecha__lte=hasta)
+        otros_ing = D('0'); otros_egr = D('0'); impuestos = D('0')
+        for p in partidas:
+            if p.naturaleza == 'OTRO_INGRESO':
+                otros_ing += p.monto
+            elif p.naturaleza == 'OTRO_EGRESO':
+                otros_egr += p.monto
+            else:
+                impuestos += p.monto
+        util_antes_imp = util_operacion + otros_ing - otros_egr
+        util_neta = util_antes_imp - impuestos
+        margen_neto = (util_neta / ventas * 100) if ventas else D('0')
+
         filas_mes = []
         for k in sorted(meses):
             mv = meses[k]['ventas']; mc = meses[k]['costo']
@@ -648,6 +664,13 @@ class EstadoResultadosView(LoginRequiredMixin, View):
                     w.writerow([f"   {nombre}", (-monto).quantize(D('0.01'))])
             w.writerow(['Total gastos de operación', (-total_gastos).quantize(D('0.01'))])
             w.writerow(['Utilidad de operación', util_operacion.quantize(D('0.01'))])
+            if otros_ing:
+                w.writerow(['(+) Otros ingresos', otros_ing.quantize(D('0.01'))])
+            if otros_egr:
+                w.writerow(['(−) Otros gastos', (-otros_egr).quantize(D('0.01'))])
+            w.writerow(['Utilidad antes de impuestos', util_antes_imp.quantize(D('0.01'))])
+            w.writerow(['(−) Impuestos', (-impuestos).quantize(D('0.01'))])
+            w.writerow(['Utilidad neta', util_neta.quantize(D('0.01'))])
             w.writerow([])
             w.writerow(['Mes', 'Ventas netas', 'Costo de ventas', 'Utilidad bruta', 'Margen %'])
             for f in filas_mes:
@@ -660,6 +683,8 @@ class EstadoResultadosView(LoginRequiredMixin, View):
             'ventas': ventas, 'costo': costo, 'utilidad': util_bruta, 'margen': margen,
             'gastos_grupos': gastos_grupos, 'total_gastos': total_gastos,
             'util_operacion': util_operacion, 'margen_op': margen_op,
+            'otros_ing': otros_ing, 'otros_egr': otros_egr, 'impuestos': impuestos,
+            'util_antes_imp': util_antes_imp, 'util_neta': util_neta, 'margen_neto': margen_neto,
             'filas_mes': filas_mes,
             'sucursal_activa': sucursal, 'seccion': 'finanzas',
         }
@@ -783,3 +808,74 @@ class GastosView(LoginRequiredMixin, View):
         except Exception as e:
             messages.error(request, f"No se pudo registrar el gasto: {e}")
         return redirect('admon_finanzas:gastos')
+
+
+# --------------------------------------------------------------------------
+# OTROS RESULTADOS E IMPUESTOS (Fase 3)
+# --------------------------------------------------------------------------
+class OtrosResultadosView(LoginRequiredMixin, View):
+    template_name = 'admon_finanzas/otros_resultados.html'
+
+    def get(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        from .models import PartidaResultado
+        from admon_empresas import listas
+        from django.urls import reverse
+
+        qs = PartidaResultado.objects.filter(empresa=empresa)
+        res = listas.construir(
+            request, qs,
+            placeholder='Concepto o referencia',
+            search_header=('concepto', 'referencia'),
+            date_field='fecha',
+            exactos={'naturaleza': 'naturaleza'},
+            filtros_ui=[
+                {'name': 'naturaleza', 'label': 'Naturaleza', 'tipo': 'select',
+                 'opciones': PartidaResultado.NATURALEZA_CHOICES},
+                {'name': 'desde', 'label': 'Desde', 'tipo': 'date'},
+                {'name': 'hasta', 'label': 'Hasta', 'tipo': 'date'},
+            ],
+            sum_fields=('monto',),
+            clear_url=reverse('admon_finanzas:otros_resultados'),
+            export_nombre='otros_resultados', export_order=('-fecha', '-id'),
+            export_columnas=[
+                ('Fecha', lambda o: o.fecha.strftime('%d/%m/%Y') if o.fecha else ''),
+                ('Naturaleza', 'get_naturaleza_display'), ('Concepto', 'concepto'),
+                ('Monto', 'monto'), ('Referencia', 'referencia')],
+        )
+        if res['export']:
+            return res['export']
+        context = {
+            'partidas': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
+            'naturalezas': PartidaResultado.NATURALEZA_CHOICES,
+            'sucursal_activa': sucursal, 'seccion': 'finanzas',
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        from .models import PartidaResultado
+        if request.POST.get('accion') == 'eliminar':
+            p = get_object_or_404(PartidaResultado, id=request.POST.get('partida_id'), empresa=empresa)
+            p.delete()
+            messages.success(request, "Partida eliminada.")
+            return redirect('admon_finanzas:otros_resultados')
+        try:
+            PartidaResultado.objects.create(
+                empresa=empresa, naturaleza=request.POST.get('naturaleza'),
+                fecha=request.POST.get('fecha'),
+                concepto=(request.POST.get('concepto') or '').strip(),
+                monto=decimal.Decimal(request.POST.get('monto') or '0'),
+                referencia=(request.POST.get('referencia') or '').strip(),
+                creado_por=request.user)
+            messages.success(request, "Partida registrada.")
+        except Exception as e:
+            messages.error(request, f"No se pudo registrar: {e}")
+        return redirect('admon_finanzas:otros_resultados')

@@ -20,6 +20,7 @@ urlpatterns = [
 
     # Gastos de operación
     path('gastos/', views.GastosView.as_view(), name='gastos'),
+    path('otros-resultados/', views.OtrosResultadosView.as_view(), name='otros_resultados'),
 
     # Reportes
     path('estado-resultados/', views.EstadoResultadosView.as_view(), name='estado_resultados'),

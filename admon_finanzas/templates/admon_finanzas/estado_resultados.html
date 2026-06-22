@@ -59,9 +59,33 @@
                     <td class="py-3 text-sm font-bold text-slate-600">(−) Total gastos de operación</td>
                     <td class="py-3 text-right text-lg font-black text-rose-500">−${{ total_gastos|floatformat:2|intcomma }}</td>
                 </tr>
+                <tr class="bg-slate-50/70">
+                    <td class="py-4 px-3 text-sm font-black text-slate-700 uppercase tracking-widest">= Utilidad de operación</td>
+                    <td class="py-4 px-3 text-right text-lg font-black {% if util_operacion < 0 %}text-rose-600{% else %}text-slate-800{% endif %}">${{ util_operacion|floatformat:2|intcomma }} <span class="text-[10px] text-slate-400">({{ margen_op|floatformat:1 }}%)</span></td>
+                </tr>
+                {% if otros_ing %}
+                <tr>
+                    <td class="py-3 text-sm font-bold text-slate-600">(+) Otros ingresos</td>
+                    <td class="py-3 text-right text-sm font-black text-emerald-600">+${{ otros_ing|floatformat:2|intcomma }}</td>
+                </tr>
+                {% endif %}
+                {% if otros_egr %}
+                <tr>
+                    <td class="py-3 text-sm font-bold text-slate-600">(−) Otros gastos (no operativos)</td>
+                    <td class="py-3 text-right text-sm font-black text-rose-500">−${{ otros_egr|floatformat:2|intcomma }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <td class="py-3 text-[12px] font-black text-slate-500 uppercase tracking-widest">= Utilidad antes de impuestos</td>
+                    <td class="py-3 text-right text-sm font-black text-slate-700">${{ util_antes_imp|floatformat:2|intcomma }}</td>
+                </tr>
+                <tr>
+                    <td class="py-3 text-sm font-bold text-slate-600">(−) Impuestos</td>
+                    <td class="py-3 text-right text-sm font-black text-rose-500">−${{ impuestos|floatformat:2|intcomma }}</td>
+                </tr>
                 <tr class="bg-emerald-50/50">
-                    <td class="py-5 px-3 text-sm font-black text-emerald-700 uppercase tracking-widest">= Utilidad de operación</td>
-                    <td class="py-5 px-3 text-right text-2xl font-black {% if util_operacion < 0 %}text-rose-600{% else %}text-emerald-600{% endif %}">${{ util_operacion|floatformat:2|intcomma }} <span class="text-[11px] text-slate-400">({{ margen_op|floatformat:1 }}%)</span></td>
+                    <td class="py-5 px-3 text-sm font-black text-emerald-700 uppercase tracking-widest">= Utilidad neta</td>
+                    <td class="py-5 px-3 text-right text-2xl font-black {% if util_neta < 0 %}text-rose-600{% else %}text-emerald-600{% endif %}">${{ util_neta|floatformat:2|intcomma }} <span class="text-[11px] text-slate-400">({{ margen_neto|floatformat:1 }}%)</span></td>
                 </tr>
             </tbody>
         </table>

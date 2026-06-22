@@ -299,3 +299,31 @@ class Gasto(models.Model):
 
     def __str__(self):
         return f"{self.fecha} · {self.descripcion} · ${self.total}"
+
+
+class PartidaResultado(models.Model):
+    """Partidas no operativas e impuestos del estado de resultados:
+    otros ingresos, otros gastos (no operativos) e impuestos (ISR, etc.)."""
+    NATURALEZA_CHOICES = [
+        ('OTRO_INGRESO', 'Otros ingresos'),
+        ('OTRO_EGRESO', 'Otros gastos (no operativos)'),
+        ('IMPUESTO', 'Impuestos'),
+    ]
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='partidas_resultado')
+    naturaleza = models.CharField(max_length=14, choices=NATURALEZA_CHOICES)
+    fecha = models.DateField()
+    concepto = models.CharField(max_length=200)
+    monto = models.DecimalField(max_digits=14, decimal_places=2, default=0,
+                                help_text="Importe positivo; el signo lo da la naturaleza")
+    referencia = models.CharField(max_length=80, blank=True)
+    creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+                                   related_name='partidas_resultado')
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Partida de resultado"
+        verbose_name_plural = "Partidas de resultado"
+        ordering = ['-fecha', '-id']
+
+    def __str__(self):
+        return f"{self.get_naturaleza_display()} · {self.concepto} · ${self.monto}"
