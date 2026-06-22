@@ -67,6 +67,51 @@
     </div>
     {% endif %}
 
+    <!-- Filtros -->
+    <form method="GET" class="bg-white rounded-[2rem] shadow-lg shadow-slate-200/40 border border-slate-100 p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+            <div class="md:col-span-4">
+                <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Búsqueda avanzada</label>
+                <input type="text" name="q" value="{{ filtros.q }}" placeholder="Folio, proveedor, notas o producto (SKU/nombre) del detalle"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Estado</label>
+                <select name="estado" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700">
+                    <option value="">Todos</option>
+                    {% for val, lbl in estados %}<option value="{{ val }}" {% if filtros.estado == val %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Proveedor</label>
+                <select name="proveedor" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700">
+                    <option value="">Todos</option>
+                    {% for p in proveedores %}<option value="{{ p.id }}" {% if filtros.proveedor == p.id|stringformat:'s' %}selected{% endif %}>{{ p }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-1">
+                <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Desde</label>
+                <input type="date" name="desde" value="{{ filtros.desde }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-[11px] font-bold text-slate-700">
+            </div>
+            <div class="md:col-span-1">
+                <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Hasta</label>
+                <input type="date" name="hasta" value="{{ filtros.hasta }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-[11px] font-bold text-slate-700">
+            </div>
+            <div class="md:col-span-1">
+                <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Uso</label>
+                <select name="personal" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-[11px] font-bold text-slate-700">
+                    <option value="">Todas</option>
+                    <option value="no" {% if filtros.personal == 'no' %}selected{% endif %}>Negocio</option>
+                    <option value="si" {% if filtros.personal == 'si' %}selected{% endif %}>Personal</option>
+                </select>
+            </div>
+            <div class="md:col-span-1 flex gap-2">
+                <button type="submit" class="flex-1 bg-brand text-white px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest"><i class="fa-solid fa-filter"></i></button>
+                <a href="{% url 'admon_compras:historial_ordenes' %}" class="flex items-center justify-center bg-slate-100 text-slate-500 px-3 py-2.5 rounded-xl font-black text-[10px]" title="Limpiar"><i class="fa-solid fa-xmark"></i></a>
+            </div>
+        </div>
+    </form>
+
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         <table class="w-full text-left">
             <thead class="bg-slate-50">
@@ -141,11 +186,42 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="6" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin órdenes en esta sucursal.</td></tr>
+                <tr><td colspan="6" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin órdenes que coincidan con los filtros.</td></tr>
                 {% endfor %}
             </tbody>
+            <tfoot class="bg-slate-50 border-t-2 border-slate-100">
+                <tr class="text-slate-700">
+                    <td class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400" colspan="4">
+                        Totales del filtro · {{ totales.n }} orden(es)
+                    </td>
+                    <td class="px-6 py-4 text-right font-black text-slate-800 text-sm">${{ totales.total|default:0|floatformat:2|intcomma }}</td>
+                    <td class="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
+                        Subt. ${{ totales.subtotal|default:0|floatformat:2|intcomma }} · IVA ${{ totales.impuestos|default:0|floatformat:2|intcomma }}
+                    </td>
+                </tr>
+            </tfoot>
         </table>
     </div>
+
+    <!-- Paginación -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="flex items-center justify-between mt-6 px-2">
+        <p class="text-[11px] font-bold text-slate-400">
+            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} órdenes
+        </p>
+        <div class="flex items-center gap-2">
+            {% if page_obj.has_previous %}
+            <a href="?{% if querystring %}{{ querystring }}&{% endif %}page=1" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-[11px] font-black text-slate-500 hover:bg-slate-50">«</a>
+            <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-[11px] font-black text-slate-500 hover:bg-slate-50">‹ Anterior</a>
+            {% endif %}
+            <span class="px-4 py-2 rounded-xl bg-brand text-white text-[11px] font-black">{{ page_obj.number }}</span>
+            {% if page_obj.has_next %}
+            <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-[11px] font-black text-slate-500 hover:bg-slate-50">Siguiente ›</a>
+            <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.paginator.num_pages }}" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-[11px] font-black text-slate-500 hover:bg-slate-50">»</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 <script>
 function toggleOC(pk) {

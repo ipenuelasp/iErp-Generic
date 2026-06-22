@@ -331,10 +331,57 @@ class HistorialOrdenesView(LoginRequiredMixin, View):
             return redirect('home')
         empresa, sucursal = ctx
 
-        ordenes = OrdenCompra.objects.filter(
+        qs = OrdenCompra.objects.filter(
             empresa=empresa, sucursal_destino=sucursal
-        ).select_related('proveedor', 'moneda', 'creado_por', 'autorizador_actual'
-        ).prefetch_related('detalles__producto')
+        ).select_related('proveedor', 'moneda', 'creado_por', 'autorizador_actual')
+
+        # --- Filtros (corren en SQL sobre TODA la tabla, no la página) ---
+        q = (request.GET.get('q') or '').strip()
+        f_estado = (request.GET.get('estado') or '').strip()
+        f_prov = (request.GET.get('proveedor') or '').strip()
+        f_desde = (request.GET.get('desde') or '').strip()
+        f_hasta = (request.GET.get('hasta') or '').strip()
+        f_personal = (request.GET.get('personal') or '').strip()  # '', 'si', 'no'
+
+        if q:
+            from django.db.models import Exists, OuterRef
+            det = DetalleOrdenCompra.objects.filter(orden=OuterRef('pk')).filter(
+                Q(producto__sku__icontains=q) | Q(producto__nombre__icontains=q)
+                | Q(producto__codigo_barras__icontains=q))
+            qs = qs.filter(
+                Q(folio__icontains=q)
+                | Q(proveedor__nombre_fiscal__icontains=q)
+                | Q(proveedor__nombre_comercial__icontains=q)
+                | Q(notas__icontains=q)
+                | Exists(det))
+        if f_estado:
+            qs = qs.filter(estado=f_estado)
+        if f_prov:
+            qs = qs.filter(proveedor_id=f_prov)
+        if f_desde:
+            qs = qs.filter(fecha_emision__gte=f_desde)
+        if f_hasta:
+            qs = qs.filter(fecha_emision__lte=f_hasta)
+        if f_personal == 'si':
+            qs = qs.filter(uso_personal=True)
+        elif f_personal == 'no':
+            qs = qs.filter(uso_personal=False)
+
+        # --- Sumatoria sobre el total filtrado (todas las páginas) ---
+        from django.db.models import Sum, Count
+        agg = qs.aggregate(n=Count('id'), subtotal=Sum('subtotal'),
+                           impuestos=Sum('impuestos'), total=Sum('total'))
+
+        # --- Paginación server-side ---
+        from django.core.paginator import Paginator
+        qs = qs.prefetch_related('detalles__producto')
+        paginator = Paginator(qs, 25)
+        page_obj = paginator.get_page(request.GET.get('page'))
+
+        # Querystring sin 'page' para conservar filtros al paginar
+        params = request.GET.copy()
+        params.pop('page', None)
+        querystring = params.urlencode()
 
         # Bandeja: OC que me toca autorizar a mí (en cualquier sucursal de la empresa)
         por_autorizar = OrdenCompra.objects.filter(
@@ -342,7 +389,14 @@ class HistorialOrdenesView(LoginRequiredMixin, View):
         ).select_related('proveedor', 'sucursal_destino', 'creado_por')
 
         context = {
-            'ordenes': ordenes,
+            'ordenes': page_obj,
+            'page_obj': page_obj,
+            'totales': agg,
+            'proveedores': Proveedor.objects.filter(empresa=empresa).order_by('nombre_fiscal'),
+            'estados': OrdenCompra.ESTADO_CHOICES,
+            'filtros': {'q': q, 'estado': f_estado, 'proveedor': f_prov,
+                        'desde': f_desde, 'hasta': f_hasta, 'personal': f_personal},
+            'querystring': querystring,
             'por_autorizar': por_autorizar,
             'sucursal_activa': sucursal,
             'seccion': 'compras',
