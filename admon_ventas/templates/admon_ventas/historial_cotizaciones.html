@@ -14,6 +14,8 @@
         </a>
     </div>
 
+    {% include "includes/lista_filtros.html" %}
+
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         <table class="w-full text-left">
             <thead class="bg-slate-50">
@@ -39,10 +41,19 @@
                     <td class="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{{ c.fecha_emision|date:"d/m/Y" }}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="6" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin cotizaciones registradas.</td></tr>
+                <tr><td colspan="6" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin cotizaciones que coincidan con los filtros.</td></tr>
                 {% endfor %}
             </tbody>
+            <tfoot class="bg-slate-50 border-t-2 border-slate-100">
+                <tr class="text-slate-700">
+                    <td class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400" colspan="4">Totales del filtro · {{ totales.n }} cotización(es)</td>
+                    <td class="px-6 py-4 text-right font-black text-slate-800 text-sm">${{ totales.total|default:0|floatformat:2|intcomma }}</td>
+                    <td class="px-8 py-4 text-right text-[10px] font-bold text-slate-400">Subt. ${{ totales.subtotal|default:0|floatformat:2|intcomma }} · IVA ${{ totales.impuestos|default:0|floatformat:2|intcomma }}</td>
+                </tr>
+            </tfoot>
         </table>
     </div>
+
+    {% include "includes/lista_paginacion.html" %}
 </div>
 {% endblock %}

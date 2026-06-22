@@ -35,19 +35,53 @@ class CuentasPorPagarView(LoginRequiredMixin, View):
         if not ctx:
             return redirect('home')
         empresa, sucursal = ctx
+        from admon_empresas import listas
+        from django.urls import reverse
+        from admon_compras.models import Proveedor
 
-        facturas = FacturaProveedor.objects.filter(empresa=empresa).select_related(
+        qs = FacturaProveedor.objects.filter(empresa=empresa).select_related(
             'proveedor', 'moneda', 'orden_compra').prefetch_related('aplicaciones')
 
-        # Totales por pagar (puede haber distintas monedas; agrupamos por código)
+        res = listas.construir(
+            request, qs,
+            placeholder='Folio, UUID, proveedor o notas',
+            search_header=('folio', 'uuid_cfdi', 'proveedor__nombre_fiscal',
+                           'proveedor__nombre_comercial', 'notas'),
+            date_field='fecha_emision',
+            exactos={'estado': 'estado', 'proveedor': 'proveedor_id'},
+            filtros_ui=[
+                {'name': 'estado', 'label': 'Estado', 'tipo': 'select',
+                 'opciones': FacturaProveedor.ESTADO_CHOICES},
+                {'name': 'proveedor', 'label': 'Proveedor', 'tipo': 'select',
+                 'opciones': [(p.id, str(p)) for p in
+                              Proveedor.objects.filter(empresa=empresa).order_by('nombre_fiscal')]},
+                {'name': 'desde', 'label': 'Desde', 'tipo': 'date'},
+                {'name': 'hasta', 'label': 'Hasta', 'tipo': 'date'},
+            ],
+            sum_fields=('subtotal', 'impuestos', 'total'),
+            clear_url=reverse('admon_finanzas:cuentas_por_pagar'),
+            export_nombre='cuentas_por_pagar',
+            export_order=('-fecha_emision', '-id'),
+            export_columnas=[
+                ('Folio', 'folio'), ('Proveedor', lambda o: str(o.proveedor)),
+                ('UUID', 'uuid_cfdi'), ('Estado', 'get_estado_display'),
+                ('Emisión', lambda o: o.fecha_emision.strftime('%d/%m/%Y') if o.fecha_emision else ''),
+                ('Total', 'total'), ('Saldo', lambda o: o.saldo),
+                ('Moneda', lambda o: o.moneda.codigo if o.moneda else '')],
+        )
+        if res['export']:
+            return res['export']
+
+        # Totales por pagar sobre el resultado filtrado (puede haber varias monedas)
         por_pagar = {}
-        for f in facturas:
+        for f in res['qs']:
             if f.estado in ('PENDIENTE', 'PARCIAL'):
                 cod = f.moneda.codigo
                 por_pagar[cod] = por_pagar.get(cod, decimal.Decimal('0')) + f.saldo
 
         context = {
-            'facturas': facturas,
+            'facturas': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
             'resumen_por_pagar': por_pagar,
             'sucursal_activa': sucursal,
             'seccion': 'finanzas',
@@ -303,10 +337,43 @@ class HistorialPagosView(LoginRequiredMixin, View):
         if not ctx:
             return redirect('home')
         empresa, sucursal = ctx
+        from admon_empresas import listas
+        from django.urls import reverse
+
+        qs = Pago.objects.filter(empresa=empresa).select_related(
+            'proveedor', 'cliente', 'moneda', 'metodo').prefetch_related(
+            'aplicaciones__factura', 'aplicaciones__factura_cliente')
+
+        res = listas.construir(
+            request, qs,
+            placeholder='Folio, referencia, proveedor o cliente',
+            search_header=('folio', 'referencia', 'proveedor__nombre_fiscal',
+                           'proveedor__nombre_comercial', 'cliente__nombre_fiscal',
+                           'cliente__nombre_comercial'),
+            date_field='fecha',
+            exactos={'tipo': 'tipo'},
+            filtros_ui=[
+                {'name': 'tipo', 'label': 'Tipo', 'tipo': 'select',
+                 'opciones': Pago.TIPO_CHOICES},
+                {'name': 'desde', 'label': 'Desde', 'tipo': 'date'},
+                {'name': 'hasta', 'label': 'Hasta', 'tipo': 'date'},
+            ],
+            sum_fields=('monto',),
+            clear_url=reverse('admon_finanzas:historial_pagos'),
+            export_nombre='pagos',
+            export_order=('-fecha', '-id'),
+            export_columnas=[
+                ('Folio', 'folio'), ('Tipo', 'get_tipo_display'),
+                ('Tercero', lambda o: str(o.cliente or o.proveedor or '')),
+                ('Fecha', lambda o: o.fecha.strftime('%d/%m/%Y') if o.fecha else ''),
+                ('Referencia', 'referencia'), ('Monto', 'monto'),
+                ('Moneda', lambda o: o.moneda.codigo if o.moneda else '')],
+        )
+        if res['export']:
+            return res['export']
         context = {
-            'pagos': Pago.objects.filter(empresa=empresa).select_related(
-                'proveedor', 'cliente', 'moneda', 'metodo').prefetch_related(
-                'aplicaciones__factura', 'aplicaciones__factura_cliente'),
+            'pagos': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
             'sucursal_activa': sucursal,
             'seccion': 'finanzas',
         }
@@ -324,18 +391,52 @@ class CuentasPorCobrarView(LoginRequiredMixin, View):
         if not ctx:
             return redirect('home')
         empresa, sucursal = ctx
+        from admon_empresas import listas
+        from django.urls import reverse
+        from admon_ventas.models import Cliente
 
-        facturas = FacturaCliente.objects.filter(empresa=empresa).select_related(
+        qs = FacturaCliente.objects.filter(empresa=empresa).select_related(
             'cliente', 'moneda', 'pedido').prefetch_related('aplicaciones')
 
+        res = listas.construir(
+            request, qs,
+            placeholder='Folio, UUID, cliente o notas',
+            search_header=('folio', 'uuid_cfdi', 'cliente__nombre_fiscal',
+                           'cliente__nombre_comercial', 'notas'),
+            date_field='fecha_emision',
+            exactos={'estado': 'estado', 'cliente': 'cliente_id'},
+            filtros_ui=[
+                {'name': 'estado', 'label': 'Estado', 'tipo': 'select',
+                 'opciones': FacturaCliente.ESTADO_CHOICES},
+                {'name': 'cliente', 'label': 'Cliente', 'tipo': 'select',
+                 'opciones': [(c.id, str(c)) for c in
+                              Cliente.objects.filter(empresa=empresa).order_by('nombre_fiscal')]},
+                {'name': 'desde', 'label': 'Desde', 'tipo': 'date'},
+                {'name': 'hasta', 'label': 'Hasta', 'tipo': 'date'},
+            ],
+            sum_fields=('subtotal', 'impuestos', 'total'),
+            clear_url=reverse('admon_finanzas:cuentas_por_cobrar'),
+            export_nombre='cuentas_por_cobrar',
+            export_order=('-fecha_emision', '-id'),
+            export_columnas=[
+                ('Folio', 'folio'), ('Cliente', lambda o: str(o.cliente)),
+                ('UUID', 'uuid_cfdi'), ('Estado', 'get_estado_display'),
+                ('Emisión', lambda o: o.fecha_emision.strftime('%d/%m/%Y') if o.fecha_emision else ''),
+                ('Total', 'total'), ('Saldo', lambda o: o.saldo),
+                ('Moneda', lambda o: o.moneda.codigo if o.moneda else '')],
+        )
+        if res['export']:
+            return res['export']
+
         por_cobrar = {}
-        for f in facturas:
+        for f in res['qs']:
             if f.estado in ('PENDIENTE', 'PARCIAL'):
                 cod = f.moneda.codigo
                 por_cobrar[cod] = por_cobrar.get(cod, decimal.Decimal('0')) + f.saldo
 
         context = {
-            'facturas': facturas,
+            'facturas': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
             'resumen_por_cobrar': por_cobrar,
             'sucursal_activa': sucursal,
             'seccion': 'finanzas',

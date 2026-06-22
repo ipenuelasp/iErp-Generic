@@ -306,13 +306,47 @@ class HistorialPedidosView(LoginRequiredMixin, View):
         if not ctx:
             return redirect('home')
         empresa, sucursal = ctx
-        pedidos = Pedido.objects.filter(
+        from admon_empresas import listas
+        from django.urls import reverse
+        qs = Pedido.objects.filter(
             empresa=empresa, sucursal=sucursal
         ).select_related('cliente', 'moneda', 'creado_por')
+
+        res = listas.construir(
+            request, qs,
+            placeholder='Folio, cliente, notas o producto (SKU / nombre) del detalle',
+            search_header=('folio', 'cliente__nombre_fiscal',
+                           'cliente__nombre_comercial', 'notas'),
+            detail_model=DetallePedido,
+            detail_search=('producto__sku', 'producto__nombre'),
+            date_field='fecha_emision',
+            exactos={'estado': 'estado', 'cliente': 'cliente_id'},
+            filtros_ui=[
+                {'name': 'estado', 'label': 'Estado', 'tipo': 'select',
+                 'opciones': Pedido.ESTADO_CHOICES},
+                {'name': 'cliente', 'label': 'Cliente', 'tipo': 'select',
+                 'opciones': [(c.id, str(c)) for c in
+                              Cliente.objects.filter(empresa=empresa).order_by('nombre_fiscal')]},
+                {'name': 'desde', 'label': 'Desde', 'tipo': 'date'},
+                {'name': 'hasta', 'label': 'Hasta', 'tipo': 'date'},
+            ],
+            sum_fields=('subtotal', 'impuestos', 'total'),
+            clear_url=reverse('admon_ventas:historial_pedidos'),
+            export_nombre='pedidos',
+            export_order=('-fecha_emision', '-id'),
+            export_columnas=[
+                ('Folio', 'folio'), ('Cliente', lambda o: str(o.cliente)),
+                ('Estado', 'get_estado_display'),
+                ('Fecha', lambda o: o.fecha_emision.strftime('%d/%m/%Y') if o.fecha_emision else ''),
+                ('Subtotal', 'subtotal'), ('Impuestos', 'impuestos'),
+                ('Total', 'total'), ('Moneda', lambda o: o.moneda.codigo if o.moneda else '')],
+        )
+        if res['export']:
+            return res['export']
         context = {
-            'pedidos': pedidos,
-            'sucursal_activa': sucursal,
-            'seccion': 'ventas',
+            'pedidos': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
+            'sucursal_activa': sucursal, 'seccion': 'ventas',
         }
         return render(request, self.template_name, context)
 
@@ -589,11 +623,45 @@ class HistorialCotizacionesView(LoginRequiredMixin, View):
         if not ctx:
             return redirect('home')
         empresa, sucursal = ctx
+        from admon_empresas import listas
+        from django.urls import reverse
+        qs = Cotizacion.objects.filter(
+            empresa=empresa, sucursal=sucursal).select_related('cliente', 'moneda')
+        res = listas.construir(
+            request, qs,
+            placeholder='Folio, cliente, notas o producto (SKU / nombre) del detalle',
+            search_header=('folio', 'cliente__nombre_fiscal',
+                           'cliente__nombre_comercial', 'notas'),
+            detail_model=DetalleCotizacion,
+            detail_search=('producto__sku', 'producto__nombre'),
+            date_field='fecha_emision',
+            exactos={'estado': 'estado', 'cliente': 'cliente_id'},
+            filtros_ui=[
+                {'name': 'estado', 'label': 'Estado', 'tipo': 'select',
+                 'opciones': Cotizacion.ESTADO_CHOICES},
+                {'name': 'cliente', 'label': 'Cliente', 'tipo': 'select',
+                 'opciones': [(c.id, str(c)) for c in
+                              Cliente.objects.filter(empresa=empresa).order_by('nombre_fiscal')]},
+                {'name': 'desde', 'label': 'Desde', 'tipo': 'date'},
+                {'name': 'hasta', 'label': 'Hasta', 'tipo': 'date'},
+            ],
+            sum_fields=('subtotal', 'impuestos', 'total'),
+            clear_url=reverse('admon_ventas:historial_cotizaciones'),
+            export_nombre='cotizaciones',
+            export_order=('-fecha_emision', '-id'),
+            export_columnas=[
+                ('Folio', 'folio'), ('Cliente', lambda o: str(o.cliente)),
+                ('Estado', 'get_estado_display'),
+                ('Fecha', lambda o: o.fecha_emision.strftime('%d/%m/%Y') if o.fecha_emision else ''),
+                ('Subtotal', 'subtotal'), ('Impuestos', 'impuestos'),
+                ('Total', 'total'), ('Moneda', lambda o: o.moneda.codigo if o.moneda else '')],
+        )
+        if res['export']:
+            return res['export']
         context = {
-            'cotizaciones': Cotizacion.objects.filter(empresa=empresa, sucursal=sucursal).select_related(
-                'cliente', 'moneda'),
-            'sucursal_activa': sucursal,
-            'seccion': 'ventas',
+            'cotizaciones': res['page_obj'], 'page_obj': res['page_obj'],
+            'totales': res['totales'], 'lista': res['lista'],
+            'sucursal_activa': sucursal, 'seccion': 'ventas',
         }
         return render(request, self.template_name, context)
 

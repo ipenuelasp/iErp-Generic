@@ -1,0 +1,19 @@
+{# Paginación reutilizable. Espera `page_obj` y `lista.querystring`. #}
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="flex items-center justify-between mt-6 px-2">
+    <p class="text-[11px] font-bold text-slate-400">
+        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} registros
+    </p>
+    <div class="flex items-center gap-2">
+        {% if page_obj.has_previous %}
+        <a href="?{% if lista.querystring %}{{ lista.querystring }}&{% endif %}page=1" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-[11px] font-black text-slate-500 hover:bg-slate-50">«</a>
+        <a href="?{% if lista.querystring %}{{ lista.querystring }}&{% endif %}page={{ page_obj.previous_page_number }}" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-[11px] font-black text-slate-500 hover:bg-slate-50">‹ Anterior</a>
+        {% endif %}
+        <span class="px-4 py-2 rounded-xl bg-brand text-white text-[11px] font-black">{{ page_obj.number }}</span>
+        {% if page_obj.has_next %}
+        <a href="?{% if lista.querystring %}{{ lista.querystring }}&{% endif %}page={{ page_obj.next_page_number }}" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-[11px] font-black text-slate-500 hover:bg-slate-50">Siguiente ›</a>
+        <a href="?{% if lista.querystring %}{{ lista.querystring }}&{% endif %}page={{ page_obj.paginator.num_pages }}" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-[11px] font-black text-slate-500 hover:bg-slate-50">»</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

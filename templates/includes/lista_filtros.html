@@ -1,0 +1,41 @@
+{# Barra de filtros reutilizable. Espera en contexto `lista`:
+   lista.placeholder, lista.q, lista.filtros (lista de dicts), lista.per_page,
+   lista.querystring, lista.export_url (url base para limpiar). #}
+<form method="GET" class="bg-white rounded-[2rem] shadow-lg shadow-slate-200/40 border border-slate-100 p-6 mb-6 space-y-4">
+    <div class="flex flex-col md:flex-row gap-3 md:items-end">
+        <div class="flex-1">
+            <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Búsqueda avanzada</label>
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-xs"></i>
+                <input type="text" name="q" value="{{ lista.q }}" placeholder="{{ lista.placeholder }}"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold text-slate-700">
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button type="submit" class="bg-brand text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest"><i class="fa-solid fa-filter mr-1"></i> Filtrar</button>
+            <a href="{{ lista.clear_url }}" class="flex items-center justify-center bg-slate-100 text-slate-500 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase" title="Limpiar"><i class="fa-solid fa-xmark"></i></a>
+            <a href="?{% if lista.querystring %}{{ lista.querystring }}&{% endif %}export=csv" class="flex items-center justify-center bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest" title="Exportar a Excel"><i class="fa-solid fa-file-excel mr-1"></i> Excel</a>
+        </div>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+        {% for f in lista.filtros %}
+        <div>
+            <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{{ f.label }}</label>
+            {% if f.tipo == 'date' %}
+            <input type="date" name="{{ f.name }}" value="{{ f.val }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-[11px] font-bold text-slate-700">
+            {% else %}
+            <select name="{{ f.name }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700">
+                <option value="">{{ f.todos|default:"Todos" }}</option>
+                {% for val, lbl in f.opciones %}<option value="{{ val }}" {% if f.sel == val|stringformat:'s' %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+            </select>
+            {% endif %}
+        </div>
+        {% endfor %}
+        <div>
+            <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Por página</label>
+            <select name="per_page" onchange="this.form.submit()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-[11px] font-bold text-slate-700">
+                {% for n in lista.per_page_opciones %}<option value="{{ n }}" {% if lista.per_page == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
+            </select>
+        </div>
+    </div>
+</form>
