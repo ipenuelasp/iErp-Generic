@@ -155,6 +155,36 @@ class DescargarPlantillaProveedoresView(LoginRequiredMixin, View):
         return resp
 
 
+class ImportarAmazonView(LoginRequiredMixin, View):
+    """Importa el CSV de pedidos de Amazon Business: crea productos y registra
+    cada orden como recepción (entra stock al costo)."""
+    def post(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        if not request.user.is_superuser:
+            messages.error(request, "Solo el administrador puede importar compras.")
+            return redirect('admon_compras:historial_ordenes')
+        archivo = request.FILES.get('archivo')
+        if not archivo or not archivo.name.lower().endswith('.csv'):
+            messages.error(request, "Selecciona el archivo .csv exportado de Amazon.")
+            return redirect('admon_compras:historial_ordenes')
+        from . import import_amazon
+        try:
+            res = import_amazon.importar(archivo, empresa, sucursal, request.user)
+        except Exception as e:
+            messages.error(request, f"No se pudo procesar el archivo: {e}")
+            return redirect('admon_compras:historial_ordenes')
+        messages.success(
+            request,
+            f"Amazon importado: {res['recepciones']} recepciones, "
+            f"{res['prod_creados']} productos nuevos, {res['prod_actualizados']} actualizados, "
+            f"{res['lineas']} líneas de stock."
+            + (f" ({res['omitidas']} órdenes ya estaban importadas)" if res['omitidas'] else ""))
+        return redirect('admon_compras:historial_ordenes')
+
+
 class ImportarProveedoresView(LoginRequiredMixin, View):
     """Carga masiva de proveedores desde Excel. Solo superuser."""
     def post(self, request):

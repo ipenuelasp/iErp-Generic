@@ -9,10 +9,44 @@
             <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Órdenes de Compra</h1>
             <p class="text-slate-500 mt-2 font-medium">Sede <span class="text-brand">{{ sucursal_activa.nombre }}</span></p>
         </div>
-        <a href="{% url 'admon_compras:nueva_orden' %}" class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
-            <i class="fa-solid fa-plus mr-2"></i> Nueva Orden
-        </a>
+        <div class="flex gap-3">
+            {% if user.is_superuser %}
+            <button onclick="document.getElementById('modalAmazon').classList.remove('hidden')" class="bg-amber-500 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-amber-200 hover:-translate-y-1 transition-all">
+                <i class="fa-brands fa-amazon mr-2"></i> Importar Amazon
+            </button>
+            {% endif %}
+            <a href="{% url 'admon_compras:nueva_orden' %}" class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
+                <i class="fa-solid fa-plus mr-2"></i> Nueva Orden
+            </a>
+        </div>
     </div>
+
+    {% if user.is_superuser %}
+    <!-- Modal importar Amazon -->
+    <div id="modalAmazon" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalAmazon').classList.add('hidden')"></div>
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-10">
+                <h2 class="text-xl font-bold text-slate-800 mb-1"><i class="fa-brands fa-amazon mr-2 text-amber-500"></i> Importar compras de Amazon</h2>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-5">CSV de Amazon Business</p>
+                <ol class="text-[11px] font-bold text-slate-500 mb-5 space-y-1 list-decimal ml-4">
+                    <li>En Amazon Business descarga el reporte de pedidos en CSV.</li>
+                    <li>Súbelo aquí: crea los productos y registra cada orden como recepción (entra stock al costo).</li>
+                    <li>Las órdenes ya importadas se omiten (puedes subirlo cada mes).</li>
+                </ol>
+                <form method="POST" action="{% url 'admon_compras:importar_amazon' %}" enctype="multipart/form-data" class="space-y-5">
+                    {% csrf_token %}
+                    <input type="file" name="archivo" accept=".csv" required
+                        class="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-5 py-6 text-xs font-bold text-slate-600">
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="document.getElementById('modalAmazon').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 px-4">Cancelar</button>
+                        <button type="submit" class="bg-amber-500 text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">Importar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     {% if por_autorizar %}
     <div class="bg-amber-50 border border-amber-200 rounded-[2.5rem] p-8 mb-8">
