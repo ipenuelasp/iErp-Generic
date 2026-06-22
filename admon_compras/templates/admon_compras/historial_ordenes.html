@@ -81,8 +81,8 @@
             </thead>
             <tbody class="divide-y divide-slate-50">
                 {% for o in ordenes %}
-                <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="window.location='{% url 'admon_compras:orden_detalle' o.pk %}'">
-                    <td class="px-8 py-4 font-black text-brand text-xs">{{ o.folio }}</td>
+                <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="toggleOC({{ o.pk }})">
+                    <td class="px-8 py-4 font-black text-brand text-xs"><i id="chev{{ o.pk }}" class="fa-solid fa-chevron-right text-slate-300 mr-2 transition-transform"></i>{{ o.folio }}</td>
                     <td class="px-6 py-4 text-xs font-bold text-slate-700">{{ o.proveedor }}</td>
                     <td class="px-6 py-4 text-center">
                         <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ o.color_estado }}-100 text-{{ o.color_estado }}-700">{{ o.get_estado_display }}</span>
@@ -95,6 +95,35 @@
                     <td class="px-6 py-4 text-right font-black text-slate-800 text-sm">{{ o.moneda.simbolo }}{{ o.total|floatformat:2|intcomma }}</td>
                     <td class="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{{ o.fecha_emision|date:"d/m/Y" }}</td>
                 </tr>
+                <tr id="det{{ o.pk }}" class="hidden bg-slate-50/40">
+                    <td colspan="6" class="px-8 py-4">
+                        <div class="rounded-2xl border border-slate-100 bg-white overflow-hidden">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-50"><tr class="text-slate-400 text-[9px] uppercase tracking-[0.15em]">
+                                    <th class="px-5 py-2 font-black">Producto</th>
+                                    <th class="px-4 py-2 font-black text-center">Cant.</th>
+                                    <th class="px-4 py-2 font-black text-right">P. Unit.</th>
+                                    <th class="px-5 py-2 font-black text-right">Importe</th>
+                                </tr></thead>
+                                <tbody class="divide-y divide-slate-50">
+                                    {% for d in o.detalles.all %}
+                                    <tr>
+                                        <td class="px-5 py-2 text-[11px] font-bold text-slate-600">[{{ d.producto.sku }}] {{ d.producto.nombre|truncatechars:55 }}</td>
+                                        <td class="px-4 py-2 text-center text-[11px] font-bold text-slate-500">{{ d.cantidad_pedida|floatformat:"-2" }}</td>
+                                        <td class="px-4 py-2 text-right text-[11px] font-bold text-slate-500">{{ o.moneda.simbolo }}{{ d.precio_unitario|floatformat:2|intcomma }}</td>
+                                        <td class="px-5 py-2 text-right text-[11px] font-black text-slate-700">{{ o.moneda.simbolo }}{{ d.importe|floatformat:2|intcomma }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr><td colspan="4" class="px-5 py-3 text-center text-slate-300 italic text-[11px]">Sin partidas.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <div class="flex justify-end px-5 py-3 border-t border-slate-50">
+                                <a href="{% url 'admon_compras:orden_detalle' o.pk %}" class="text-[10px] font-black uppercase text-brand hover:underline"><i class="fa-solid fa-up-right-from-square mr-1"></i> Abrir orden completa</a>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
                 {% empty %}
                 <tr><td colspan="6" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin órdenes en esta sucursal.</td></tr>
                 {% endfor %}
@@ -102,4 +131,13 @@
         </table>
     </div>
 </div>
+<script>
+function toggleOC(pk) {
+    var row = document.getElementById('det' + pk);
+    var chev = document.getElementById('chev' + pk);
+    if (!row) return;
+    var oculto = row.classList.toggle('hidden');
+    if (chev) chev.style.transform = oculto ? '' : 'rotate(90deg)';
+}
+</script>
 {% endblock %}

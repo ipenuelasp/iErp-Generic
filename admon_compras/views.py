@@ -333,7 +333,8 @@ class HistorialOrdenesView(LoginRequiredMixin, View):
 
         ordenes = OrdenCompra.objects.filter(
             empresa=empresa, sucursal_destino=sucursal
-        ).select_related('proveedor', 'moneda', 'creado_por', 'autorizador_actual')
+        ).select_related('proveedor', 'moneda', 'creado_por', 'autorizador_actual'
+        ).prefetch_related('detalles__producto')
 
         # Bandeja: OC que me toca autorizar a mí (en cualquier sucursal de la empresa)
         por_autorizar = OrdenCompra.objects.filter(
