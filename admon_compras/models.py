@@ -88,7 +88,7 @@ class OrdenCompra(models.Model):
     proveedor = models.ForeignKey(Proveedor, on_delete=models.PROTECT)
     moneda = models.ForeignKey(Moneda, on_delete=models.PROTECT)
 
-    folio = models.CharField(max_length=25, unique=True)
+    folio = models.CharField(max_length=40, unique=True)
     consecutivo = models.IntegerField(default=0)
     fecha_emision = models.DateField(auto_now_add=True)
     fecha_entrega_estimada = models.DateField(null=True, blank=True)
