@@ -398,6 +398,15 @@ class CuentasPorCobrarView(LoginRequiredMixin, View):
         qs = FacturaCliente.objects.filter(empresa=empresa).select_related(
             'cliente', 'moneda', 'pedido').prefetch_related('aplicaciones')
 
+        # Filtro de facturación (una CxC está facturada si tiene UUID o XML)
+        from django.db.models import Q
+        facturada_q = Q(uuid_cfdi__gt='') | Q(archivo_xml__gt='')
+        f_fact = (request.GET.get('facturacion') or '').strip()
+        if f_fact == 'si':
+            qs = qs.filter(facturada_q)
+        elif f_fact == 'no':
+            qs = qs.exclude(facturada_q)
+
         res = listas.construir(
             request, qs,
             placeholder='Folio, UUID, cliente o notas',
@@ -411,6 +420,9 @@ class CuentasPorCobrarView(LoginRequiredMixin, View):
                 {'name': 'cliente', 'label': 'Cliente', 'tipo': 'select',
                  'opciones': [(c.id, str(c)) for c in
                               Cliente.objects.filter(empresa=empresa).order_by('nombre_fiscal')]},
+                {'name': 'facturacion', 'label': 'Facturación', 'tipo': 'select',
+                 'opciones': [('si', 'Facturado'), ('no', 'Pendiente de facturar')],
+                 'todos': 'Todas'},
                 {'name': 'desde', 'label': 'Desde', 'tipo': 'date'},
                 {'name': 'hasta', 'label': 'Hasta', 'tipo': 'date'},
             ],
@@ -429,15 +441,30 @@ class CuentasPorCobrarView(LoginRequiredMixin, View):
             return res['export']
 
         por_cobrar = {}
+        Z = decimal.Decimal('0')
+        kpi = {'pendiente_facturar': Z, 'por_cobrar_sin_factura': Z,
+               'facturado_por_cobrar': Z, 'total_por_cobrar': Z}
         for f in res['qs']:
-            if f.estado in ('PENDIENTE', 'PARCIAL'):
+            abierta = f.estado in ('PENDIENTE', 'PARCIAL')
+            if abierta:
                 cod = f.moneda.codigo
-                por_cobrar[cod] = por_cobrar.get(cod, decimal.Decimal('0')) + f.saldo
+                por_cobrar[cod] = por_cobrar.get(cod, Z) + f.saldo
+                kpi['total_por_cobrar'] += f.saldo
+            if f.estado == 'CANCELADA':
+                continue
+            if not f.esta_facturada:
+                # Lo que falta por timbrar (total de lo no facturado, vigente)
+                kpi['pendiente_facturar'] += f.total
+                if abierta:
+                    kpi['por_cobrar_sin_factura'] += f.saldo
+            elif abierta:
+                kpi['facturado_por_cobrar'] += f.saldo
 
         context = {
             'facturas': res['page_obj'], 'page_obj': res['page_obj'],
             'totales': res['totales'], 'lista': res['lista'],
             'resumen_por_cobrar': por_cobrar,
+            'kpi': kpi,
             'sucursal_activa': sucursal,
             'seccion': 'finanzas',
         }

@@ -14,12 +14,35 @@
         </a>
     </div>
 
-    {% if resumen_por_cobrar %}
-    <div class="flex flex-wrap gap-4 mb-8">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 px-6 py-5">
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total por cobrar</p>
+            <p class="text-2xl font-black text-emerald-600 mt-1">${{ kpi.total_por_cobrar|floatformat:2|intcomma }}</p>
+            <p class="text-[9px] font-bold text-slate-400 mt-1">Saldo de CxC vigentes</p>
+        </div>
+        <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 px-6 py-5">
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pendiente de facturar</p>
+            <p class="text-2xl font-black text-rose-500 mt-1">${{ kpi.pendiente_facturar|floatformat:2|intcomma }}</p>
+            <p class="text-[9px] font-bold text-slate-400 mt-1">CxC sin CFDI (total)</p>
+        </div>
+        <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 px-6 py-5">
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Por cobrar sin facturar</p>
+            <p class="text-2xl font-black text-amber-500 mt-1">${{ kpi.por_cobrar_sin_factura|floatformat:2|intcomma }}</p>
+            <p class="text-[9px] font-bold text-slate-400 mt-1">Saldo de CxC sin CFDI</p>
+        </div>
+        <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 px-6 py-5">
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Facturado por cobrar</p>
+            <p class="text-2xl font-black text-blue-600 mt-1">${{ kpi.facturado_por_cobrar|floatformat:2|intcomma }}</p>
+            <p class="text-[9px] font-bold text-slate-400 mt-1">Saldo de CxC ya facturadas</p>
+        </div>
+    </div>
+
+    {% if resumen_por_cobrar.items|length > 1 %}
+    <div class="flex flex-wrap gap-3 mb-6">
         {% for cod, saldo in resumen_por_cobrar.items %}
-        <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 px-8 py-5">
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saldo por cobrar ({{ cod }})</p>
-            <p class="text-2xl font-black text-emerald-600 mt-1">${{ saldo|floatformat:2|intcomma }}</p>
+        <div class="bg-slate-50 rounded-2xl border border-slate-100 px-5 py-3">
+            <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Por cobrar {{ cod }}:</span>
+            <span class="text-sm font-black text-emerald-600 ml-1">${{ saldo|floatformat:2|intcomma }}</span>
         </div>
         {% endfor %}
     </div>
@@ -37,7 +60,8 @@
                     <th class="px-6 py-5 font-black text-center">Vence</th>
                     <th class="px-6 py-5 font-black text-right">Total</th>
                     <th class="px-6 py-5 font-black text-right">Saldo</th>
-                    <th class="px-8 py-5 font-black text-center">Estado</th>
+                    <th class="px-6 py-5 font-black text-center">Facturación</th>
+                    <th class="px-8 py-5 font-black text-center">Cobro</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-50">
@@ -49,12 +73,19 @@
                     <td class="px-6 py-4 text-center text-[10px] font-bold text-slate-400">{{ f.fecha_vencimiento|date:"d/m/Y"|default:"—" }}</td>
                     <td class="px-6 py-4 text-right text-xs font-bold text-slate-600">{{ f.moneda.simbolo }}{{ f.total|floatformat:2|intcomma }}</td>
                     <td class="px-6 py-4 text-right text-xs font-black {% if f.saldo > 0 %}text-emerald-600{% else %}text-slate-400{% endif %}">{{ f.moneda.simbolo }}{{ f.saldo|floatformat:2|intcomma }}</td>
+                    <td class="px-6 py-4 text-center">
+                        {% if f.esta_facturada %}
+                        <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-100 text-blue-700"><i class="fa-solid fa-file-invoice mr-1"></i> Facturado</span>
+                        {% else %}
+                        <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-100 text-rose-700"><i class="fa-regular fa-clock mr-1"></i> Pendiente de facturar</span>
+                        {% endif %}
+                    </td>
                     <td class="px-8 py-4 text-center">
                         <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ f.color_estado }}-100 text-{{ f.color_estado }}-700">{{ f.get_estado_display }}</span>
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="7" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin cuentas que coincidan con los filtros.</td></tr>
+                <tr><td colspan="8" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin cuentas que coincidan con los filtros.</td></tr>
                 {% endfor %}
             </tbody>
             <tfoot class="bg-slate-50 border-t-2 border-slate-100">
@@ -62,6 +93,7 @@
                     <td class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400" colspan="4">Totales del filtro · {{ totales.n }} CxC</td>
                     <td class="px-6 py-4 text-right font-black text-slate-800 text-sm">${{ totales.total|default:0|floatformat:2|intcomma }}</td>
                     <td class="px-6 py-4 text-right text-[10px] font-bold text-slate-400">Subt. ${{ totales.subtotal|default:0|floatformat:2|intcomma }}</td>
+                    <td class="px-6 py-4"></td>
                     <td class="px-8 py-4"></td>
                 </tr>
             </tfoot>

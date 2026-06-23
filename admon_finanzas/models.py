@@ -155,6 +155,18 @@ class FacturaCliente(models.Model):
     def color_estado(self):
         return {'PENDIENTE': 'amber', 'PARCIAL': 'blue', 'PAGADA': 'emerald', 'CANCELADA': 'slate'}.get(self.estado, 'slate')
 
+    @property
+    def esta_facturada(self):
+        """True si ya se le subió/asignó el CFDI (UUID o archivo XML)."""
+        return bool(self.uuid_cfdi) or bool(self.archivo_xml)
+
+    @property
+    def estado_facturacion(self):
+        return 'FACTURADA' if self.esta_facturada else 'PENDIENTE_FACTURAR'
+
+    def estado_facturacion_display(self):
+        return 'Facturado' if self.esta_facturada else 'Pendiente de facturar'
+
     def __str__(self):
         return f"CxC {self.folio} — {self.cliente}"
 
