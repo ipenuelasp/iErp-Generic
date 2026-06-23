@@ -38,8 +38,13 @@ def recalcular_pedido(pedido):
     pedido.total = subtotal + imp_total
     pedido.save(update_fields=['subtotal', 'impuestos', 'total'])
 
-    fac = pedido.facturas.first() if hasattr(pedido, 'facturas') else None
-    if fac and fac.estado != 'CANCELADA' and fac.total_pagado == 0:
+    # Sincronizar la CxC solo cuando hay UNA sola factura vigente y sin cobros
+    # (pedido aún no entregado o con una sola entrega). Si el pedido tiene varias
+    # facturas —una por entrega— cada una refleja su parcialidad y no se puede
+    # repartir el extra automáticamente, así que no las tocamos.
+    facturas = list(pedido.facturas.exclude(estado='CANCELADA')) if hasattr(pedido, 'facturas') else []
+    if len(facturas) == 1 and facturas[0].total_pagado == 0:
+        fac = facturas[0]
         fac.subtotal = subtotal
         fac.impuestos = imp_total
         fac.total = subtotal + imp_total

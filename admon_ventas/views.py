@@ -387,8 +387,7 @@ class PedidoDetalleView(LoginRequiredMixin, View):
         pedido = get_object_or_404(
             Pedido.objects.select_related('cliente', 'moneda', 'creado_por'),
             id=pk, empresa=empresa)
-        factura = pedido.facturas.first() if hasattr(pedido, 'facturas') else None
-        cxc_cobrada = bool(factura and factura.total_pagado > 0)
+        cxc_cobrada = any(f.total_pagado > 0 for f in pedido.facturas.all()) if hasattr(pedido, 'facturas') else False
         context = {
             'pedido': pedido,
             'detalles': pedido.detalles.select_related('producto', 'producto__unidad_medida'),
@@ -411,8 +410,8 @@ class PedidoDetalleView(LoginRequiredMixin, View):
         pedido = get_object_or_404(Pedido, id=pk, empresa=empresa)
         accion = request.POST.get('accion')
 
-        factura = pedido.facturas.first() if hasattr(pedido, 'facturas') else None
-        bloqueado = pedido.estado == 'CANCELADO' or (factura and factura.total_pagado > 0)
+        cxc_cobrada = any(f.total_pagado > 0 for f in pedido.facturas.all()) if hasattr(pedido, 'facturas') else False
+        bloqueado = pedido.estado == 'CANCELADO' or cxc_cobrada
 
         if accion == 'add_extra':
             if bloqueado:
