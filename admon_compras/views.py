@@ -597,6 +597,8 @@ class OrdenDetalleView(LoginRequiredMixin, View):
                     messages.info(request, f"{orden.folio} marcada como uso personal: {movidas} línea(s) movidas al almacén personal, excluida de reportes y sus productos quedan no vendibles.{aviso}")
                 else:
                     messages.success(request, f"{orden.folio} ya no es uso personal: {movidas} línea(s) regresadas al almacén normal, vuelve a contar en reportes y sus productos son vendibles.{aviso}")
+                # El uso personal se gestiona desde la lista: quedarse ahí, no ir al detalle
+                return redirect('admon_compras:historial_ordenes')
             else:
                 messages.error(request, "Acción no válida para el estado actual.")
         except services.ErrorAutorizacion as e:

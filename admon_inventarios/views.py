@@ -506,17 +506,26 @@ class ExistenciasView(LoginRequiredMixin, View):
         if not ctx:
             return redirect('home')
         empresa, sucursal = ctx
+        from admon_empresas import listas
+        from django.urls import reverse
 
-        stock = Existencia.objects.filter(
+        # Búsqueda genérica (producto/SKU) + filtro por almacén, server-side
+        base = Existencia.objects.filter(
             ubicacion__almacen__sucursal=sucursal,
             producto__empresa=empresa,
             cantidad__gt=0,
-        ).values(
+        )
+        base, f = listas.aplicar_filtros(
+            request, base,
+            search_header=('producto__nombre', 'producto__sku'),
+            exactos={'almacen': 'ubicacion__almacen_id'})
+
+        stock = base.values(
             'producto__id', 'producto__nombre', 'producto__sku',
             'producto__unidad_medida__codigo',
         ).annotate(total_stock=Sum('cantidad')).order_by('producto__nombre')
 
-        # Exportar a Excel (CSV) el resumen de existencias
+        # Exportar a Excel (CSV) el resumen ya filtrado
         if request.GET.get('export') == 'csv':
             import csv as _csv
             from django.utils import timezone as _tz
@@ -531,16 +540,34 @@ class ExistenciasView(LoginRequiredMixin, View):
                             it['producto__unidad_medida__codigo'], it['total_stock']])
             return resp
 
-        detalle_existencias = Existencia.objects.filter(
-            ubicacion__almacen__sucursal=sucursal,
-            producto__empresa=empresa,
-            cantidad__gt=0,
-        ).select_related('producto', 'ubicacion', 'ubicacion__almacen', 'lote', 'serie')
+        total_productos = stock.count()
+        page_obj, per_page, querystring = listas.paginar(request, stock, listas.DEFAULT_PER_PAGE)
+
+        almacenes = Almacen.objects.filter(sucursal=sucursal, activo=True).order_by('nombre')
+        lista = {
+            'placeholder': 'Buscar por producto o SKU...',
+            'q': f.get('q', ''),
+            'filtros': [{
+                'name': 'almacen', 'label': 'Almacén', 'tipo': 'select',
+                'opciones': [(a.id, a.nombre) for a in almacenes], 'todos': 'Todos',
+                'sel': (request.GET.get('almacen') or '').strip(),
+            }],
+            'per_page': per_page,
+            'per_page_opciones': listas.PER_PAGE_OPCIONES,
+            'querystring': querystring,
+            'clear_url': reverse('admon_inventarios:existencias'),
+        }
+
+        # Detalle (para el modal) limitado al mismo filtro
+        detalle_existencias = base.select_related(
+            'producto', 'ubicacion', 'ubicacion__almacen', 'lote', 'serie')
 
         context = {
-            'stock_resumen': stock,
+            'stock_resumen': page_obj,
+            'page_obj': page_obj,
+            'lista': lista,
             'detalle': detalle_existencias,
-            'total_productos': len(stock),
+            'total_productos': total_productos,
             'sucursal_activa': sucursal,
             'seccion': 'inventarios',
         }

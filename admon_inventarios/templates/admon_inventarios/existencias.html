@@ -2,28 +2,17 @@
 
 {% block main_content %}
 <div class="max-w-7xl mx-auto p-8">
-    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Existencias en Inventario</h1>
             <p class="text-slate-500 mt-2 font-medium">Consulta el stock físico por almacén, ubicación y lote en esta sucursal.</p>
         </div>
-
-        <div class="flex items-center gap-3 w-full md:w-auto">
-            <div class="relative flex-1 md:w-72">
-                <input type="text" id="busquedaExistencia" onkeyup="filtrarExistencias()"
-                    placeholder="Buscar por producto o SKU..."
-                    class="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-3 text-xs font-bold text-slate-700 focus:border-brand outline-none transition-all shadow-sm shadow-slate-200/50">
-                <i class="fa-solid fa-magnifying-glass absolute right-5 top-1/2 -translate-y-1/2 text-slate-300"></i>
-            </div>
-            <a href="?export=csv" class="flex items-center justify-center bg-emerald-600 text-white px-4 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest whitespace-nowrap" title="Exportar a Excel"><i class="fa-solid fa-file-excel mr-1"></i> Excel</a>
-        </div>
-    </div>
-
-    <div class="mb-4 flex justify-end">
         <span class="text-[10px] font-black text-slate-400 uppercase italic tracking-widest">
-            Mostrando: <span id="contadorResultados" class="text-brand">0</span> registros
+            {{ total_productos }} producto(s) con stock
         </span>
     </div>
+
+    {% include "includes/lista_filtros.html" %}
 
     <div class="grid grid-cols-1 gap-6">
         <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
@@ -72,6 +61,8 @@
             </table>
         </div>
     </div>
+
+    {% include "includes/lista_paginacion.html" %}
 </div>
 
 {% include "admon_inventarios/modals/modal_detalle_existencia.html" %}
@@ -90,33 +81,6 @@
         },
         {% endfor %}
     ];
-
-    // Función de filtrado en tiempo real
-    function filtrarExistencias() {
-        const input = document.getElementById('busquedaExistencia');
-        const filter = input.value.toUpperCase();
-        const filas = document.getElementsByClassName('fila-existencia');
-        let contador = 0;
-
-        for (let i = 0; i < filas.length; i++) {
-            const nombre = filas[i].querySelector('.nombre-prod').textContent || "";
-            const sku = filas[i].querySelector('.sku-prod').textContent || "";
-            
-            if (nombre.toUpperCase().indexOf(filter) > -1 || sku.toUpperCase().indexOf(filter) > -1) {
-                filas[i].style.display = "";
-                contador++;
-            } else {
-                filas[i].style.display = "none";
-            }
-        }
-        document.getElementById('contadorResultados').innerText = contador;
-    }
-
-    // Inicializar contador al cargar la página
-    document.addEventListener('DOMContentLoaded', () => {
-        const total = document.getElementsByClassName('fila-existencia').length;
-        document.getElementById('contadorResultados').innerText = total;
-    });
 </script>
 
 {% endblock %}
