@@ -117,6 +117,13 @@ def _dashboard_data(request):
         d['cxc_venc'] = sum((f.saldo for f in pend_cxc if f.fecha_vencimiento and f.fecha_vencimiento < hoy), D('0'))
         d['cxc_top'] = sorted(pend_cxc, key=lambda f: f.saldo, reverse=True)[:5]
 
+        # Facturación de CxC (cobro ≠ facturación)
+        no_fact = [f for f in cxc if not f.esta_facturada]
+        d['cxc_pend_facturar'] = sum((f.total for f in no_fact), D('0'))   # total sin CFDI (vigente)
+        d['cxc_pend_facturar_count'] = len(no_fact)
+        d['cxc_por_cobrar_sin_fact'] = sum((f.saldo for f in pend_cxc if not f.esta_facturada), D('0'))
+        d['cxc_facturado_por_cobrar'] = sum((f.saldo for f in pend_cxc if f.esta_facturada), D('0'))
+
         cxp = FacturaProveedor.objects.filter(empresa=empresa).exclude(estado='CANCELADA').select_related('proveedor')
         pend_cxp = [f for f in cxp if f.saldo > 0]
         d['cxp_total'] = sum((f.saldo for f in pend_cxp), D('0'))
