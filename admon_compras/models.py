@@ -138,7 +138,9 @@ class OrdenCompra(models.Model):
 
     @property
     def esta_recibida_completa(self):
-        return all(d.cantidad_recibida >= d.cantidad_pedida for d in self.detalles.all())
+        # Los servicios (grupo no inventariable) no requieren recepción de stock
+        return all(getattr(d.producto, 'es_servicio', False) or d.cantidad_recibida >= d.cantidad_pedida
+                   for d in self.detalles.all())
 
     def color_estado(self):
         return {
@@ -165,6 +167,9 @@ class DetalleOrdenCompra(models.Model):
 
     @property
     def pendiente_por_recibir(self):
+        # Los servicios (grupo no inventariable) no requieren recepción de stock
+        if getattr(self.producto, 'es_servicio', False):
+            return decimal.Decimal('0')
         restante = self.cantidad_pedida - self.cantidad_recibida
         return restante if restante > 0 else decimal.Decimal('0')
 

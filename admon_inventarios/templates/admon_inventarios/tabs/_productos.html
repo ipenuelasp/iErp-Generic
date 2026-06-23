@@ -258,7 +258,9 @@
 
 <script>
     function openModal() {
-        document.getElementById('modalProducto').querySelector('form').reset();
+        const form = document.getElementById('modalProducto').querySelector('form');
+        form.reset();
+        if (window.jQuery) jQuery(form).find('select.select2-hidden-accessible').trigger('change.select2');
         document.getElementById('modalTitle').innerText = 'Nuevo Producto';
         document.getElementById('btnSubmitProd').innerText = 'Registrar';
         document.getElementById('prod_item_id').value = '';
@@ -272,7 +274,15 @@
         document.getElementById('btnSubmitProd').innerText = 'Guardar Cambios';
         document.getElementById('prod_item_id').value = d.id;
 
-        const setVal = (fid, val) => { const el = document.getElementById(fid); if (el) el.value = val; };
+        const setVal = (fid, val) => {
+            const el = document.getElementById(fid);
+            if (!el) return;
+            el.value = val;
+            // Los <select> usan select2: hay que avisarle para que actualice lo que muestra
+            if (window.jQuery && jQuery(el).hasClass('select2-hidden-accessible')) {
+                jQuery(el).val(val).trigger('change.select2');
+            }
+        };
         const setChk = (fid, val) => { const el = document.getElementById(fid); if (el) el.checked = (val === 'True' || val === 'true' || val === '1'); };
 
         setVal('id_nombre', d.nombre);
