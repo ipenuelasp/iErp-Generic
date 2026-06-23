@@ -55,15 +55,15 @@
                 <button type="button" onclick="agregar()" class="bg-brand/10 text-brand px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-brand hover:text-white transition-all"><i class="fa-solid fa-plus mr-2"></i> Agregar</button>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-left table-fixed min-w-[820px]">
+                <table class="w-full text-left table-fixed min-w-[900px]">
                     <thead><tr class="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                        <th class="px-5 py-5">Producto</th>
-                        <th class="px-2 py-5 w-14 text-center">Cant.</th>
-                        <th class="px-2 py-5 w-20 text-center">Margen %</th>
-                        <th class="px-2 py-5 w-24 text-right">Precio Unit.</th>
-                        <th class="px-2 py-5 w-32 text-center">Impuesto</th>
-                        <th class="px-2 py-5 w-24 text-right">Importe</th>
-                        <th class="px-2 py-5 w-12"></th>
+                        <th class="px-6 py-5 w-[40%]">Producto</th>
+                        <th class="px-3 py-5 w-24 text-center">Cant.</th>
+                        <th class="px-3 py-5 w-28 text-center">Margen %</th>
+                        <th class="px-3 py-5 w-40 text-right">Precio Unit.</th>
+                        <th class="px-3 py-5 w-44 text-center">Impuesto</th>
+                        <th class="px-3 py-5 w-40 text-right">Importe</th>
+                        <th class="px-3 py-5 w-16"></th>
                     </tr></thead>
                     <tbody id="cuerpo" class="divide-y divide-slate-50"></tbody>
                 </table>
@@ -104,13 +104,13 @@ function agregar(prod, cant, precio, impuesto, margen) {
     const tr = document.createElement('tr');
     tr.className = 'hover:bg-slate-50/50';
     tr.innerHTML = `
-        <td class="px-5 py-4"><select name="producto[]" required onchange="prefill(this)" class="w-full">${document.getElementById('tplProductos').innerHTML}</select></td>
-        <td class="px-2 py-4"><input type="number" name="cantidad[]" step="0.0001" min="0" value="${cant||1}" oninput="calc()" class="text-center font-black text-brand"></td>
-        <td class="px-2 py-4"><input type="number" name="margen[]" step="0.01" min="0" max="99.99" value="${margen!=null && margen!=='' ? margen : 15}" oninput="precioDesdeMargen(this)" class="text-center font-bold text-slate-500"></td>
-        <td class="px-2 py-4"><input type="number" name="precio[]" step="0.0001" min="0" value="${precio||0}" oninput="margenDesdePrecio(this)" class="text-right font-bold"></td>
-        <td class="px-2 py-4"><select name="impuesto[]" onchange="calc()" class="text-center">${document.getElementById('tplImpuestos').innerHTML}</select></td>
-        <td class="px-2 py-4 text-right font-black text-slate-700 importe">$0.00</td>
-        <td class="px-2 py-4 text-center"><button type="button" onclick="this.closest('tr').remove();calc()" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500"><i class="fa-solid fa-trash-can text-xs"></i></button></td>`;
+        <td class="px-6 py-4"><select name="producto[]" required onchange="prefill(this)" class="w-full">${document.getElementById('tplProductos').innerHTML}</select></td>
+        <td class="px-3 py-4"><input type="number" name="cantidad[]" step="0.0001" min="0" value="${cant||1}" oninput="calc()" class="text-center font-black text-brand"></td>
+        <td class="px-3 py-4"><input type="number" name="margen[]" step="0.01" min="0" max="99.99" value="${margen!=null && margen!=='' ? margen : 15}" oninput="precioDesdeMargen(this)" class="text-center font-bold text-slate-500"></td>
+        <td class="px-3 py-4"><input type="number" name="precio[]" step="0.0001" min="0" value="${precio||0}" oninput="margenDesdePrecio(this)" class="text-right font-bold"></td>
+        <td class="px-3 py-4"><select name="impuesto[]" onchange="calc()" class="text-center">${document.getElementById('tplImpuestos').innerHTML}</select></td>
+        <td class="px-3 py-4 text-right font-black text-slate-700 importe">$0.00</td>
+        <td class="px-3 py-4 text-center"><button type="button" onclick="this.closest('tr').remove();calc()" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500"><i class="fa-solid fa-trash-can text-xs"></i></button></td>`;
     tbody.appendChild(tr);
     if (prod) {
         const selProd = tr.querySelector('select[name="producto[]"]');
@@ -197,8 +197,8 @@ function calc() {
     #cuerpo .select2-selection__rendered { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-left:0.55rem !important; padding-right:1.1rem !important; font-size:0.74rem; }
     /* Flecha del select2 más pegada al borde para ganar espacio de texto */
     #cuerpo .select2-selection__arrow { right:1px !important; }
-    /* Inputs compactos dentro de la tabla de partidas (columnas angostas) */
-    #cuerpo input, #cuerpo select { padding:0.5rem 0.45rem; font-size:0.74rem; border-radius:0.65rem; }
+    /* Inputs de la tabla de partidas */
+    #cuerpo input, #cuerpo select { padding:0.6rem 0.7rem; font-size:0.8rem; border-radius:0.75rem; }
     #cuerpo .select2-selection { border-radius:0.65rem; }
     /* Sin flechitas de número: ganan ancho para el valor */
     #cuerpo input[type=number] { -moz-appearance:textfield; }
