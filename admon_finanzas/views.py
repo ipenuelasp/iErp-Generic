@@ -396,7 +396,7 @@ class CuentasPorCobrarView(LoginRequiredMixin, View):
         from admon_ventas.models import Cliente
 
         qs = FacturaCliente.objects.filter(empresa=empresa).select_related(
-            'cliente', 'moneda', 'pedido').prefetch_related('aplicaciones')
+            'cliente', 'moneda', 'pedido').prefetch_related('aplicaciones', 'cfdis')
 
         # Filtro de facturación (una CxC está facturada si tiene UUID o XML)
         from django.db.models import Q

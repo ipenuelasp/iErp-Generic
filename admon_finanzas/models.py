@@ -157,8 +157,15 @@ class FacturaCliente(models.Model):
 
     @property
     def esta_facturada(self):
-        """True si ya se le subió/asignó el CFDI (UUID o archivo XML)."""
-        return bool(self.uuid_cfdi) or bool(self.archivo_xml)
+        """True si ya se le subió/asignó al menos un CFDI (UUID, XML, o un CFDI
+        de la tabla hija para facturación por artículo/parcial)."""
+        if bool(self.uuid_cfdi) or bool(self.archivo_xml):
+            return True
+        # Usa el prefetch 'cfdis' si está disponible para no disparar N+1
+        try:
+            return len(self.cfdis.all()) > 0
+        except Exception:
+            return self.cfdis.exists()
 
     @property
     def estado_facturacion(self):
@@ -169,6 +176,29 @@ class FacturaCliente(models.Model):
 
     def __str__(self):
         return f"CxC {self.folio} — {self.cliente}"
+
+
+class CfdiCliente(models.Model):
+    """CFDI emitido ligado a una Cuenta por Cobrar. Una CxC puede tener varios
+    (facturación por artículo o parcial), por eso es una tabla aparte."""
+    factura = models.ForeignKey(
+        FacturaCliente, on_delete=models.CASCADE, related_name='cfdis')
+    uuid = models.CharField(max_length=40)
+    serie_folio = models.CharField(max_length=60, blank=True, default='')
+    fecha = models.DateField(null=True, blank=True)
+    total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    archivo_xml = models.FileField(upload_to='cfdi/cobrar/xml/', null=True, blank=True)
+    archivo_pdf = models.FileField(upload_to='cfdi/cobrar/pdf/', null=True, blank=True)
+    cargado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('factura', 'uuid')
+        ordering = ['fecha', 'id']
+        verbose_name = "CFDI de cliente"
+        verbose_name_plural = "CFDI de cliente"
+
+    def __str__(self):
+        return f"{self.uuid} — {self.factura.folio}"
 
 
 class Pago(models.Model):

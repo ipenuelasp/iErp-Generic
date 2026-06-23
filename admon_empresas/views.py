@@ -110,7 +110,7 @@ def _dashboard_data(request):
     # ---- Finanzas: CxC por cobrar / CxP por pagar / flujo del mes ----
     if 'finanzas' in mods:
         from admon_finanzas.models import FacturaCliente, FacturaProveedor, Pago
-        cxc = FacturaCliente.objects.filter(empresa=empresa).exclude(estado='CANCELADA').select_related('cliente')
+        cxc = FacturaCliente.objects.filter(empresa=empresa).exclude(estado='CANCELADA').select_related('cliente').prefetch_related('cfdis')
         pend_cxc = [f for f in cxc if f.saldo > 0]
         d['cxc_total'] = sum((f.saldo for f in pend_cxc), D('0'))
         d['cxc_count'] = len(pend_cxc)

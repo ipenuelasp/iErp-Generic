@@ -139,6 +139,11 @@ def conciliar(empresa):
     # Índices por UUID
     cxc_uuid = {f.uuid_cfdi.upper(): f for f in FacturaCliente.objects.filter(
         empresa=empresa).exclude(uuid_cfdi__isnull=True).exclude(uuid_cfdi='') if f.uuid_cfdi}
+    # CFDI hijos (facturación por artículo): cada UUID apunta a su CxC
+    from .models import CfdiCliente
+    for c in CfdiCliente.objects.filter(factura__empresa=empresa).select_related('factura'):
+        if c.uuid:
+            cxc_uuid.setdefault(c.uuid.upper(), c.factura)
     cxp_uuid = {f.uuid_cfdi.upper(): f for f in FacturaProveedor.objects.filter(
         empresa=empresa).exclude(uuid_cfdi__isnull=True).exclude(uuid_cfdi='') if f.uuid_cfdi}
     gasto_uuid = {g.uuid_cfdi.upper(): g for g in Gasto.objects.filter(

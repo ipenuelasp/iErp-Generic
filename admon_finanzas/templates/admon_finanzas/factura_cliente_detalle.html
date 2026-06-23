@@ -43,9 +43,33 @@
             <div class="flex gap-3">
                 {% if factura.archivo_xml %}<a href="{{ factura.archivo_xml.url }}" target="_blank" class="text-[10px] font-black text-brand uppercase tracking-widest hover:underline"><i class="fa-solid fa-file-code mr-1"></i> XML</a>{% endif %}
                 {% if factura.archivo_pdf %}<a href="{{ factura.archivo_pdf.url }}" target="_blank" class="text-[10px] font-black text-rose-500 uppercase tracking-widest hover:underline"><i class="fa-solid fa-file-pdf mr-1"></i> PDF</a>{% endif %}
-                {% if not factura.archivo_xml and not factura.archivo_pdf %}<span class="text-[10px] text-slate-300 italic">Sin CFDI adjunto</span>{% endif %}
+                {% if not factura.archivo_xml and not factura.archivo_pdf and not factura.cfdis.all %}<span class="text-[10px] text-slate-300 italic">Sin CFDI adjunto</span>{% endif %}
             </div>
         </div>
+
+        {% if factura.cfdis.all %}
+        <div class="mb-6 border border-slate-100 rounded-2xl overflow-hidden">
+            <div class="bg-slate-50 px-5 py-3 flex items-center justify-between">
+                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">{{ factura.cfdis.all|length }} CFDI ligado(s) a esta CxC</span>
+                <span class="text-[10px] font-bold text-slate-400">Facturación por artículo</span>
+            </div>
+            <table class="w-full text-left">
+                <tbody class="divide-y divide-slate-50">
+                    {% for c in factura.cfdis.all %}
+                    <tr class="hover:bg-slate-50/60">
+                        <td class="px-5 py-3 text-[10px] font-mono text-slate-500">{{ c.uuid }}</td>
+                        <td class="px-3 py-3 text-[10px] font-bold text-slate-400">{{ c.fecha|date:"d/m/Y"|default:"—" }}</td>
+                        <td class="px-3 py-3 text-right text-xs font-black text-slate-700">${{ c.total|floatformat:2|intcomma }}</td>
+                        <td class="px-5 py-3 text-right whitespace-nowrap">
+                            {% if c.archivo_xml %}<a href="{{ c.archivo_xml.url }}" target="_blank" class="text-[10px] font-black text-brand uppercase hover:underline mr-3"><i class="fa-solid fa-file-code mr-1"></i>XML</a>{% endif %}
+                            {% if c.archivo_pdf %}<a href="{{ c.archivo_pdf.url }}" target="_blank" class="text-[10px] font-black text-rose-500 uppercase hover:underline"><i class="fa-solid fa-file-pdf mr-1"></i>PDF</a>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
 
         <form method="POST" enctype="multipart/form-data"
               data-rfc="{{ factura.cliente.rfc|default:''|upper }}" data-total="{{ factura.total|floatformat:2 }}">
