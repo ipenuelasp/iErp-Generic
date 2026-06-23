@@ -421,7 +421,7 @@ class CuentasPorCobrarView(LoginRequiredMixin, View):
                  'opciones': [(c.id, str(c)) for c in
                               Cliente.objects.filter(empresa=empresa).order_by('nombre_fiscal')]},
                 {'name': 'facturacion', 'label': 'Facturación', 'tipo': 'select',
-                 'opciones': [('si', 'Facturado'), ('no', 'Pendiente de facturar')],
+                 'opciones': [('si', 'Facturado'), ('no', 'Sin factura')],
                  'todos': 'Todas'},
                 {'name': 'desde', 'label': 'Desde', 'tipo': 'date'},
                 {'name': 'hasta', 'label': 'Hasta', 'tipo': 'date'},

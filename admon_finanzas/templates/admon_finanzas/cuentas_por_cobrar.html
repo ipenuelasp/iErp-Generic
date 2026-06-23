@@ -75,9 +75,9 @@
                     <td class="px-6 py-4 text-right text-xs font-black {% if f.saldo > 0 %}text-emerald-600{% else %}text-slate-400{% endif %}">{{ f.moneda.simbolo }}{{ f.saldo|floatformat:2|intcomma }}</td>
                     <td class="px-6 py-4 text-center">
                         {% if f.esta_facturada %}
-                        <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-100 text-blue-700"><i class="fa-solid fa-file-invoice mr-1"></i> Facturado</span>
+                        <span class="inline-flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600"><i class="fa-solid fa-file-invoice text-[10px]"></i> Facturado</span>
                         {% else %}
-                        <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-100 text-rose-700"><i class="fa-regular fa-clock mr-1"></i> Pendiente de facturar</span>
+                        <span class="inline-flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-500"><i class="fa-regular fa-clock text-[10px]"></i> Sin factura</span>
                         {% endif %}
                     </td>
                     <td class="px-8 py-4 text-center">
