@@ -947,6 +947,12 @@ class ConciliacionSATView(LoginRequiredMixin, View):
             messages.info(request, "Comprobantes SAT borrados (puedes volver a cargar).")
             return redirect('admon_finanzas:conciliacion_sat')
 
+        if accion == 'eliminar_comp':
+            ComprobanteSAT.objects.filter(
+                id=request.POST.get('comprobante_id'), empresa=empresa).delete()
+            messages.info(request, "Comprobante quitado de la conciliación.")
+            return redirect('admon_finanzas:conciliacion_sat')
+
         comp = get_object_or_404(ComprobanteSAT, id=request.POST.get('comprobante_id'), empresa=empresa)
 
         if accion == 'marcar_uuid':

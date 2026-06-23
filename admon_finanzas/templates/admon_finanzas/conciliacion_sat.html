@@ -86,18 +86,23 @@
                         {% elif f.estado == 'SIN_UUID' %}<span class="text-[9px] font-black bg-amber-50 text-amber-600 px-3 py-1 rounded-full uppercase">Sin UUID</span>
                         {% else %}<span class="text-[9px] font-black bg-rose-50 text-rose-600 px-3 py-1 rounded-full uppercase">Falta</span>{% endif %}
                     </td>
-                    <td class="px-6 py-4 text-center">
-                        {% if f.estado == 'SIN_UUID' %}
-                        <form method="POST" class="inline">{% csrf_token %}<input type="hidden" name="accion" value="marcar_uuid"><input type="hidden" name="comprobante_id" value="{{ f.comp.id }}">
-                            <button class="text-[10px] font-black uppercase text-brand hover:underline" title="Asignar UUID al {{ f.doc_tipo }} que coincide">Asignar UUID</button>
-                        </form>
-                        {% elif f.estado == 'FALTANTE' and f.comp.direccion == 'RECIBIDO' %}
-                        <form method="POST" class="inline" onsubmit="return confirm('¿Crear gasto desde este CFDI?')">{% csrf_token %}<input type="hidden" name="accion" value="alta_gasto"><input type="hidden" name="comprobante_id" value="{{ f.comp.id }}">
-                            <button class="text-[10px] font-black uppercase text-emerald-600 hover:underline"><i class="fa-solid fa-plus mr-1"></i> Alta gasto</button>
-                        </form>
-                        {% elif f.estado == 'FALTANTE' %}
-                        <span class="text-[9px] font-bold text-slate-300 italic">Registrar venta</span>
-                        {% else %}<span class="text-slate-300">—</span>{% endif %}
+                    <td class="px-6 py-4">
+                        <div class="flex items-center justify-center gap-3">
+                            {% if f.estado == 'SIN_UUID' %}
+                            <form method="POST" class="inline">{% csrf_token %}<input type="hidden" name="accion" value="marcar_uuid"><input type="hidden" name="comprobante_id" value="{{ f.comp.id }}">
+                                <button class="text-[10px] font-black uppercase text-brand hover:underline" title="Asignar UUID al {{ f.doc_tipo }} que coincide">Asignar UUID</button>
+                            </form>
+                            {% elif f.estado == 'FALTANTE' and f.comp.direccion == 'RECIBIDO' %}
+                            <form method="POST" class="inline" onsubmit="return confirm('¿Crear gasto desde este CFDI?')">{% csrf_token %}<input type="hidden" name="accion" value="alta_gasto"><input type="hidden" name="comprobante_id" value="{{ f.comp.id }}">
+                                <button class="text-[10px] font-black uppercase text-emerald-600 hover:underline"><i class="fa-solid fa-plus mr-1"></i> Alta gasto</button>
+                            </form>
+                            {% elif f.estado == 'FALTANTE' %}
+                            <span class="text-[9px] font-bold text-slate-300 italic">Registrar venta</span>
+                            {% endif %}
+                            <form method="POST" class="inline" onsubmit="return confirm('¿Quitar este CFDI de la conciliación?')">{% csrf_token %}<input type="hidden" name="accion" value="eliminar_comp"><input type="hidden" name="comprobante_id" value="{{ f.comp.id }}">
+                                <button class="text-slate-300 hover:text-rose-500" title="Quitar este CFDI"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
