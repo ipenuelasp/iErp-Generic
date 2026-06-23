@@ -197,6 +197,20 @@ class ImportarAmazonView(LoginRequiredMixin, View):
             messages.error(request, "Selecciona el archivo .csv exportado de Amazon.")
             return redirect('admon_compras:historial_ordenes')
         from . import import_amazon
+        # Modo recalcular: corrige costos de OC ya importadas, sin crear ni borrar
+        if request.POST.get('modo') == 'recalcular':
+            try:
+                r = import_amazon.recalcular_costos(archivo, empresa)
+            except Exception as e:
+                messages.error(request, f"No se pudo recalcular: {e}")
+                return redirect('admon_compras:historial_ordenes')
+            messages.success(
+                request,
+                f"Costos recalculados: {r['ordenes']} órdenes, {r['lineas']} líneas, "
+                f"{r['productos']} productos actualizados."
+                + (f" ({r['no_encontradas']} pedidos del CSV no existían y se omitieron)"
+                   if r['no_encontradas'] else ""))
+            return redirect('admon_compras:historial_ordenes')
         try:
             res = import_amazon.importar(archivo, empresa, sucursal, request.user)
         except Exception as e:

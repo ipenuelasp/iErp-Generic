@@ -248,3 +248,104 @@ def importar(archivo, empresa, sucursal, usuario):
         res['gasto'] += fp.total
 
     return res
+
+
+def _costo_real(row):
+    """Costo unitario sin IVA, usando el 'Total neto del producto' (monto real
+    pagado, con promociones). Si no viene, usa el PPU de la compra."""
+    cant = _num(row.get('Cantidad de producto')) or decimal.Decimal('1')
+    tasa = _tasa(row.get('Tipo de IVA del subtotal del producto'))
+    factor = decimal.Decimal(1) + decimal.Decimal(tasa) / 100
+    net = _num(row.get('Total neto del producto'))
+    ppu = _num(row.get('PPU de la compra'))
+    if net > 0 and factor > 0 and cant:
+        costo = net / factor / cant
+    else:
+        costo = ppu
+    return costo.quantize(decimal.Decimal('0.0001')), tasa
+
+
+@transaction.atomic
+def recalcular_costos(archivo, empresa):
+    """Re-lee el CSV de Amazon y corrige EN SU LUGAR el costo de las OC ya
+    importadas (producto, detalle OC, recepción, movimientos, OC y CxP/egreso),
+    usando el monto real (Total neto). No borra nada ni toca las ventas."""
+    from admon_inventarios.models import Producto, MovimientoInventario, DetalleRecepcion
+    from admon_compras.models import OrdenCompra, DetalleOrdenCompra
+    from admon_finanzas.models import FacturaProveedor
+
+    data = archivo.read().decode('utf-8-sig', errors='replace')
+    reader = csv.DictReader(io.StringIO(data))
+
+    # Agrupar por orden (dedup de filas idénticas)
+    ordenes = {}
+    for row in reader:
+        if (row.get('Estatus del pedido') or '').strip().lower() == 'cancelado':
+            continue
+        if not (row.get('ASIN') or '').strip():
+            continue
+        ordenes.setdefault((row.get('Identificador de pedido') or '').strip(), []).append(row)
+
+    res = dict(ordenes=0, lineas=0, no_encontradas=0, productos=0)
+    for oid, filas in ordenes.items():
+        oc = OrdenCompra.objects.filter(empresa=empresa, folio=f"AMZ-OC-{oid}").first()
+        if not oc:
+            res['no_encontradas'] += 1
+            continue
+
+        # Costo real por ASIN (colapsa duplicados quedándose con el último)
+        costos = {}
+        for row in filas:
+            costo, tasa = _costo_real(row)
+            costos[row['ASIN'].strip()] = costo
+
+        for d in oc.detalles.select_related('producto'):
+            sku = d.producto.sku
+            if sku not in costos:
+                continue
+            costo = costos[sku]
+            if d.precio_unitario != costo:
+                d.precio_unitario = costo
+                d.save(update_fields=['precio_unitario'])
+            # Producto
+            if d.producto.costo_unitario != costo:
+                d.producto.costo_unitario = costo
+                d.producto.save(update_fields=['costo_unitario'])
+                res['productos'] += 1
+            # Recepción
+            DetalleRecepcion.objects.filter(detalle_oc=d).update(costo_unitario=costo)
+            # Movimientos de entrada de esta OC para ese producto
+            MovimientoInventario.objects.filter(
+                empresa=empresa, referencia=oc.folio, producto=d.producto,
+                tipo='ENTRADA').update(costo_unitario=costo)
+            res['lineas'] += 1
+
+        # Recalcular totales de la OC
+        sub = D0
+        imp = D0
+        for d in oc.detalles.all():
+            base = d.cantidad_pedida * d.precio_unitario
+            sub += base
+            imp += base * (d.iva_porcentaje or 0) / 100
+        oc.subtotal = sub.quantize(CENT)
+        oc.impuestos = imp.quantize(CENT)
+        oc.total = oc.subtotal + oc.impuestos
+        oc.save(update_fields=['subtotal', 'impuestos', 'total'])
+
+        # CxP + egreso
+        for fp in FacturaProveedor.objects.filter(orden_compra=oc):
+            fp.subtotal = oc.subtotal
+            fp.impuestos = oc.impuestos
+            fp.total = oc.total
+            fp.save(update_fields=['subtotal', 'impuestos', 'total'])
+            for ap in fp.aplicaciones.all():
+                ap.monto_aplicado = fp.total
+                ap.save(update_fields=['monto_aplicado'])
+                pago = ap.pago
+                pago.monto = fp.total
+                pago.save(update_fields=['monto'])
+            if hasattr(fp, 'recalcular_estado'):
+                fp.recalcular_estado()
+
+        res['ordenes'] += 1
+    return res

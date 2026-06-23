@@ -38,10 +38,12 @@
                     {% csrf_token %}
                     <input type="file" name="archivo" accept=".csv" required
                         class="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-5 py-6 text-xs font-bold text-slate-600">
-                    <div class="flex justify-end gap-3">
+                    <div class="flex flex-wrap justify-end gap-3 items-center">
                         <button type="button" onclick="document.getElementById('modalAmazon').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 px-4">Cancelar</button>
+                        <button type="submit" name="modo" value="recalcular" class="bg-white border border-slate-200 text-slate-600 font-black py-3 px-6 rounded-2xl text-[10px] uppercase tracking-widest" title="Corrige costos de pedidos ya importados, sin crear ni borrar">Recalcular costos</button>
                         <button type="submit" class="bg-amber-500 text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">Importar</button>
                     </div>
+                    <p class="text-[10px] font-bold text-slate-400">"Recalcular costos" usa el mismo CSV para ajustar el costo real (con promociones) de las compras ya cargadas, sin tocar inventario ni ventas.</p>
                 </form>
             </div>
         </div>
