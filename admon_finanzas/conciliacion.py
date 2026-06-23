@@ -6,7 +6,7 @@ Lee XML de CFDI (3.3 / 4.0), extrae su metadata y la compara con las CxC
 import decimal
 import io
 import zipfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from xml.etree import ElementTree as ET
 
 D = decimal.Decimal
@@ -169,13 +169,26 @@ def conciliar(empresa):
 
 
 def _aprox(a, b):
-    return abs((a or D('0')) - (b or D('0'))) <= D('1.00')
+    """Match si la diferencia es ≤ 2% del mayor, con mínimo de $1.
+    Cubre redondeos de centavos Y descuentos/promociones de Amazon."""
+    a, b = (a or D('0')), (b or D('0'))
+    mayor = max(abs(a), abs(b))
+    tolerancia = max(D('1.00'), (mayor * D('0.02')).quantize(D('0.01')))
+    return abs(a - b) <= tolerancia
+
+
+_RANGO_DIAS = 5  # tolerancia de ±5 días entre fecha del doc y fecha del CFDI
+
+
+def _rango_fecha(d):
+    return d - timedelta(days=_RANGO_DIAS), d + timedelta(days=_RANGO_DIAS)
 
 
 def FacturaClienteCand(empresa, c):
     from .models import FacturaCliente
-    for f in FacturaCliente.objects.filter(empresa=empresa, fecha_emision=c.fecha).exclude(
-            estado='CANCELADA'):
+    f_min, f_max = _rango_fecha(c.fecha)
+    for f in FacturaCliente.objects.filter(
+            empresa=empresa, fecha_emision__range=(f_min, f_max)).exclude(estado='CANCELADA'):
         if (not f.uuid_cfdi) and _aprox(f.total, c.total):
             return f
     return None
@@ -183,8 +196,9 @@ def FacturaClienteCand(empresa, c):
 
 def FacturaProvCand(empresa, c):
     from .models import FacturaProveedor
-    for f in FacturaProveedor.objects.filter(empresa=empresa, fecha_emision=c.fecha).exclude(
-            estado='CANCELADA'):
+    f_min, f_max = _rango_fecha(c.fecha)
+    for f in FacturaProveedor.objects.filter(
+            empresa=empresa, fecha_emision__range=(f_min, f_max)).exclude(estado='CANCELADA'):
         if (not f.uuid_cfdi) and _aprox(f.total, c.total):
             return (f, 'CxP')
     return None
@@ -192,7 +206,8 @@ def FacturaProvCand(empresa, c):
 
 def GastoCand(empresa, c):
     from .models import Gasto
-    for g in Gasto.objects.filter(empresa=empresa, fecha=c.fecha):
+    f_min, f_max = _rango_fecha(c.fecha)
+    for g in Gasto.objects.filter(empresa=empresa, fecha__range=(f_min, f_max)):
         if (not g.uuid_cfdi) and _aprox(g.total, c.total):
             return (g, 'Gasto')
     return None
