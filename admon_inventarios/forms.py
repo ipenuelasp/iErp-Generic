@@ -57,14 +57,14 @@ class ProductoForm(EstiloBaseForm):
             'es_loteable', 'es_serializable',
             'es_comprable', 'es_vendible', 'es_materia_prima', 'es_producible', 'es_retornable',
             'registro_sanitario',
-            'costo_unitario', 'precio_venta', 'activo', 'unidad_medida',
+            'costo_unitario', 'precio_venta', 'margen', 'activo', 'unidad_medida',
             'ubicacion_defecto',
         ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        for f in ('costo_unitario', 'precio_venta', 'clase', 'grupo', 'tipo',
+        for f in ('costo_unitario', 'precio_venta', 'margen', 'clase', 'grupo', 'tipo',
                   'codigo_barras', 'registro_sanitario', 'descripcion', 'impuesto'):
             self.fields[f].required = False
 

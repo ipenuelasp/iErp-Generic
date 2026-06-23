@@ -57,6 +57,7 @@ def _aplicar_partidas(pedido, empresa, request):
     productos_ids = request.POST.getlist('producto[]')
     cantidades = request.POST.getlist('cantidad[]')
     precios = request.POST.getlist('precio[]')
+    margenes = request.POST.getlist('margen[]')
     impuestos_ids = request.POST.getlist('impuesto[]')
 
     default_imp = Impuesto.objects.filter(empresa=empresa, es_default=True).first()
@@ -70,6 +71,11 @@ def _aplicar_partidas(pedido, empresa, request):
             continue
         cant = decimal.Decimal(cantidades[i] or '0')
         prec = decimal.Decimal(precios[i] or '0')
+        margen_val = margenes[i] if i < len(margenes) else ''
+        try:
+            margen = decimal.Decimal(margen_val) if margen_val not in ('', None) else None
+        except decimal.InvalidOperation:
+            margen = None
         imp_id = impuestos_ids[i] if i < len(impuestos_ids) else ''
         imp = Impuesto.objects.filter(id=imp_id, empresa=empresa).first() if imp_id else default_imp
         tasa = imp.tasa if imp else decimal.Decimal('0')
@@ -79,7 +85,8 @@ def _aplicar_partidas(pedido, empresa, request):
         monto = sub * (tasa / 100)
         DetallePedido.objects.create(
             pedido=pedido, producto_id=pid, cantidad=cant,
-            precio_unitario=prec, impuesto=imp, iva_porcentaje=tasa, es_retencion=es_ret)
+            precio_unitario=prec, margen=margen, impuesto=imp,
+            iva_porcentaje=tasa, es_retencion=es_ret)
         subtotal += sub
         imp_total += (-monto if es_ret else monto)
 

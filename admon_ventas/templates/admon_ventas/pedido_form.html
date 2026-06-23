@@ -55,14 +55,15 @@
                 <button type="button" onclick="agregar()" class="bg-brand/10 text-brand px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-brand hover:text-white transition-all"><i class="fa-solid fa-plus mr-2"></i> Agregar</button>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-left">
+                <table class="w-full text-left table-fixed min-w-[880px]">
                     <thead><tr class="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
                         <th class="px-8 py-5">Producto</th>
-                        <th class="px-4 py-5 w-32 text-center">Cantidad</th>
-                        <th class="px-4 py-5 w-36 text-right">Precio Unit.</th>
-                        <th class="px-4 py-5 w-36 text-center">Impuesto</th>
-                        <th class="px-4 py-5 w-36 text-right">Importe</th>
-                        <th class="px-4 py-5 w-16"></th>
+                        <th class="px-3 py-5 w-20 text-center">Cantidad</th>
+                        <th class="px-3 py-5 w-20 text-center">Margen %</th>
+                        <th class="px-3 py-5 w-32 text-right">Precio Unit.</th>
+                        <th class="px-3 py-5 w-28 text-center">Impuesto</th>
+                        <th class="px-3 py-5 w-28 text-right">Importe</th>
+                        <th class="px-3 py-5 w-12"></th>
                     </tr></thead>
                     <tbody id="cuerpo" class="divide-y divide-slate-50"></tbody>
                 </table>
@@ -86,7 +87,7 @@
 
 <select id="tplProductos" class="hidden no-select2">
     <option value="">-- Producto --</option>
-    {% for p in productos %}<option value="{{ p.id }}" data-precio="{{ p.precio_venta }}" data-impuesto="{{ p.impuesto_id|default:'' }}">[{{ p.sku }}] {{ p.nombre }}</option>{% endfor %}
+    {% for p in productos %}<option value="{{ p.id }}" data-precio="{{ p.precio_venta }}" data-costo="{{ p.costo_unitario }}" data-margen="{{ p.margen|default:'15' }}" data-impuesto="{{ p.impuesto_id|default:'' }}">[{{ p.sku }}] {{ p.nombre }}</option>{% endfor %}
 </select>
 <select id="tplImpuestos" class="hidden no-select2">
     {% for imp in impuestos %}<option value="{{ imp.id }}" data-tasa="{{ imp.tasa }}" data-ret="{{ imp.es_retencion|yesno:'1,0' }}" {% if imp.es_default %}data-default="1"{% endif %}>{{ imp.nombre }}</option>{% endfor %}
@@ -98,28 +99,64 @@ function impuestoDefault() {
     const def = document.querySelector('#tplImpuestos option[data-default="1"]');
     return def ? def.value : (document.querySelector('#tplImpuestos option') || {}).value || '';
 }
-function agregar(prod, cant, precio, impuesto) {
+function agregar(prod, cant, precio, impuesto, margen) {
     const tbody = document.getElementById('cuerpo');
     const tr = document.createElement('tr');
     tr.className = 'hover:bg-slate-50/50';
     tr.innerHTML = `
         <td class="px-8 py-4"><select name="producto[]" required onchange="prefill(this)" class="w-full">${document.getElementById('tplProductos').innerHTML}</select></td>
-        <td class="px-4 py-4"><input type="number" name="cantidad[]" step="0.0001" min="0" value="${cant||1}" oninput="calc()" class="text-center font-black text-brand"></td>
-        <td class="px-4 py-4"><input type="number" name="precio[]" step="0.0001" min="0" value="${precio||0}" oninput="calc()" class="text-right font-bold"></td>
-        <td class="px-4 py-4"><select name="impuesto[]" onchange="calc()" class="text-center">${document.getElementById('tplImpuestos').innerHTML}</select></td>
-        <td class="px-4 py-4 text-right font-black text-slate-700 importe">$0.00</td>
-        <td class="px-4 py-4 text-center"><button type="button" onclick="this.closest('tr').remove();calc()" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500"><i class="fa-solid fa-trash-can text-xs"></i></button></td>`;
+        <td class="px-3 py-4"><input type="number" name="cantidad[]" step="0.0001" min="0" value="${cant||1}" oninput="calc()" class="text-center font-black text-brand"></td>
+        <td class="px-3 py-4"><input type="number" name="margen[]" step="0.01" min="0" max="99.99" value="${margen!=null && margen!=='' ? margen : 15}" oninput="precioDesdeMargen(this)" class="text-center font-bold text-slate-500"></td>
+        <td class="px-3 py-4"><input type="number" name="precio[]" step="0.0001" min="0" value="${precio||0}" oninput="margenDesdePrecio(this)" class="text-right font-bold"></td>
+        <td class="px-3 py-4"><select name="impuesto[]" onchange="calc()" class="text-center">${document.getElementById('tplImpuestos').innerHTML}</select></td>
+        <td class="px-3 py-4 text-right font-black text-slate-700 importe">$0.00</td>
+        <td class="px-3 py-4 text-center"><button type="button" onclick="this.closest('tr').remove();calc()" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500"><i class="fa-solid fa-trash-can text-xs"></i></button></td>`;
     tbody.appendChild(tr);
-    if (prod) { tr.querySelector('select[name="producto[]"]').value = prod; }
+    if (prod) {
+        const selProd = tr.querySelector('select[name="producto[]"]');
+        selProd.value = prod;
+        const optP = selProd.options[selProd.selectedIndex];
+        if (optP) tr.dataset.costo = optP.dataset.costo || '0';  // habilita el cálculo margen↔precio
+    }
     const selImp = tr.querySelector('select[name="impuesto[]"]');
     selImp.value = impuesto || impuestoDefault();
+    calc();
+}
+// Precio = costo / (1 - margen/100) — margen financiero sobre venta
+function precioDesdeMargen(inp) {
+    const tr = inp.closest('tr');
+    const costo = parseFloat(tr.dataset.costo || '0');
+    const m = parseFloat(inp.value) || 0;
+    if (costo > 0 && m < 100) {
+        tr.querySelector('input[name="precio[]"]').value = (costo / (1 - m/100)).toFixed(4);
+    }
+    calc();
+}
+// Si editan el precio a mano, recalculamos el margen implícito (informativo)
+function margenDesdePrecio(inp) {
+    const tr = inp.closest('tr');
+    const costo = parseFloat(tr.dataset.costo || '0');
+    const p = parseFloat(inp.value) || 0;
+    if (costo > 0 && p > 0) {
+        tr.querySelector('input[name="margen[]"]').value = ((1 - costo/p) * 100).toFixed(2);
+    }
     calc();
 }
 function prefill(sel) {
     const opt = sel.options[sel.selectedIndex];
     const tr = sel.closest('tr');
-    const inp = tr.querySelector('input[name="precio[]"]');
-    if (opt.dataset.precio && parseFloat(inp.value) === 0) inp.value = parseFloat(opt.dataset.precio).toFixed(4);
+    tr.dataset.costo = opt.dataset.costo || '0';
+    const inpMargen = tr.querySelector('input[name="margen[]"]');
+    const inpPrecio = tr.querySelector('input[name="precio[]"]');
+    // Toma el margen por defecto del producto y calcula el precio sugerido
+    if (opt.dataset.margen) inpMargen.value = parseFloat(opt.dataset.margen).toFixed(2);
+    const costo = parseFloat(opt.dataset.costo || '0');
+    const m = parseFloat(inpMargen.value) || 0;
+    if (costo > 0 && m < 100) {
+        inpPrecio.value = (costo / (1 - m/100)).toFixed(4);
+    } else if (opt.dataset.precio && parseFloat(inpPrecio.value) === 0) {
+        inpPrecio.value = parseFloat(opt.dataset.precio).toFixed(4);
+    }
     if (opt.dataset.impuesto) {
         const selImp = tr.querySelector('select[name="impuesto[]"]');
         selImp.value = opt.dataset.impuesto;
@@ -148,12 +185,15 @@ function calc() {
 }
 
 {% if detalles %}
-{% for d in detalles %}agregar('{{ d.producto_id }}', '{{ d.cantidad }}', '{{ d.precio_unitario }}', '{{ d.impuesto_id|default:'' }}');{% endfor %}
+{% for d in detalles %}agregar('{{ d.producto_id }}', '{{ d.cantidad }}', '{{ d.precio_unitario }}', '{{ d.impuesto_id|default:'' }}', '{{ d.margen|default:'' }}');{% endfor %}
 {% else %}agregar();{% endif %}
 </script>
 <style>
     input, select, textarea { width:100%; padding:0.7rem 0.9rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.9rem; outline:none; font-weight:600; color:#334155; font-size:0.8rem; }
     input:focus, select:focus, textarea:focus { border-color: var(--brand-color); background:#fff; box-shadow:0 0 0 4px rgba(0,171,241,0.1); }
     input[type=checkbox] { width:auto; }
+    /* El nombre largo del producto no debe estirar la columna: se trunca con … */
+    #cuerpo .select2-container { max-width:100%; }
+    #cuerpo .select2-selection__rendered { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 </style>
 {% endblock %}

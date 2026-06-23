@@ -176,6 +176,10 @@ class Producto(models.Model):
     # Costos y precios base (pueden tener override por sucursal)
     costo_unitario = models.DecimalField(max_digits=18, decimal_places=4, default=0)
     precio_venta = models.DecimalField(max_digits=18, decimal_places=4, default=0)
+    # Margen financiero por defecto (% sobre el precio de venta). El precio sugerido
+    # en el pedido = costo / (1 - margen/100). Editable por partida.
+    margen = models.DecimalField(max_digits=6, decimal_places=2, default=15,
+                                 help_text="Margen financiero por defecto (% sobre venta)")
     # Tarifa de renta para productos retornables (instrumental que se presta y se cobra como renta)
     precio_renta = models.DecimalField(max_digits=18, decimal_places=4, default=0,
                                        help_text="Tarifa de renta si el producto es retornable/préstamo")

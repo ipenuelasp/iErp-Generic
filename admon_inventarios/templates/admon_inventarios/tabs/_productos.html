@@ -110,7 +110,7 @@
                         {% if puede_editar_maestro %}
                         <div class="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onclick="editProducto(this)"
-                                data-prod='{"id":"{{ p.id }}","nombre":"{{ p.nombre|escapejs }}","sku":"{{ p.sku|escapejs }}","precio":"{{ p.precio_venta }}","costo":"{{ p.costo_unitario }}","clase":"{{ p.clase.id|default:'' }}","grupo":"{{ p.grupo.id|default:'' }}","tipo":"{{ p.tipo.id|default:'' }}","lote":"{{ p.es_loteable }}","serie":"{{ p.es_serializable }}","activo":"{{ p.activo }}","unidad":"{{ p.unidad_medida.id|default:'' }}","ubicacion":"{{ p.ubicacion_defecto.id|default:'' }}","alcance":"{{ p.alcance }}","barras":"{{ p.codigo_barras|default:''|escapejs }}","sanitario":"{{ p.registro_sanitario|default:''|escapejs }}","comprable":"{{ p.es_comprable }}","vendible":"{{ p.es_vendible }}","mp":"{{ p.es_materia_prima }}","producible":"{{ p.es_producible }}","retornable":"{{ p.es_retornable }}","descripcion":"{{ p.descripcion|default:''|escapejs }}","impuesto":"{{ p.impuesto.id|default:'' }}"}'
+                                data-prod='{"id":"{{ p.id }}","nombre":"{{ p.nombre|escapejs }}","sku":"{{ p.sku|escapejs }}","precio":"{{ p.precio_venta }}","costo":"{{ p.costo_unitario }}","margen":"{{ p.margen|default:'' }}","clase":"{{ p.clase.id|default:'' }}","grupo":"{{ p.grupo.id|default:'' }}","tipo":"{{ p.tipo.id|default:'' }}","lote":"{{ p.es_loteable }}","serie":"{{ p.es_serializable }}","activo":"{{ p.activo }}","unidad":"{{ p.unidad_medida.id|default:'' }}","ubicacion":"{{ p.ubicacion_defecto.id|default:'' }}","alcance":"{{ p.alcance }}","barras":"{{ p.codigo_barras|default:''|escapejs }}","sanitario":"{{ p.registro_sanitario|default:''|escapejs }}","comprable":"{{ p.es_comprable }}","vendible":"{{ p.es_vendible }}","mp":"{{ p.es_materia_prima }}","producible":"{{ p.es_producible }}","retornable":"{{ p.es_retornable }}","descripcion":"{{ p.descripcion|default:''|escapejs }}","impuesto":"{{ p.impuesto.id|default:'' }}"}'
                                 class="btn-edit-prod w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-brand hover:border-brand shadow-sm">
                                 <i class="fa-solid fa-pen-to-square text-xs"></i>
                             </button>
@@ -162,6 +162,7 @@
                         {% if puede_ver_precios %}
                         <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase">Costo</label>{{ form_producto.costo_unitario }}</div>
                         <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase">Venta</label>{{ form_producto.precio_venta }}</div>
+                        <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase">Margen % <span class="text-slate-300 normal-case">(sobre venta)</span></label>{{ form_producto.margen }}</div>
                         {% endif %}
                     </div>
                     <div class="grid grid-cols-3 gap-4">
@@ -290,6 +291,7 @@
         setVal('id_descripcion', d.descripcion);
         setVal('id_precio_venta', parseFloat(d.precio).toFixed(2));
         setVal('id_costo_unitario', parseFloat(d.costo).toFixed(2));
+        setVal('id_margen', d.margen !== '' ? parseFloat(d.margen).toFixed(2) : '15.00');
         setVal('id_clase', d.clase);
         setVal('id_grupo', d.grupo);
         setVal('id_tipo', d.tipo);
