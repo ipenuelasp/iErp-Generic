@@ -59,6 +59,17 @@
         </table>
     </div>
 
+    {% if puede_ver_costos %}
+    <div class="bg-emerald-50/60 border border-emerald-100 rounded-[2rem] p-6 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <p class="text-[10px] font-black text-emerald-700 uppercase tracking-widest"><i class="fa-solid fa-coins mr-2"></i> Ganancia del pedido <span class="text-emerald-400 normal-case">(solo dueño)</span></p>
+        <div class="flex flex-wrap gap-6">
+            <div><p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Costo total</p><p class="text-sm font-black text-slate-700">{{ pedido.moneda.simbolo }}{{ ganancia.costo|floatformat:2|intcomma }}</p></div>
+            <div><p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Venta sin IVA</p><p class="text-sm font-black text-slate-700">{{ pedido.moneda.simbolo }}{{ ganancia.venta_neta|floatformat:2|intcomma }}</p></div>
+            <div><p class="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Ganancia</p><p class="text-base font-black {% if ganancia.ganancia < 0 %}text-rose-600{% else %}text-emerald-700{% endif %}">{{ pedido.moneda.simbolo }}{{ ganancia.ganancia|floatformat:2|intcomma }} <span class="text-[10px] text-emerald-500">({{ ganancia.margen|floatformat:1 }}%)</span></p></div>
+        </div>
+    </div>
+    {% endif %}
+
     {% if puede_editar_extras and 'cirugias' in modulos_visibles %}
     <!-- Agregar producto extra ("gol") -->
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-6">

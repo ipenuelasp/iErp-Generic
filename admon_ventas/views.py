@@ -421,9 +421,19 @@ class PedidoDetalleView(LoginRequiredMixin, View):
             Pedido.objects.select_related('cliente', 'moneda', 'creado_por'),
             id=pk, empresa=empresa)
         cxc_cobrada = any(f.total_pagado > 0 for f in pedido.facturas.all()) if hasattr(pedido, 'facturas') else False
+        detalles = list(pedido.detalles.select_related('producto', 'producto__unidad_medida'))
+        # Ganancia del pedido (interno): venta sin IVA − costo
+        venta_neta = sum((d.cantidad * d.precio_unitario for d in detalles), decimal.Decimal('0'))
+        costo_total = sum((d.cantidad * (d.producto.costo_unitario or 0) for d in detalles), decimal.Decimal('0'))
+        ganancia = venta_neta - costo_total
+        ganancia_info = {
+            'costo': costo_total, 'venta_neta': venta_neta, 'ganancia': ganancia,
+            'margen': (ganancia / venta_neta * 100) if venta_neta else decimal.Decimal('0'),
+        }
         context = {
             'pedido': pedido,
-            'detalles': pedido.detalles.select_related('producto', 'producto__unidad_medida'),
+            'detalles': detalles,
+            'ganancia': ganancia_info,
             'comisiones': pedido.comisiones.all(),
             'facturas': pedido.facturas.select_related('moneda') if hasattr(pedido, 'facturas') else [],
             'productos': productos_para_pedido(empresa, sucursal),
