@@ -68,8 +68,16 @@
                     <tbody id="cuerpo" class="divide-y divide-slate-50"></tbody>
                 </table>
             </div>
-            <div class="flex justify-end p-8 border-t border-slate-50">
-                <div class="w-72 space-y-2">
+            <div class="flex flex-col md:flex-row justify-between items-start gap-6 p-8 border-t border-slate-50">
+                {% if puede_ver_costos %}
+                <div class="w-full md:w-80 bg-emerald-50/60 border border-emerald-100 rounded-2xl p-5 space-y-2">
+                    <p class="text-[10px] font-black text-emerald-700 uppercase tracking-widest"><i class="fa-solid fa-coins mr-1"></i> Ganancia <span class="text-emerald-400 normal-case">(solo tú la ves)</span></p>
+                    <div class="flex justify-between text-xs font-bold text-slate-500"><span>Costo total</span><span id="t_costo">$0.00</span></div>
+                    <div class="flex justify-between text-xs font-bold text-slate-500"><span>Venta sin IVA</span><span id="t_ventaneta">$0.00</span></div>
+                    <div class="flex justify-between text-sm font-black text-emerald-700 pt-2 border-t border-emerald-100"><span>Ganancia</span><span><span id="t_ganancia">$0.00</span> <span id="t_margen" class="text-[10px] text-emerald-500 ml-1"></span></span></div>
+                </div>
+                {% endif %}
+                <div class="w-full md:w-72 space-y-2 md:ml-auto">
                     <div class="flex justify-between text-xs font-bold text-slate-500"><span>Subtotal</span><span id="t_sub">$0.00</span></div>
                     <div class="flex justify-between text-xs font-bold text-slate-500"><span>Impuestos</span><span id="t_iva">$0.00</span></div>
                     <div class="flex justify-between text-lg font-black text-slate-800 pt-2 border-t border-slate-100"><span>Total</span><span id="t_total">$0.00</span></div>
@@ -165,7 +173,7 @@ function prefill(sel) {
     calc();
 }
 function calc() {
-    let sub = 0, imp = 0;
+    let sub = 0, imp = 0, costo = 0;
     document.querySelectorAll('#cuerpo tr').forEach(tr => {
         const c = parseFloat(tr.querySelector('input[name="cantidad[]"]').value)||0;
         const p = parseFloat(tr.querySelector('input[name="precio[]"]').value)||0;
@@ -178,10 +186,20 @@ function calc() {
         tr.querySelector('.importe').innerText = fmt(linea);
         sub += linea;
         imp += esRet ? -monto : monto;
+        costo += c * (parseFloat(tr.dataset.costo)||0);
     });
     document.getElementById('t_sub').innerText = fmt(sub);
     document.getElementById('t_iva').innerText = fmt(imp);
     document.getElementById('t_total').innerText = fmt(sub+imp);
+    // Ganancia (solo si el panel existe = usuario con permiso)
+    if (document.getElementById('t_ganancia')) {
+        const ganancia = sub - costo;
+        const margen = sub > 0 ? (ganancia/sub*100) : 0;
+        document.getElementById('t_costo').innerText = fmt(costo);
+        document.getElementById('t_ventaneta').innerText = fmt(sub);
+        document.getElementById('t_ganancia').innerText = fmt(ganancia);
+        document.getElementById('t_margen').innerText = '(' + margen.toFixed(1) + '%)';
+    }
 }
 
 {% if detalles %}

@@ -51,6 +51,14 @@ def clientes_visibles(empresa, sucursal):
     ).distinct()
 
 
+def _puede_ver_costos(request):
+    """Costo/ganancia del pedido solo lo ve el dueño / superusuario."""
+    if request.user.is_superuser:
+        return True
+    perfil = getattr(request.user, 'perfil', None)
+    return bool(perfil and perfil.tipo_usuario == 'OWNER')
+
+
 def productos_para_pedido(empresa, sucursal):
     """Productos vendibles con su existencia en la sucursal, para el selector del
     pedido. Ordena primero lo disponible (con stock o servicio), luego lo agotado."""
@@ -260,6 +268,7 @@ class NuevoPedidoView(LoginRequiredMixin, View):
         context = {
             'clientes': clientes_visibles(empresa, sucursal),
             'productos': productos_para_pedido(empresa, sucursal),
+            'puede_ver_costos': _puede_ver_costos(request),
             'monedas': Moneda.objects.filter(empresa=empresa, activa=True),
             'impuestos': Impuesto.objects.filter(empresa=empresa, activo=True),
             'sucursal_activa': sucursal,
@@ -316,6 +325,7 @@ class EditarPedidoView(LoginRequiredMixin, View):
             'detalles': pedido.detalles.select_related('producto'),
             'clientes': clientes_visibles(empresa, sucursal),
             'productos': productos_para_pedido(empresa, sucursal),
+            'puede_ver_costos': _puede_ver_costos(request),
             'monedas': Moneda.objects.filter(empresa=empresa, activa=True),
             'impuestos': Impuesto.objects.filter(empresa=empresa, activo=True),
             'sucursal_activa': sucursal,
@@ -417,6 +427,7 @@ class PedidoDetalleView(LoginRequiredMixin, View):
             'comisiones': pedido.comisiones.all(),
             'facturas': pedido.facturas.select_related('moneda') if hasattr(pedido, 'facturas') else [],
             'productos': productos_para_pedido(empresa, sucursal),
+            'puede_ver_costos': _puede_ver_costos(request),
             'puede_entregar': pedido.estado in ('CONFIRMADO', 'ENTREGADO_PARCIAL'),
             # Extras/comisiones se editan mientras el pedido no esté cancelado ni la CxC cobrada
             'puede_editar_extras': pedido.estado != 'CANCELADO' and not cxc_cobrada,
@@ -722,6 +733,7 @@ class NuevaCotizacionView(LoginRequiredMixin, View):
             'detalles': cot.detalles.select_related('producto') if cot else None,
             'clientes': clientes_visibles(empresa, sucursal),
             'productos': productos_para_pedido(empresa, sucursal),
+            'puede_ver_costos': _puede_ver_costos(request),
             'monedas': Moneda.objects.filter(empresa=empresa, activa=True),
             'impuestos': Impuesto.objects.filter(empresa=empresa, activo=True),
             'sucursal_activa': sucursal,
