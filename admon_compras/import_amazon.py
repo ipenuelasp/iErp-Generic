@@ -170,10 +170,23 @@ def importar(archivo, empresa, sucursal, usuario):
         for row in filas:
             asin = row['ASIN'].strip()
             titulo = (row.get('Título') or '').strip()[:255]
-            costo = _num(row.get('PPU de la compra'))
             cant = _num(row.get('Cantidad de producto')) or decimal.Decimal('1')
             tasa = _tasa(row.get('Tipo de IVA del subtotal del producto'))
             grupo = grupo_de(titulo, row.get('Categoría de producto interna de Amazon'))
+
+            # Costo real: usar el "Total neto del producto" (lo que de verdad se
+            # pagó, ya con promociones/descuentos) y de ahí derivar el costo sin
+            # IVA. Si no viene, usar PPU de la compra (precio de lista).
+            factor = decimal.Decimal(1) + decimal.Decimal(tasa) / 100
+            net_line = _num(row.get('Total neto del producto'))
+            ppu = _num(row.get('PPU de la compra'))
+            if net_line > 0 and factor > 0:
+                sub_line = (net_line / factor)
+                costo = (sub_line / cant) if cant else ppu
+            else:
+                costo = ppu
+                sub_line = cant * costo
+            costo = costo.quantize(decimal.Decimal('0.0001'))
 
             prod, creado = Producto.objects.get_or_create(
                 empresa=empresa, sku=asin,
@@ -203,8 +216,9 @@ def importar(archivo, empresa, sucursal, usuario):
                 tipo='ENTRADA', origen='OC', cantidad=cant, usuario=usuario,
                 costo_unitario=costo, referencia=oc.folio, notas='Import Amazon')
             mov_ids.append(mov.pk)
-            sub += cant * costo
-            imp += cant * costo * decimal.Decimal(tasa) / 100
+            linea_sub = (cant * costo)
+            sub += linea_sub
+            imp += linea_sub * decimal.Decimal(tasa) / 100
             res['lineas'] += 1
 
         oc.subtotal = sub.quantize(CENT)
