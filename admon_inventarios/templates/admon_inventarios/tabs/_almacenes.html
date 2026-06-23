@@ -26,6 +26,11 @@
                     {{ form_almacen.direccion }}
                 </div>
 
+                <label class="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-3 cursor-pointer mt-2">
+                    {{ form_almacen.es_uso_personal }}
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-tight">Es almacén de uso personal<br><span class="text-[8px] font-bold text-slate-400 normal-case tracking-normal">El stock marcado como uso personal se moverá aquí</span></span>
+                </label>
+
                 <div class="flex flex-col gap-2 pt-4">
                     <button type="submit" name="btn_almacen" id="btn_almacen_submit"
                         class="w-full bg-brand text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all transform hover:-translate-y-1 active:scale-95">
@@ -55,7 +60,9 @@
                         <tr class="hover:bg-white transition-all group">
                             <td class="px-6 py-4 font-black text-slate-700 text-xs italic">{{ a.codigo }}</td>
                             <td class="px-6 py-4">
-                                <div class="font-bold text-slate-800 text-xs">{{ a.nombre }}</div>
+                                <div class="font-bold text-slate-800 text-xs">{{ a.nombre }}
+                                    {% if a.es_uso_personal %}<span class="ml-1 text-[8px] font-black bg-amber-50 text-amber-600 px-2 py-0.5 rounded uppercase tracking-widest">Uso personal</span>{% endif %}
+                                </div>
                                 <div class="text-[9px] text-slate-400 italic truncate w-40">{{ a.direccion|default:"Sin dirección" }}</div>
                             </td>
                             <td class="px-6 py-4 text-center">
@@ -65,7 +72,7 @@
                                 </button>
                             </td>
                             <td class="px-6 py-4 text-right space-x-2">
-                                <button onclick="editAlmacen('{{ a.id }}', '{{ a.codigo|escapejs }}', '{{ a.nombre|escapejs }}', '{{ a.direccion|escapejs }}')" 
+                                <button onclick="editAlmacen('{{ a.id }}', '{{ a.codigo|escapejs }}', '{{ a.nombre|escapejs }}', '{{ a.direccion|escapejs }}', {{ a.es_uso_personal|yesno:'true,false' }})"
                                     class="text-slate-300 hover:text-brand transition-colors"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
                                 <button onclick="openDeleteModal('{{ a.id }}', 'almacen')" 
                                     class="text-slate-300 hover:text-rose-500 transition-colors"><i class="fa-solid fa-trash-can text-xs"></i></button>
@@ -80,7 +87,7 @@
 </div>
 
 <script>
-    function editAlmacen(id, codigo, nombre, direccion) {
+    function editAlmacen(id, codigo, nombre, direccion, esUsoPersonal) {
         document.getElementById('titulo_almacen').innerText = 'Editando Almacén';
         document.getElementById('btn_almacen_submit').innerText = 'Actualizar Cambios';
         document.getElementById('btn_cancelar_almacen').classList.remove('hidden');
@@ -90,6 +97,8 @@
         form.querySelector('[name="codigo"]').value = codigo;
         form.querySelector('[name="nombre"]').value = nombre;
         form.querySelector('[name="direccion"]').value = direccion;
+        const chk = form.querySelector('[name="es_uso_personal"]');
+        if (chk) chk.checked = !!esUsoPersonal;
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 

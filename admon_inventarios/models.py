@@ -98,6 +98,9 @@ class Almacen(models.Model):
     nombre = models.CharField(max_length=100)
     direccion = models.TextField(blank=True, null=True)
     activo = models.BooleanField(default=True)
+    es_uso_personal = models.BooleanField(
+        default=False,
+        help_text="Destino del stock marcado como uso personal (excluido de reportes y no vendible).")
 
     class Meta:
         unique_together = ('sucursal', 'codigo')

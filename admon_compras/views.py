@@ -577,16 +577,26 @@ class OrdenDetalleView(LoginRequiredMixin, View):
                         msg += f" {no_revertidos} no se pudieron revertir (ya se vendieron)."
                     messages.info(request, msg)
             elif accion == 'toggle_personal':
-                orden.uso_personal = not orden.uso_personal
+                from admon_inventarios.models import Producto
+                from admon_inventarios import services as inv_services
+                nuevo = not orden.uso_personal
+                # Mover el stock entre el almacén normal y el de uso personal
+                try:
+                    movidas, faltantes = inv_services.mover_orden_a_personal(
+                        orden=orden, usuario=request.user, hacia_personal=nuevo)
+                except ValueError as e:
+                    messages.error(request, str(e))
+                    return redirect('admon_compras:historial_ordenes')
+                orden.uso_personal = nuevo
                 orden.save(update_fields=['uso_personal'])
                 # Sus productos no se venden (uso personal); al revertir, se reactivan
-                from admon_inventarios.models import Producto
                 pids = orden.detalles.values_list('producto_id', flat=True)
                 Producto.objects.filter(id__in=pids).update(es_vendible=not orden.uso_personal)
+                aviso = f" {faltantes} línea(s) no se movieron completas (stock ya vendido o movido)." if faltantes else ""
                 if orden.uso_personal:
-                    messages.info(request, f"{orden.folio} marcada como uso personal: excluida de reportes y sus productos quedan no vendibles.")
+                    messages.info(request, f"{orden.folio} marcada como uso personal: {movidas} línea(s) movidas al almacén personal, excluida de reportes y sus productos quedan no vendibles.{aviso}")
                 else:
-                    messages.success(request, f"{orden.folio} ya no es uso personal: vuelve a contar en reportes y sus productos son vendibles.")
+                    messages.success(request, f"{orden.folio} ya no es uso personal: {movidas} línea(s) regresadas al almacén normal, vuelve a contar en reportes y sus productos son vendibles.{aviso}")
             else:
                 messages.error(request, "Acción no válida para el estado actual.")
         except services.ErrorAutorizacion as e:

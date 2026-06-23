@@ -90,7 +90,7 @@ class ProductoForm(EstiloBaseForm):
 class AlmacenForm(EstiloBaseForm):
     class Meta:
         model = Almacen
-        fields = ['codigo', 'nombre', 'direccion']
+        fields = ['codigo', 'nombre', 'direccion', 'es_uso_personal']
         widgets = {
             'direccion': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Dirección física del almacén...'}),
         }

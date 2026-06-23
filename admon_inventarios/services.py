@@ -12,6 +12,82 @@ from django.db import transaction
 from .models import Existencia, MovimientoInventario, Lote, NumeroSerie
 
 
+@transaction.atomic
+def mover_orden_a_personal(*, orden, usuario, hacia_personal=True):
+    """Traspasa el stock recibido de una orden entre su almacén normal y el
+    almacén marcado como 'uso personal' (Almacen.es_uso_personal).
+
+    - hacia_personal=True: saca el stock de la ubicación donde se recibió y lo
+      mete al almacén de uso personal.
+    - hacia_personal=False: lo regresa a la ubicación original de la recepción.
+
+    Solo mueve lo que esté disponible (lo ya vendido/movido se omite).
+    Devuelve (lineas_movidas, faltantes) — faltantes = líneas que no se pudieron
+    mover completas porque el stock ya no estaba donde se esperaba.
+    """
+    from .models import Almacen, Ubicacion, DetalleRecepcion
+
+    personal = Almacen.objects.filter(
+        empresa=orden.empresa, sucursal=orden.sucursal_destino,
+        es_uso_personal=True, activo=True).first()
+    if not personal:
+        raise ValueError(
+            "No hay un almacén marcado como 'uso personal' en esta sucursal. "
+            "Crea o edita un almacén y activa la casilla 'Es almacén de uso personal'.")
+    ubic_personal = Ubicacion.objects.filter(almacen=personal, activa=True).first()
+    if not ubic_personal:
+        raise ValueError(
+            f"El almacén de uso personal '{personal.nombre}' no tiene ubicaciones. "
+            "Agrégale al menos una ubicación.")
+
+    detalles = DetalleRecepcion.objects.filter(
+        recepcion__orden_compra=orden).select_related('producto', 'ubicacion')
+    movidas = 0
+    faltantes = 0
+    for det in detalles:
+        origen = det.ubicacion if hacia_personal else ubic_personal
+        destino = ubic_personal if hacia_personal else det.ubicacion
+        if origen.id == destino.id:
+            continue
+        movido = _traspasar_existencias(
+            empresa=orden.empresa, sucursal=orden.sucursal_destino, producto=det.producto,
+            origen_ubic=origen, destino_ubic=destino, cantidad=det.cantidad_recibida,
+            usuario=usuario, referencia=f"USO PERSONAL {orden.folio}")
+        if movido > 0:
+            movidas += 1
+        if movido < det.cantidad_recibida:
+            faltantes += 1
+    return movidas, faltantes
+
+
+def _traspasar_existencias(*, empresa, sucursal, producto, origen_ubic, destino_ubic,
+                           cantidad, usuario, referencia):
+    """Mueve hasta `cantidad` unidades de un producto de una ubicación a otra,
+    consumiendo las existencias disponibles y conservando lote/serie/propiedad.
+    Devuelve cuántas unidades se movieron realmente."""
+    restante = decimal.Decimal(cantidad)
+    movido = decimal.Decimal('0')
+    filas = Existencia.objects.filter(
+        producto=producto, ubicacion=origen_ubic, cantidad__gt=0).select_related('lote', 'serie')
+    for ex in filas:
+        if restante <= 0:
+            break
+        q = min(ex.cantidad, restante)
+        registrar_movimiento(
+            empresa=empresa, sucursal=sucursal, producto=producto, ubicacion=origen_ubic,
+            tipo='TRASPASO_SAL', origen='AJUSTE', cantidad=q, usuario=usuario,
+            lote=ex.lote, serie=ex.serie, propiedad=ex.propiedad, consignante=ex.consignante,
+            referencia=referencia)
+        registrar_movimiento(
+            empresa=empresa, sucursal=sucursal, producto=producto, ubicacion=destino_ubic,
+            tipo='TRASPASO_ENT', origen='AJUSTE', cantidad=q, usuario=usuario,
+            lote=ex.lote, serie=ex.serie, propiedad=ex.propiedad, consignante=ex.consignante,
+            referencia=referencia)
+        restante -= q
+        movido += q
+    return movido
+
+
 # Tipos que suman stock; el resto resta
 TIPOS_ENTRADA = {
     'ENTRADA', 'AJUSTE_POS', 'TRASPASO_ENT', 'KIT_RETORNO', 'PROD_ENTRADA',
