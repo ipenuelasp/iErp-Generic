@@ -51,6 +51,22 @@ def clientes_visibles(empresa, sucursal):
     ).distinct()
 
 
+def productos_para_pedido(empresa, sucursal):
+    """Productos vendibles con su existencia en la sucursal, para el selector del
+    pedido. Ordena primero lo disponible (con stock o servicio), luego lo agotado."""
+    from django.db.models import Sum
+    prods = list(Producto.objects.filter(
+        empresa=empresa, activo=True, es_vendible=True).select_related('grupo').order_by('nombre'))
+    stock = {r['producto']: r['s'] for r in Existencia.objects.filter(
+        producto__empresa=empresa, ubicacion__almacen__sucursal=sucursal
+    ).values('producto').annotate(s=Sum('cantidad'))}
+    for p in prods:
+        p.stock_actual = stock.get(p.id, 0) or 0
+    # Disponible primero (con stock o servicio no inventariable), luego por nombre
+    prods.sort(key=lambda p: (0 if (p.stock_actual > 0 or p.es_servicio) else 1, p.nombre.lower()))
+    return prods
+
+
 def _aplicar_partidas(pedido, empresa, request):
     """Reescribe las partidas del pedido y recalcula totales con el catálogo
     de impuestos. Traslados suman, retenciones restan."""
@@ -243,7 +259,7 @@ class NuevoPedidoView(LoginRequiredMixin, View):
         empresa, sucursal = ctx
         context = {
             'clientes': clientes_visibles(empresa, sucursal),
-            'productos': Producto.objects.filter(empresa=empresa, activo=True, es_vendible=True),
+            'productos': productos_para_pedido(empresa, sucursal),
             'monedas': Moneda.objects.filter(empresa=empresa, activa=True),
             'impuestos': Impuesto.objects.filter(empresa=empresa, activo=True),
             'sucursal_activa': sucursal,
@@ -299,7 +315,7 @@ class EditarPedidoView(LoginRequiredMixin, View):
             'pedido': pedido,
             'detalles': pedido.detalles.select_related('producto'),
             'clientes': clientes_visibles(empresa, sucursal),
-            'productos': Producto.objects.filter(empresa=empresa, activo=True, es_vendible=True),
+            'productos': productos_para_pedido(empresa, sucursal),
             'monedas': Moneda.objects.filter(empresa=empresa, activa=True),
             'impuestos': Impuesto.objects.filter(empresa=empresa, activo=True),
             'sucursal_activa': sucursal,
@@ -400,7 +416,7 @@ class PedidoDetalleView(LoginRequiredMixin, View):
             'detalles': pedido.detalles.select_related('producto', 'producto__unidad_medida'),
             'comisiones': pedido.comisiones.all(),
             'facturas': pedido.facturas.select_related('moneda') if hasattr(pedido, 'facturas') else [],
-            'productos': Producto.objects.filter(empresa=empresa, activo=True, es_vendible=True),
+            'productos': productos_para_pedido(empresa, sucursal),
             'puede_entregar': pedido.estado in ('CONFIRMADO', 'ENTREGADO_PARCIAL'),
             # Extras/comisiones se editan mientras el pedido no esté cancelado ni la CxC cobrada
             'puede_editar_extras': pedido.estado != 'CANCELADO' and not cxc_cobrada,
@@ -705,7 +721,7 @@ class NuevaCotizacionView(LoginRequiredMixin, View):
             'cotizacion': cot,
             'detalles': cot.detalles.select_related('producto') if cot else None,
             'clientes': clientes_visibles(empresa, sucursal),
-            'productos': Producto.objects.filter(empresa=empresa, activo=True, es_vendible=True),
+            'productos': productos_para_pedido(empresa, sucursal),
             'monedas': Moneda.objects.filter(empresa=empresa, activa=True),
             'impuestos': Impuesto.objects.filter(empresa=empresa, activo=True),
             'sucursal_activa': sucursal,

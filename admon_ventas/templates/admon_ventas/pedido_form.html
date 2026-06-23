@@ -58,12 +58,12 @@
                 <table class="w-full text-left table-fixed min-w-[820px]">
                     <thead><tr class="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
                         <th class="px-5 py-5">Producto</th>
-                        <th class="px-2 py-5 w-16 text-center">Cant.</th>
+                        <th class="px-2 py-5 w-14 text-center">Cant.</th>
                         <th class="px-2 py-5 w-20 text-center">Margen %</th>
-                        <th class="px-2 py-5 w-28 text-right">Precio Unit.</th>
-                        <th class="px-2 py-5 w-28 text-center">Impuesto</th>
-                        <th class="px-2 py-5 w-28 text-right">Importe</th>
-                        <th class="px-2 py-5 w-10"></th>
+                        <th class="px-2 py-5 w-24 text-right">Precio Unit.</th>
+                        <th class="px-2 py-5 w-32 text-center">Impuesto</th>
+                        <th class="px-2 py-5 w-24 text-right">Importe</th>
+                        <th class="px-2 py-5 w-12"></th>
                     </tr></thead>
                     <tbody id="cuerpo" class="divide-y divide-slate-50"></tbody>
                 </table>
@@ -87,7 +87,7 @@
 
 <select id="tplProductos" class="hidden no-select2">
     <option value="">-- Producto --</option>
-    {% for p in productos %}<option value="{{ p.id }}" data-precio="{{ p.precio_venta }}" data-costo="{{ p.costo_unitario }}" data-margen="{{ p.margen|default:'15' }}" data-impuesto="{{ p.impuesto_id|default:'' }}">[{{ p.sku }}] {{ p.nombre }}</option>{% endfor %}
+    {% for p in productos %}<option value="{{ p.id }}" data-precio="{{ p.precio_venta }}" data-costo="{{ p.costo_unitario }}" data-margen="{{ p.margen|default:'15' }}" data-impuesto="{{ p.impuesto_id|default:'' }}" data-servicio="{{ p.es_servicio|yesno:'1,0' }}" data-stock="{{ p.stock_actual|floatformat:'-2' }}">[{{ p.sku }}] {{ p.nombre }}{% if p.es_servicio %} · servicio{% else %} · {{ p.stock_actual|floatformat:'-2' }} disp{% endif %}</option>{% endfor %}
 </select>
 <select id="tplImpuestos" class="hidden no-select2">
     {% for imp in impuestos %}<option value="{{ imp.id }}" data-tasa="{{ imp.tasa }}" data-ret="{{ imp.es_retencion|yesno:'1,0' }}" {% if imp.es_default %}data-default="1"{% endif %}>{{ imp.nombre }}</option>{% endfor %}
@@ -194,7 +194,9 @@ function calc() {
     input[type=checkbox] { width:auto; }
     /* El nombre largo del producto no debe estirar la columna: se trunca con … */
     #cuerpo .select2-container { max-width:100%; }
-    #cuerpo .select2-selection__rendered { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:1.1rem; }
+    #cuerpo .select2-selection__rendered { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-left:0.55rem !important; padding-right:1.1rem !important; font-size:0.74rem; }
+    /* Flecha del select2 más pegada al borde para ganar espacio de texto */
+    #cuerpo .select2-selection__arrow { right:1px !important; }
     /* Inputs compactos dentro de la tabla de partidas (columnas angostas) */
     #cuerpo input, #cuerpo select { padding:0.5rem 0.45rem; font-size:0.74rem; border-radius:0.65rem; }
     #cuerpo .select2-selection { border-radius:0.65rem; }
