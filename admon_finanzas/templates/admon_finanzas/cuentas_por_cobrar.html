@@ -50,10 +50,20 @@
 
     {% include "includes/lista_filtros.html" %}
 
+    <form method="get" action="{% url 'admon_finanzas:facturar_xlsx' %}">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div class="flex items-center gap-3">
+            <button type="button" onclick="selPendientes()" class="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-white border border-slate-200 px-4 py-2.5 rounded-xl hover:border-brand"><i class="fa-regular fa-square-check mr-1"></i> Seleccionar pendientes de facturar</button>
+            <span id="selCount" class="text-[10px] font-black uppercase tracking-widest text-slate-400">0 seleccionadas</span>
+        </div>
+        <button type="submit" class="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-200 hover:-translate-y-0.5 transition-transform"><i class="fa-solid fa-file-excel mr-1"></i> Generar Excel para facturar</button>
+    </div>
+
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         <table class="w-full text-left">
             <thead class="bg-slate-50">
                 <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-6 py-5 font-black text-center w-10"><input type="checkbox" onclick="toggleAll(this)" title="Seleccionar todo"></th>
                     <th class="px-8 py-5 font-black">CxC</th>
                     <th class="px-6 py-5 font-black">Cliente</th>
                     <th class="px-6 py-5 font-black">Pedido</th>
@@ -67,6 +77,9 @@
             <tbody class="divide-y divide-slate-50">
                 {% for f in facturas %}
                 <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="window.location='{% url 'admon_finanzas:factura_cliente_detalle' f.pk %}'">
+                    <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
+                        <input type="checkbox" name="ids" value="{{ f.pk }}" class="chkCxC" data-facturada="{{ f.esta_facturada|yesno:'1,0' }}" onchange="updCount()">
+                    </td>
                     <td class="px-8 py-4 font-black text-brand text-xs">{{ f.folio }}</td>
                     <td class="px-6 py-4 text-xs font-bold text-slate-700">{{ f.cliente }}</td>
                     <td class="px-6 py-4 text-[10px] font-bold text-slate-400">{{ f.pedido.folio }}</td>
@@ -85,12 +98,12 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="8" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin cuentas que coincidan con los filtros.</td></tr>
+                <tr><td colspan="9" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin cuentas que coincidan con los filtros.</td></tr>
                 {% endfor %}
             </tbody>
             <tfoot class="bg-slate-50 border-t-2 border-slate-100">
                 <tr class="text-slate-700">
-                    <td class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400" colspan="4">Totales del filtro · {{ totales.n }} CxC</td>
+                    <td class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400" colspan="5">Totales del filtro · {{ totales.n }} CxC</td>
                     <td class="px-6 py-4 text-right font-black text-slate-800 text-sm">${{ totales.total|default:0|floatformat:2|intcomma }}</td>
                     <td class="px-6 py-4 text-right text-[10px] font-bold text-slate-400">Subt. ${{ totales.subtotal|default:0|floatformat:2|intcomma }}</td>
                     <td class="px-6 py-4"></td>
@@ -99,7 +112,22 @@
             </tfoot>
         </table>
     </div>
+    </form>
 
     {% include "includes/lista_paginacion.html" %}
 </div>
+<script>
+function updCount() {
+    const n = document.querySelectorAll('.chkCxC:checked').length;
+    document.getElementById('selCount').innerText = n + ' seleccionada' + (n === 1 ? '' : 's');
+}
+function toggleAll(master) {
+    document.querySelectorAll('.chkCxC').forEach(c => c.checked = master.checked);
+    updCount();
+}
+function selPendientes() {
+    document.querySelectorAll('.chkCxC').forEach(c => c.checked = (c.dataset.facturada === '0'));
+    updCount();
+}
+</script>
 {% endblock %}

@@ -482,6 +482,85 @@ class CuentasPorCobrarView(LoginRequiredMixin, View):
         return render(request, self.template_name, context)
 
 
+class ExcelFacturacionView(LoginRequiredMixin, View):
+    """Genera un Excel para el contador con el detalle (partida por partida) de
+    las CxC seleccionadas que hay que facturar."""
+
+    def get(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, _sucursal = ctx
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from django.utils import timezone as _tz
+
+        ids = request.GET.getlist('ids')
+        cxcs = (FacturaCliente.objects.filter(empresa=empresa, id__in=ids)
+                .exclude(estado='CANCELADA')
+                .select_related('cliente', 'moneda', 'pedido')
+                .prefetch_related('pedido__detalles__producto'))
+        if not cxcs:
+            messages.warning(request, "Selecciona al menos una cuenta por cobrar para facturar.")
+            return redirect('admon_finanzas:cuentas_por_cobrar')
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Por facturar"
+        cols = ['Cliente', 'RFC', 'CxC', 'Pedido', 'Fecha', 'SKU', 'Descripción',
+                'Cantidad', 'P. Unitario', 'Importe', 'IVA %', 'IVA', 'Total']
+        ws.append(cols)
+        head_fill = PatternFill('solid', fgColor='0F172A')
+        for c in ws[1]:
+            c.font = Font(bold=True, color='FFFFFF', size=10)
+            c.fill = head_fill
+            c.alignment = Alignment(horizontal='center')
+
+        D = decimal.Decimal
+        tot_imp = tot_iva = tot_tot = D('0')
+        for f in cxcs:
+            cliente = f.cliente.nombre_fiscal
+            rfc = (f.cliente.rfc or '').upper()
+            fecha = f.fecha_emision.strftime('%d/%m/%Y') if f.fecha_emision else ''
+            dets = f.pedido.detalles.all() if f.pedido_id else []
+            for d in dets:
+                importe = (d.cantidad * d.precio_unitario).quantize(D('0.01'))
+                tasa = d.iva_porcentaje or D('0')
+                iva = (importe * tasa / 100).quantize(D('0.01'))
+                if d.es_retencion:
+                    iva = -iva
+                total = importe + iva
+                ws.append([
+                    cliente, rfc, f.folio, f.pedido.folio if f.pedido_id else '', fecha,
+                    d.producto.sku, d.producto.nombre,
+                    float(d.cantidad), float(d.precio_unitario), float(importe),
+                    float(tasa), float(iva), float(total)])
+                tot_imp += importe; tot_iva += iva; tot_tot += total
+
+        # Fila de totales
+        ws.append([])
+        fila_tot = ['', '', '', '', '', '', 'TOTALES', '', '', float(tot_imp), '',
+                    float(tot_iva), float(tot_tot)]
+        ws.append(fila_tot)
+        for c in ws[ws.max_row]:
+            c.font = Font(bold=True)
+
+        # Anchos y formato de moneda
+        anchos = [30, 14, 12, 14, 11, 16, 50, 10, 13, 14, 7, 13, 14]
+        for i, w in enumerate(anchos, start=1):
+            ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
+        for row in ws.iter_rows(min_row=2):
+            for col in (9, 10, 12, 13):
+                row[col-1].number_format = '#,##0.00'
+
+        resp = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        resp['Content-Disposition'] = (
+            f'attachment; filename="por_facturar_{_tz.now():%Y%m%d_%H%M}.xlsx"')
+        wb.save(resp)
+        return resp
+
+
 class FacturaClienteDetalleView(LoginRequiredMixin, View):
     template_name = 'admon_finanzas/factura_cliente_detalle.html'
 

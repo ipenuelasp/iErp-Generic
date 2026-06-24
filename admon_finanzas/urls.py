@@ -14,6 +14,7 @@ urlpatterns = [
 
     # Cuentas por cobrar (clientes)
     path('por-cobrar/', views.CuentasPorCobrarView.as_view(), name='cuentas_por_cobrar'),
+    path('por-cobrar/facturar-xlsx/', views.ExcelFacturacionView.as_view(), name='facturar_xlsx'),
     path('cxc/<int:pk>/', views.FacturaClienteDetalleView.as_view(), name='factura_cliente_detalle'),
     path('estado-cuenta/<int:cliente_id>/', views.EstadoCuentaClientePDFView.as_view(), name='estado_cuenta_cliente'),
     path('cobros/nuevo/', views.RegistrarCobroView.as_view(), name='registrar_cobro'),
