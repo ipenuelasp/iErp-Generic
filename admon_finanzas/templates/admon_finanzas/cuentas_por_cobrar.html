@@ -78,7 +78,9 @@
                 {% for f in facturas %}
                 <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="window.location='{% url 'admon_finanzas:factura_cliente_detalle' f.pk %}'">
                     <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
-                        {% if f.esta_facturada %}
+                        {% if f.estado == 'CANCELADA' %}
+                        <i class="fa-solid fa-ban text-slate-200" title="Cancelada"></i>
+                        {% elif f.esta_facturada %}
                         <i class="fa-solid fa-circle-check text-blue-300" title="Ya facturada"></i>
                         {% else %}
                         <input type="checkbox" name="ids" value="{{ f.pk }}" class="chkCxC" data-facturada="0" onchange="updCount()">
@@ -91,7 +93,9 @@
                     <td class="px-6 py-4 text-right text-xs font-bold text-slate-600">{{ f.moneda.simbolo }}{{ f.total|floatformat:2|intcomma }}</td>
                     <td class="px-6 py-4 text-right text-xs font-black {% if f.saldo > 0 %}text-emerald-600{% else %}text-slate-400{% endif %}">{{ f.moneda.simbolo }}{{ f.saldo|floatformat:2|intcomma }}</td>
                     <td class="px-6 py-4 text-center">
-                        {% if f.esta_facturada %}
+                        {% if f.estado == 'CANCELADA' %}
+                        <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">—</span>
+                        {% elif f.esta_facturada %}
                         <span class="inline-flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600"><i class="fa-solid fa-file-invoice text-[10px]"></i> Facturado</span>
                         {% else %}
                         <span class="inline-flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-500"><i class="fa-regular fa-clock text-[10px]"></i> Sin factura</span>
