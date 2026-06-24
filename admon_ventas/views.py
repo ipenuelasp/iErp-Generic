@@ -507,6 +507,48 @@ class PedidoDetalleView(LoginRequiredMixin, View):
             pedido.motivo_cancelacion = request.POST.get('motivo')
             pedido.save()
             messages.info(request, f"{pedido.folio} cancelado.")
+        elif accion == 'cancelar_revertir':
+            # Cancelar una venta ya entregada: regresa stock y cancela sus CxC.
+            # Solo dueño/superusuario (afecta inventario y cuentas por cobrar).
+            if not _puede_ver_costos(request):
+                messages.error(request, "Solo el dueño puede cancelar ventas entregadas.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
+            if pedido.estado not in ('ENTREGADO', 'ENTREGADO_PARCIAL'):
+                messages.error(request, "Esta acción es solo para pedidos ya entregados.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
+            from admon_inventarios.models import MovimientoInventario
+            from admon_inventarios.services import registrar_movimiento, StockInsuficiente
+            from admon_finanzas.models import FacturaCliente
+            # Bloqueo: si alguna CxC ya tiene cobro, no se puede cancelar limpio
+            cxcs = list(FacturaCliente.objects.filter(empresa=empresa, pedido=pedido).exclude(estado='CANCELADA'))
+            if any(f.total_pagado > 0 for f in cxcs):
+                messages.error(request, "No se puede cancelar: hay cobros aplicados. Primero reversa el cobro.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
+            facturadas = [f.folio for f in cxcs if f.esta_facturada]
+            with transaction.atomic():
+                revertidos = 0
+                movs = MovimientoInventario.objects.filter(
+                    empresa=empresa, referencia=pedido.folio, tipo='VENTA')
+                for m in movs:
+                    registrar_movimiento(
+                        empresa=empresa, sucursal=m.sucursal, producto=m.producto,
+                        ubicacion=m.ubicacion, tipo='AJUSTE_POS', origen='AJUSTE',
+                        cantidad=m.cantidad, usuario=request.user, lote=m.lote, serie=m.serie,
+                        referencia=f"CANCEL {pedido.folio}", costo_unitario=m.costo_unitario,
+                        propiedad=m.propiedad, consignante=m.consignante)
+                    revertidos += 1
+                for f in cxcs:
+                    f.estado = 'CANCELADA'
+                    f.save(update_fields=['estado'])
+                pedido.detalles.update(cantidad_entregada=0)
+                pedido.estado = 'CANCELADO'
+                pedido.fecha_cancelacion = timezone.now()
+                pedido.motivo_cancelacion = request.POST.get('motivo') or 'Cancelación con reversa'
+                pedido.save(update_fields=['estado', 'fecha_cancelacion', 'motivo_cancelacion'])
+            msg = f"{pedido.folio} cancelado: {revertidos} línea(s) regresadas a inventario y {len(cxcs)} CxC cancelada(s)."
+            if facturadas:
+                msg += f" OJO: {', '.join(facturadas)} ya tenía CFDI — cancela el timbre en el SAT con tu contador."
+            messages.warning(request, msg)
         else:
             messages.error(request, "Acción no válida para el estado actual.")
         return redirect('admon_ventas:pedido_detalle', pk=pk)

@@ -152,6 +152,13 @@
             <button class="text-rose-400 font-black py-4 px-6 rounded-2xl text-[10px] uppercase tracking-widest hover:text-rose-600 transition-all"><i class="fa-solid fa-ban mr-2"></i> Cancelar</button>
         </form>
         {% endif %}
+        {% if puede_ver_costos and pedido.estado == 'ENTREGADO' or puede_ver_costos and pedido.estado == 'ENTREGADO_PARCIAL' %}
+        <form method="POST" onsubmit="return confirm('¿Cancelar esta venta ENTREGADA? Se regresará el stock al inventario y se cancelarán sus cuentas por cobrar. Si ya facturaste, deberás cancelar el CFDI en el SAT aparte.')">
+            <input type="hidden" name="accion" value="cancelar_revertir">{% csrf_token %}
+            <input type="hidden" name="motivo" value="Cancelación con reversa (producto incorrecto / corrección)">
+            <button class="bg-rose-50 text-rose-600 border border-rose-200 font-black py-4 px-6 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-rose-100 transition-all"><i class="fa-solid fa-rotate-left mr-2"></i> Cancelar con reversa</button>
+        </form>
+        {% endif %}
     </div>
 </div>
 <script>
