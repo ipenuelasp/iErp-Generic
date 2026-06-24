@@ -522,9 +522,23 @@ class ExcelFacturacionView(LoginRequiredMixin, View):
             cliente = f.cliente.nombre_fiscal
             rfc = (f.cliente.rfc or '').upper()
             fecha = f.fecha_emision.strftime('%d/%m/%Y') if f.fecha_emision else ''
-            dets = f.pedido.detalles.all() if f.pedido_id else []
-            for d in dets:
-                importe = (d.cantidad * d.precio_unitario).quantize(D('0.01'))
+            dets = list(f.pedido.detalles.all()) if f.pedido_id else []
+            # La CxC puede ser una entrega PARCIAL (anticipo/hito). Como no guarda su
+            # propio desglose, prorrateamos las partidas del pedido a la proporción que
+            # representa esta CxC sobre el total, para que los renglones sumen su importe real.
+            ped_sub = sum((d.cantidad * d.precio_unitario for d in dets), D('0'))
+            ratio = (f.subtotal / ped_sub) if ped_sub else D('1')
+            n = len(dets)
+            acc = D('0')   # acumulado para que el último renglón absorba el redondeo
+            for i, d in enumerate(dets):
+                base = (d.cantidad * d.precio_unitario)
+                if i < n - 1:
+                    importe = (base * ratio).quantize(D('0.01'))
+                else:
+                    importe = (f.subtotal - acc).quantize(D('0.01'))
+                acc += importe
+                # Cantidad consistente con el importe prorrateado (cant × PU = importe)
+                cant = (importe / d.precio_unitario) if d.precio_unitario else (d.cantidad * ratio)
                 tasa = d.iva_porcentaje or D('0')
                 iva = (importe * tasa / 100).quantize(D('0.01'))
                 if d.es_retencion:
@@ -533,7 +547,7 @@ class ExcelFacturacionView(LoginRequiredMixin, View):
                 ws.append([
                     cliente, rfc, f.folio, f.pedido.folio if f.pedido_id else '', fecha,
                     d.producto.sku, d.producto.nombre,
-                    float(d.cantidad), float(d.precio_unitario), float(importe),
+                    float(round(cant, 4)), float(d.precio_unitario), float(importe),
                     float(tasa), float(iva), float(total)])
                 tot_imp += importe; tot_iva += iva; tot_tot += total
 
