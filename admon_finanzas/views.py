@@ -371,9 +371,20 @@ class HistorialPagosView(LoginRequiredMixin, View):
         )
         if res['export']:
             return res['export']
+        from django.db.models import Sum, Q
+        agg = res['qs'].aggregate(
+            egreso=Sum('monto', filter=Q(tipo='EGRESO')),
+            ingreso=Sum('monto', filter=Q(tipo='INGRESO')))
+        Z = decimal.Decimal('0')
+        totales_tipo = {
+            'egreso': agg['egreso'] or Z,
+            'ingreso': agg['ingreso'] or Z,
+            'neto': (agg['ingreso'] or Z) - (agg['egreso'] or Z),
+        }
         context = {
             'pagos': res['page_obj'], 'page_obj': res['page_obj'],
             'totales': res['totales'], 'lista': res['lista'],
+            'totales_tipo': totales_tipo,
             'sucursal_activa': sucursal,
             'seccion': 'finanzas',
         }
