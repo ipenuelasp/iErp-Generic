@@ -24,8 +24,13 @@
                 </div>
             </div>
             {% if det.producto.es_servicio %}
-            <div class="bg-brand/5 border border-brand/10 rounded-2xl px-5 py-4 text-[11px] font-bold text-slate-500">
-                <i class="fa-solid fa-bolt text-brand mr-2"></i> Servicio — no mueve inventario. Se factura automáticamente al confirmar.
+            <div class="bg-brand/5 border border-brand/10 rounded-2xl px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <p class="text-[11px] font-bold text-slate-500"><i class="fa-solid fa-bolt text-brand mr-2"></i> Servicio — no mueve inventario. Captura cuánto facturar ahora (para cobro por hitos/anticipos).</p>
+                <div class="flex items-center gap-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">A facturar</label>
+                    <input type="number" name="ent_serv_{{ det.id }}" step="0.0001" min="0" max="{{ det.pendiente_por_entregar }}" value="{{ det.pendiente_por_entregar|floatformat:'-4' }}" class="w-32 text-center font-black text-brand">
+                    <span class="text-[10px] font-bold text-slate-400">{{ det.producto.unidad_medida.codigo|default:'' }}</span>
+                </div>
             </div>
             {% else %}
             <div class="overflow-hidden rounded-2xl border border-slate-100">

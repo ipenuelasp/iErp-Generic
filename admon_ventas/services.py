@@ -89,7 +89,19 @@ def entregar_pedido(*, pedido, request):
         # Servicios (renta, horas, proyectos): no mueven inventario; se entregan
         # automáticamente por lo pendiente y entran directo a la CxC.
         if det.producto.es_servicio:
-            entregado_det = det.pendiente_por_entregar
+            pend = det.pendiente_por_entregar
+            # Cantidad a facturar de este servicio: la capturada (entrega parcial /
+            # cobro por hitos) o, si no viene, todo lo pendiente. Nunca más de lo pendiente.
+            cap = request.POST.get(f'ent_serv_{det.id}')
+            if cap not in (None, ''):
+                try:
+                    entregado_det = decimal.Decimal(cap)
+                except Exception:
+                    entregado_det = decimal.Decimal('0')
+            else:
+                entregado_det = pend
+            if entregado_det > pend:
+                entregado_det = pend
             if entregado_det > 0:
                 det.cantidad_entregada += entregado_det
                 det.save(update_fields=['cantidad_entregada'])
