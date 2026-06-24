@@ -86,7 +86,7 @@
 
     {% if solicitud.estado == 'SOLICITADA' %}
     <div class="flex justify-end">
-        <form method="POST" onsubmit="return confirm('¿Cancelar la solicitud?')">{% csrf_token %}<input type="hidden" name="accion" value="cancelar">
+        <form method="POST" data-confirm="¿Cancelar la solicitud?">{% csrf_token %}<input type="hidden" name="accion" value="cancelar">
             <button class="text-rose-400 font-black py-3 px-6 rounded-2xl text-[10px] uppercase tracking-widest hover:text-rose-600"><i class="fa-solid fa-ban mr-1"></i> Cancelar solicitud</button>
         </form>
     </div>

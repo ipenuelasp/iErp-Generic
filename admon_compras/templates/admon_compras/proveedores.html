@@ -176,9 +176,10 @@ function editar(btn) {
     document.querySelectorAll('input[name="sucursales_acceso"]').forEach(c => { c.checked = d.sucursales.includes(c.value); });
 }
 function eliminar(id) {
-    if (!confirm('¿Eliminar este proveedor?')) return;
-    document.getElementById('del_id').value = id;
-    document.getElementById('formDel').submit();
+    confirmModal('¿Eliminar este proveedor?', function () {
+        document.getElementById('del_id').value = id;
+        document.getElementById('formDel').submit();
+    });
 }
 </script>
 <style>

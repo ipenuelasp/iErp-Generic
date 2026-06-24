@@ -30,7 +30,7 @@
                 <i class="fa-solid fa-play mr-2"></i> Iniciar Producción
             </button>
         </form>
-        <form method="POST" onsubmit="return confirm('¿Cancelar esta orden?')">{% csrf_token %}
+        <form method="POST" data-confirm="¿Cancelar esta orden?">{% csrf_token %}
             <input type="hidden" name="accion" value="cancelar">
             <button type="submit" class="bg-rose-50 text-rose-500 font-black py-4 px-10 rounded-2xl text-xs uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all">
                 <i class="fa-solid fa-ban mr-2"></i> Cancelar
@@ -97,7 +97,7 @@
             </div>
         </div>
     </form>
-    <form method="POST" class="mb-8 flex justify-end" onsubmit="return confirm('¿Cancelar esta orden?')">{% csrf_token %}
+    <form method="POST" class="mb-8 flex justify-end" data-confirm="¿Cancelar esta orden?">{% csrf_token %}
         <input type="hidden" name="accion" value="cancelar">
         <button type="submit" class="text-rose-400 font-black text-[10px] uppercase tracking-widest hover:text-rose-600 transition-all">
             <i class="fa-solid fa-ban mr-1"></i> Cancelar orden

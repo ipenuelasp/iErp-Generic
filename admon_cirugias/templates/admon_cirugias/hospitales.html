@@ -89,7 +89,7 @@
 function abrir(){document.querySelector('#modal form').reset();document.getElementById('f_id').value='';document.getElementById('mtitulo').innerText='Nuevo Hospital';document.getElementById('modal').classList.remove('hidden');}
 function cerrar(){document.getElementById('modal').classList.add('hidden');}
 function editar(b){const h=JSON.parse(b.dataset.h);abrir();document.getElementById('mtitulo').innerText='Editar Hospital';for(const k of ['id','nombre','codigo','ciudad'])document.getElementById('f_'+k).value=h[k]||'';}
-function eliminar(id){if(!confirm('¿Eliminar hospital?'))return;document.getElementById('del_id').value=id;document.getElementById('formDel').submit();}
+function eliminar(id){confirmModal('¿Eliminar hospital?', function(){document.getElementById('del_id').value=id;document.getElementById('formDel').submit();});}
 </script>
 <style>.lbl{font-size:10px;font-weight:900;color:#94a3b8;text-transform:uppercase;margin-left:4px}
 #modal input{width:100%;padding:0.7rem 0.9rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.9rem;outline:none;font-weight:600;color:#334155;font-size:0.8rem}</style>

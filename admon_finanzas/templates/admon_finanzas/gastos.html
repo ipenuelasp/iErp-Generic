@@ -44,7 +44,7 @@
                     <td class="px-6 py-4 text-right text-xs font-bold text-slate-600">${{ g.subtotal|floatformat:2|intcomma }}</td>
                     <td class="px-6 py-4 text-right text-sm font-black text-slate-800">${{ g.total|floatformat:2|intcomma }}</td>
                     <td class="px-8 py-4 text-center">
-                        <form method="POST" onsubmit="return confirm('¿Eliminar este gasto?')" class="inline">
+                        <form method="POST" data-confirm="¿Eliminar este gasto?" class="inline">
                             {% csrf_token %}<input type="hidden" name="accion" value="eliminar"><input type="hidden" name="gasto_id" value="{{ g.id }}">
                             <button class="text-slate-300 hover:text-rose-500"><i class="fa-solid fa-trash-can text-xs"></i></button>
                         </form>

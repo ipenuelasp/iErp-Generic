@@ -75,9 +75,10 @@ function editar(id, usuario, monto, supervisor) {
     window.scrollTo({top:0, behavior:'smooth'});
 }
 function eliminar(id) {
-    if (!confirm('¿Eliminar este autorizador?')) return;
-    document.getElementById('del_id').value = id;
-    document.getElementById('formDel').submit();
+    confirmModal('¿Eliminar este autorizador?', function () {
+        document.getElementById('del_id').value = id;
+        document.getElementById('formDel').submit();
+    });
 }
 </script>
 <style>

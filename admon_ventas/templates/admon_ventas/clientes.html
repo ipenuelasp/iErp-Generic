@@ -249,9 +249,10 @@ function editar(btn) {
     });
 })();
 function eliminar(id) {
-    if (!confirm('¿Eliminar este cliente?')) return;
-    document.getElementById('del_id').value = id;
-    document.getElementById('formDel').submit();
+    confirmModal('¿Eliminar este cliente?', function () {
+        document.getElementById('del_id').value = id;
+        document.getElementById('formDel').submit();
+    });
 }
 </script>
 <style>

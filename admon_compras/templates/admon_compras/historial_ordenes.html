@@ -193,7 +193,7 @@
                                 </form>
                                 <div class="flex items-center gap-4">
                                     {% if o.estado != 'CANCELADO' %}
-                                    <form method="POST" action="{% url 'admon_compras:orden_detalle' o.pk %}" onsubmit="return confirm('¿Cancelar {{ o.folio }} y revertir su stock, CxP y egreso? Esta acción no se puede deshacer.');">
+                                    <form method="POST" action="{% url 'admon_compras:orden_detalle' o.pk %}" data-confirm="¿Cancelar {{ o.folio }} y revertir su stock, CxP y egreso? Esta acción no se puede deshacer.">
                                         {% csrf_token %}<input type="hidden" name="accion" value="cancelar_revertir">
                                         <button class="text-[10px] font-black uppercase text-rose-600 hover:underline"><i class="fa-solid fa-rotate-left mr-1"></i> Cancelar y revertir</button>
                                     </form>

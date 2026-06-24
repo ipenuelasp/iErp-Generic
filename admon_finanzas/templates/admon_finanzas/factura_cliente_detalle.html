@@ -196,7 +196,7 @@
         </div>
 
         {% if factura.total_pagado == 0 and factura.estado != 'CANCELADA' %}
-        <form method="POST" class="mt-6 flex justify-end" onsubmit="return confirm('¿Cancelar esta cuenta por cobrar?')">{% csrf_token %}
+        <form method="POST" class="mt-6 flex justify-end" data-confirm="¿Cancelar esta cuenta por cobrar?">{% csrf_token %}
             <input type="hidden" name="accion" value="cancelar">
             <button type="submit" class="text-rose-400 font-black text-[10px] uppercase tracking-widest hover:text-rose-600"><i class="fa-solid fa-ban mr-1"></i> Cancelar CxC</button>
         </form>

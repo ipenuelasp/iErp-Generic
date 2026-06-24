@@ -42,7 +42,7 @@
                     <td class="px-8 py-4 text-right text-xs font-black text-slate-700">{{ pedido.moneda.simbolo }}{{ d.importe|floatformat:2|intcomma }}</td>
                     <td class="px-4 py-4 text-center">
                         {% if d.es_extra and puede_editar_extras %}
-                        <form method="POST" onsubmit="return confirm('¿Quitar este extra?')">{% csrf_token %}
+                        <form method="POST" data-confirm="¿Quitar este extra?">{% csrf_token %}
                             <input type="hidden" name="accion" value="del_extra"><input type="hidden" name="detalle_id" value="{{ d.id }}">
                             <button class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-500"><i class="fa-solid fa-trash-can text-[10px]"></i></button>
                         </form>
@@ -100,7 +100,7 @@
                 <span class="text-xs font-bold text-slate-700 flex-1">{{ c.beneficiario }}</span>
                 <span class="text-xs font-black text-slate-700 mr-4">{{ pedido.moneda.simbolo }}{{ c.monto|floatformat:2|intcomma }}</span>
                 {% if puede_editar_extras %}
-                <form method="POST" onsubmit="return confirm('¿Quitar comisión?')">{% csrf_token %}
+                <form method="POST" data-confirm="¿Quitar comisión?">{% csrf_token %}
                     <input type="hidden" name="accion" value="del_comision"><input type="hidden" name="comision_id" value="{{ c.id }}">
                     <button class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-trash-can text-[10px]"></i></button>
                 </form>

@@ -66,7 +66,7 @@
                     <i class="fa-solid fa-check mr-2"></i> Aprobar
                 </button>
             </form>
-            <form method="POST" onsubmit="return confirm('¿Rechazar esta solicitud?')">{% csrf_token %}
+            <form method="POST" data-confirm="¿Rechazar esta solicitud?">{% csrf_token %}
                 <input type="hidden" name="accion" value="rechazar">
                 <button type="submit" class="bg-rose-50 text-rose-500 font-black py-4 px-10 rounded-2xl text-xs uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all">
                     <i class="fa-solid fa-xmark mr-2"></i> Rechazar
@@ -78,7 +78,7 @@
 
     {% if soy_destino and solicitud.estado == 'SOLICITADO' %}
     <div class="mb-8 flex justify-end">
-        <form method="POST" onsubmit="return confirm('¿Cancelar esta solicitud?')">{% csrf_token %}
+        <form method="POST" data-confirm="¿Cancelar esta solicitud?">{% csrf_token %}
             <input type="hidden" name="accion" value="cancelar">
             <button type="submit" class="text-rose-400 font-black text-[10px] uppercase tracking-widest hover:text-rose-600 transition-all">
                 <i class="fa-solid fa-ban mr-1"></i> Cancelar mi solicitud

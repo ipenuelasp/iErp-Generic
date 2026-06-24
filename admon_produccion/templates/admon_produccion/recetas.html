@@ -36,7 +36,7 @@
                 <div class="flex items-center gap-3">
                     {% if not receta.activa %}<span class="text-[9px] font-black bg-slate-100 text-slate-400 px-2 py-1 rounded-lg uppercase">Inactiva</span>{% endif %}
                     {% if puede_editar_maestro %}
-                    <form method="POST" onsubmit="return confirm('¿Eliminar/desactivar esta receta?')">{% csrf_token %}
+                    <form method="POST" data-confirm="¿Eliminar/desactivar esta receta?">{% csrf_token %}
                         <input type="hidden" name="accion" value="eliminar_receta">
                         <input type="hidden" name="receta_id" value="{{ receta.id }}">
                         <button type="submit" class="text-slate-300 hover:text-rose-500 transition-all"><i class="fa-solid fa-trash-can"></i></button>
