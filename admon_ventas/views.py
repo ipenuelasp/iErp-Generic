@@ -368,7 +368,7 @@ class HistorialPedidosView(LoginRequiredMixin, View):
         from django.urls import reverse
         qs = Pedido.objects.filter(
             empresa=empresa, sucursal=sucursal
-        ).select_related('cliente', 'moneda', 'creado_por')
+        ).select_related('cliente', 'moneda', 'creado_por').prefetch_related('detalles__producto')
 
         res = listas.construir(
             request, qs,

@@ -30,8 +30,8 @@
             </thead>
             <tbody class="divide-y divide-slate-50">
                 {% for p in pedidos %}
-                <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="location.href='{% url 'admon_ventas:pedido_detalle' p.pk %}'">
-                    <td class="px-8 py-4 font-black text-brand text-xs">{{ p.folio }}</td>
+                <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="togglePed({{ p.pk }})">
+                    <td class="px-8 py-4 font-black text-brand text-xs"><i id="chev{{ p.pk }}" class="fa-solid fa-chevron-right text-slate-300 mr-2 transition-transform"></i>{{ p.folio }}</td>
                     <td class="px-6 py-4 text-xs font-bold text-slate-700">{{ p.cliente }}</td>
                     <td class="px-6 py-4 text-center">
                         <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ p.color_estado }}-100 text-{{ p.color_estado }}-700">{{ p.get_estado_display }}</span>
@@ -39,6 +39,37 @@
                     <td class="px-6 py-4 text-center text-[10px] font-bold text-slate-400">{{ p.total_entregado_pct|floatformat:0 }}%</td>
                     <td class="px-6 py-4 text-right text-sm font-black text-slate-800">{{ p.moneda.simbolo }}{{ p.total|floatformat:2|intcomma }}</td>
                     <td class="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{{ p.fecha_emision|date:"d/m/Y" }}</td>
+                </tr>
+                <tr id="det{{ p.pk }}" class="hidden bg-slate-50/40">
+                    <td colspan="6" class="px-8 py-4">
+                        <div class="rounded-2xl border border-slate-100 bg-white overflow-hidden">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-50"><tr class="text-slate-400 text-[9px] uppercase tracking-[0.15em]">
+                                    <th class="px-5 py-2 font-black">Producto</th>
+                                    <th class="px-4 py-2 font-black text-center">Cant.</th>
+                                    <th class="px-4 py-2 font-black text-center">Entregado</th>
+                                    <th class="px-4 py-2 font-black text-right">P. Unit.</th>
+                                    <th class="px-5 py-2 font-black text-right">Importe</th>
+                                </tr></thead>
+                                <tbody class="divide-y divide-slate-50">
+                                    {% for d in p.detalles.all %}
+                                    <tr>
+                                        <td class="px-5 py-2 text-[11px] font-bold text-slate-600">[{{ d.producto.sku }}] {{ d.producto.nombre|truncatechars:55 }}{% if d.es_extra %} <span class="text-[8px] font-black bg-fuchsia-50 text-fuchsia-500 px-1.5 py-0.5 rounded uppercase">Extra</span>{% endif %}</td>
+                                        <td class="px-4 py-2 text-center text-[11px] font-bold text-slate-500">{{ d.cantidad|floatformat:"-2" }}</td>
+                                        <td class="px-4 py-2 text-center text-[11px] font-bold text-slate-400">{{ d.cantidad_entregada|floatformat:"-2" }}</td>
+                                        <td class="px-4 py-2 text-right text-[11px] font-bold text-slate-500">{{ p.moneda.simbolo }}{{ d.precio_unitario|floatformat:2|intcomma }}</td>
+                                        <td class="px-5 py-2 text-right text-[11px] font-black text-slate-700">{{ p.moneda.simbolo }}{{ d.importe|floatformat:2|intcomma }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr><td colspan="5" class="px-5 py-3 text-center text-slate-300 italic text-[11px]">Sin partidas.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <div class="flex justify-end px-5 py-3 border-t border-slate-50">
+                                <a href="{% url 'admon_ventas:pedido_detalle' p.pk %}" class="text-[10px] font-black uppercase tracking-widest text-brand hover:underline">Ver pedido completo <i class="fa-solid fa-arrow-right ml-1 text-[8px]"></i></a>
+                            </div>
+                        </div>
+                    </td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="6" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin pedidos que coincidan con los filtros.</td></tr>
@@ -56,4 +87,14 @@
 
     {% include "includes/lista_paginacion.html" %}
 </div>
+
+<script>
+function togglePed(pk) {
+    var row = document.getElementById('det' + pk);
+    var chev = document.getElementById('chev' + pk);
+    if (!row) return;
+    var oculto = row.classList.toggle('hidden');
+    if (chev) chev.style.transform = oculto ? '' : 'rotate(90deg)';
+}
+</script>
 {% endblock %}
