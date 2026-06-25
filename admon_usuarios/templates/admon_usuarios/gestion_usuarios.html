@@ -138,9 +138,6 @@
                 <button type="button" onclick="switchTab('tab-sucursales')" id="btn-tab-sucursales" class="tab-btn flex-1">
                     <i class="fa-solid fa-shop mr-2"></i>Sucursales
                 </button>
-                <button type="button" onclick="switchTab('tab-grupos')" id="btn-tab-grupos" class="tab-btn flex-1">
-                    <i class="fa-solid fa-users-gear mr-2"></i>Roles
-                </button>
                 <button type="button" onclick="switchTab('tab-modulos')" id="btn-tab-modulos" class="tab-btn flex-1">
                     <i class="fa-solid fa-puzzle-piece mr-2"></i>Módulos
                 </button>
@@ -213,20 +210,6 @@
                                 {% endfor %}
                             </div>
                         </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <div id="tab-grupos" class="tab-content hidden">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100">
-                        {% for grupo in grupos %}
-                        <label class="group flex items-center p-4 bg-white rounded-2xl border border-slate-100 cursor-pointer hover:border-brand transition-all">
-                            <input type="checkbox" name="grupos" value="{{ grupo.id }}" id="group_{{ grupo.id }}" class="hidden group-checkbox">
-                            <div class="w-5 h-5 border-2 border-slate-200 rounded-md mr-3 flex items-center justify-center transition-all checkbox-custom">
-                                <i class="fa-solid fa-check text-[10px] text-white opacity-0"></i>
-                            </div>
-                            <span class="text-xs font-black text-slate-600 uppercase">{{ grupo.name }}</span>
-                        </label>
                         {% endfor %}
                     </div>
                 </div>
