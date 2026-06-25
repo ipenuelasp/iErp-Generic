@@ -76,11 +76,18 @@ def gestion_usuarios(request):
     modulos_empresa = [m for m in MODULOS_DISPONIBLES if m['clave'] in contratados]
 
     # Módulos ya asignados a cada empleado (en la empresa del gestor)
+    from admon_empresas.modulos import secciones_de_modulo
+    from admon_empresas.models import SeccionOcultaUsuario
     modulos_por_usuario = {}
+    ocultas_por_usuario = {}
     if empresa_gestor:
         for emp in empleados:
             modulos_por_usuario[emp.id] = list(AccesoModuloUsuario.objects.filter(
                 usuario=emp, empresa=empresa_gestor).values_list('modulo', flat=True))
+            ocultas_por_usuario[emp.id] = list(SeccionOcultaUsuario.objects.filter(
+                usuario=emp, empresa=empresa_gestor).values_list('seccion', flat=True))
+    # Secciones (pantallas) por módulo contratado, para el árbol de permisos finos
+    secciones_por_modulo = {m['clave']: secciones_de_modulo(m['clave']) for m in modulos_empresa}
 
     return render(request, 'admon_usuarios/gestion_usuarios.html', {
         'empleados': empleados,
@@ -90,6 +97,8 @@ def gestion_usuarios(request):
         'accesos_por_usuario': accesos_por_usuario,
         'modulos_empresa': modulos_empresa,
         'modulos_por_usuario': modulos_por_usuario,
+        'secciones_por_modulo': secciones_por_modulo,
+        'ocultas_por_usuario': ocultas_por_usuario,
         'titulo_pagina': "Gestión de Personal"
     })
 
@@ -189,6 +198,18 @@ def editar_usuario(request, usuario_id):
             AccesoModuloUsuario.objects.filter(usuario=empleado, empresa=empresa_gestor).delete()
             for clave in modulos_ids:
                 AccesoModuloUsuario.objects.create(usuario=empleado, empresa=empresa_gestor, modulo=clave)
+
+            # Capa 3: secciones OCULTAS. Las pantallas marcadas (visibles) llegan en
+            # 'seccion_visible'; ocultamos las que NO estén marcadas, de los módulos asignados.
+            from admon_empresas.models import SeccionOcultaUsuario
+            from admon_empresas.modulos import secciones_de_modulo
+            SeccionOcultaUsuario.objects.filter(usuario=empleado, empresa=empresa_gestor).delete()
+            visibles = set(request.POST.getlist('seccion_visible'))
+            for clave_mod in modulos_ids:
+                for s in secciones_de_modulo(clave_mod):
+                    if s['clave'] not in visibles:
+                        SeccionOcultaUsuario.objects.create(
+                            usuario=empleado, empresa=empresa_gestor, seccion=s['clave'])
 
         messages.success(request, f"Los accesos de {empleado.username} han sido actualizados.")
         return redirect('gestion_usuarios')

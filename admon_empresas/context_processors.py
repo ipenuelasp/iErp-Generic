@@ -61,9 +61,10 @@ def empresa_context(request):
                         request.session['sucursal_id'] = matriz.id
                         request.session['sucursal_nombre'] = matriz.nombre
             
-            # 5. Módulos visibles para este usuario en la empresa activa
-            from .modulos import modulos_visibles
+            # 5. Módulos visibles + secciones ocultas (permiso fino) para este usuario
+            from .modulos import modulos_visibles, secciones_ocultas
             mods = modulos_visibles(request.user, empresa)
+            ocultas = secciones_ocultas(request.user, empresa)
 
             return {
                 'empresa': empresa,
@@ -72,6 +73,7 @@ def empresa_context(request):
                 'brand_color': seleccion['base'],
                 'brand_color_dark': seleccion['dark'],
                 'modulos_visibles': mods,
+                'secciones_ocultas': ocultas,
             }
         except Exception as e:
             print(f"Error en context_processor: {e}")

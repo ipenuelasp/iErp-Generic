@@ -207,6 +207,21 @@ class AccesoModuloUsuario(models.Model):
         return f"{self.usuario.username} · {self.empresa_id} · {self.modulo}"
 
 
+class SeccionOcultaUsuario(models.Model):
+    """Pantallas/ligas OCULTAS a un usuario dentro de un módulo (Capa 3, permiso fino).
+    Blocklist: si una sección está aquí, el usuario NO la ve ni puede entrar.
+    Por defecto (sin registros) ve todas las secciones de sus módulos."""
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='secciones_ocultas')
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    seccion = models.CharField(max_length=50)  # clave de la sección (ver modulos.SECCIONES)
+
+    class Meta:
+        unique_together = ('usuario', 'empresa', 'seccion')
+
+    def __str__(self):
+        return f"{self.usuario.username} · oculta {self.seccion}"
+
+
 @receiver(post_save, sender=User)
 def crear_perfil_usuario(sender, instance, created, **kwargs):
     if created:

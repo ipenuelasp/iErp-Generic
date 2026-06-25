@@ -28,30 +28,36 @@
     {% if 'ventas' in modulos_visibles %}
     <div class="pt-2">
         <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Ventas</p>
+        {% if 'ventas.cotizaciones' not in secciones_ocultas %}
         <a href="{% url 'admon_ventas:historial_cotizaciones' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'ventas' and 'cotizacion' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-file-lines mr-3"></i> Cotizaciones
         </a>
+        {% endif %}
+        {% if 'ventas.pedidos' not in secciones_ocultas %}
         <a href="{% url 'admon_ventas:historial_pedidos' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'ventas' and 'pedido' in request.resolver_match.url_name or request.resolver_match.url_name == 'entrega_pedido' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-cash-register mr-3"></i> Pedidos de Venta
         </a>
-        {% if 'cirugias' in modulos_visibles %}
+        {% endif %}
+        {% if 'cirugias' in modulos_visibles and 'ventas.cirugias_facturar' not in secciones_ocultas %}
         <a href="{% url 'admon_ventas:cirugias_por_facturar' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if 'cirugias_por_facturar' in request.resolver_match.url_name or 'generar_pedido_cirugia' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-file-invoice-dollar mr-3"></i> Cirugías por Facturar
         </a>
         {% endif %}
-        {% if 'kits' in modulos_visibles and 'cirugias' not in modulos_visibles %}
+        {% if 'kits' in modulos_visibles and 'cirugias' not in modulos_visibles and 'ventas.liquidaciones' not in secciones_ocultas %}
         <a href="{% url 'admon_ventas:liquidaciones' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if 'liquid' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-box-open mr-3"></i> Liquidar Salidas
         </a>
         {% endif %}
+        {% if 'ventas.clientes' not in secciones_ocultas %}
         <a href="{% url 'admon_ventas:clientes' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'ventas' and request.resolver_match.url_name == 'clientes' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-user-tag mr-3"></i> Clientes
         </a>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -59,20 +65,24 @@
     {% if 'compras' in modulos_visibles %}
     <div class="pt-2">
         <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Compras</p>
+        {% if 'compras.ordenes' not in secciones_ocultas %}
         <a href="{% url 'admon_compras:historial_ordenes' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'compras' and 'orden' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-file-invoice-dollar mr-3"></i> Órdenes de Compra
         </a>
+        {% endif %}
+        {% if 'compras.proveedores' not in secciones_ocultas %}
         <a href="{% url 'admon_compras:proveedores' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'proveedores' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-handshake mr-3"></i> Proveedores
         </a>
-        {% if user.is_superuser or user.perfil.tipo_usuario == 'OWNER' %}
+        {% endif %}
+        {% if user.is_superuser or user.perfil.tipo_usuario == 'OWNER' %}{% if 'compras.autorizadores' not in secciones_ocultas %}
         <a href="{% url 'admon_compras:autorizadores' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'autorizadores' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-sitemap mr-3"></i> Cadena de Autorización
         </a>
-        {% endif %}
+        {% endif %}{% endif %}
     </div>
     {% endif %}
 
@@ -80,38 +90,54 @@
     {% if 'finanzas' in modulos_visibles %}
     <div class="pt-2">
         <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Finanzas</p>
+        {% if 'finanzas.por_pagar' not in secciones_ocultas %}
         <a href="{% url 'admon_finanzas:cuentas_por_pagar' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'cuentas_por_pagar' or request.resolver_match.url_name == 'factura_detalle' or request.resolver_match.url_name == 'registrar_factura' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-file-invoice-dollar mr-3"></i> Cuentas por Pagar
         </a>
+        {% endif %}
+        {% if 'finanzas.por_cobrar' not in secciones_ocultas %}
         <a href="{% url 'admon_finanzas:cuentas_por_cobrar' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'cuentas_por_cobrar' or request.resolver_match.url_name == 'factura_cliente_detalle' or request.resolver_match.url_name == 'registrar_cobro' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-hand-holding-dollar mr-3"></i> Cuentas por Cobrar
         </a>
+        {% endif %}
+        {% if 'finanzas.estados_cuenta' not in secciones_ocultas %}
         <a href="{% url 'admon_finanzas:estados_cuenta' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'estados_cuenta' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-address-book mr-3"></i> Estados de Cuenta
         </a>
+        {% endif %}
+        {% if 'finanzas.pagos' not in secciones_ocultas %}
         <a href="{% url 'admon_finanzas:historial_pagos' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if 'pago' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-money-bill-wave mr-3"></i> Pagos
         </a>
+        {% endif %}
+        {% if 'finanzas.gastos' not in secciones_ocultas %}
         <a href="{% url 'admon_finanzas:gastos' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'gastos' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-receipt mr-3"></i> Gastos
         </a>
+        {% endif %}
+        {% if 'finanzas.otros' not in secciones_ocultas %}
         <a href="{% url 'admon_finanzas:otros_resultados' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'otros_resultados' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-scale-balanced mr-3"></i> Otros e Impuestos
         </a>
+        {% endif %}
+        {% if 'finanzas.conciliacion' not in secciones_ocultas %}
         <a href="{% url 'admon_finanzas:conciliacion_sat' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'conciliacion_sat' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-clipboard-check mr-3"></i> Conciliación SAT
         </a>
+        {% endif %}
+        {% if 'finanzas.estado_resultados' not in secciones_ocultas %}
         <a href="{% url 'admon_finanzas:estado_resultados' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'estado_resultados' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-file-invoice-dollar mr-3"></i> Estado de Resultados
         </a>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -119,18 +145,24 @@
     {% if 'cirugias' in modulos_visibles %}
     <div class="pt-2">
         <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Cirugías</p>
+        {% if 'cirugias.solicitudes' not in secciones_ocultas %}
         <a href="{% url 'admon_cirugias:solicitudes' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if 'solicitud' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-syringe mr-3"></i> Solicitudes
         </a>
+        {% endif %}
+        {% if 'cirugias.doctores' not in secciones_ocultas %}
         <a href="{% url 'admon_cirugias:doctores' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if 'doctor' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-user-doctor mr-3"></i> Doctores
         </a>
+        {% endif %}
+        {% if 'cirugias.hospitales' not in secciones_ocultas %}
         <a href="{% url 'admon_cirugias:hospitales' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if 'hospital' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-hospital mr-3"></i> Hospitales
         </a>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -138,26 +170,36 @@
     {% if 'inventarios' in modulos_visibles %}
     <div class="pt-2">
         <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Inventarios</p>
+        {% if 'inventarios.catalogos' not in secciones_ocultas %}
         <a href="{% url 'admon_inventarios:catalogos_productos' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'inventarios' and request.resolver_match.url_name == 'catalogos_productos' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-boxes-stacked mr-3"></i> Catálogos
         </a>
+        {% endif %}
+        {% if 'inventarios.recepciones' not in secciones_ocultas %}
         <a href="{% url 'admon_inventarios:recepciones' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'recepciones' or request.resolver_match.url_name == 'nueva_recepcion' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-truck-ramp-box mr-3"></i> Recepciones
         </a>
+        {% endif %}
+        {% if 'inventarios.existencias' not in secciones_ocultas %}
         <a href="{% url 'admon_inventarios:existencias' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'existencias' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-cubes mr-3"></i> Existencias
         </a>
+        {% endif %}
+        {% if 'inventarios.kardex' not in secciones_ocultas %}
         <a href="{% url 'admon_inventarios:kardex' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'kardex' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-clock-rotate-left mr-3"></i> Kardex
         </a>
+        {% endif %}
+        {% if 'inventarios.traspasos' not in secciones_ocultas %}
         <a href="{% url 'admon_inventarios:traspasos' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'traspasos' or request.resolver_match.url_name == 'traspaso_detalle' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-right-left mr-3"></i> Traspasos
         </a>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -165,18 +207,24 @@
     {% if 'kits' in modulos_visibles %}
     <div class="pt-2">
         <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Kits / Cajas</p>
+        {% if 'kits.cajas' not in secciones_ocultas %}
         <a href="{% url 'admon_inventarios:cajas' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'cajas' or request.resolver_match.url_name == 'armar_caja' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-box-open mr-3"></i> Armar Cajas
         </a>
+        {% endif %}
+        {% if 'kits.plantillas' not in secciones_ocultas %}
         <a href="{% url 'admon_inventarios:kits' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'kits' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-box mr-3"></i> Plantillas Kit
         </a>
+        {% endif %}
+        {% if 'kits.salidas' not in secciones_ocultas %}
         <a href="{% url 'admon_inventarios:salidas_kit' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if 'salida_kit' in request.resolver_match.url_name or request.resolver_match.url_name == 'salidas_kit' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-truck-medical mr-3"></i> Salidas de Caja
         </a>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -184,14 +232,18 @@
     {% if 'produccion' in modulos_visibles %}
     <div class="pt-2">
         <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Producción</p>
+        {% if 'produccion.recetas' not in secciones_ocultas %}
         <a href="{% url 'admon_produccion:recetas' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'recetas' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-flask mr-3"></i> Recetas
         </a>
+        {% endif %}
+        {% if 'produccion.ordenes' not in secciones_ocultas %}
         <a href="{% url 'admon_produccion:ordenes_produccion' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if 'produccion' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-industry mr-3"></i> Órdenes de Producción
         </a>
+        {% endif %}
     </div>
     {% endif %}
 

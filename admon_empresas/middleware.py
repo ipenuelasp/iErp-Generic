@@ -81,7 +81,8 @@ class ModuloAccessMiddleware:
     def process_view(self, request, view_func, view_args, view_kwargs):
         from django.shortcuts import redirect
         from django.contrib import messages
-        from .modulos import modulo_de_resolver, modulos_visibles
+        from .modulos import (modulo_de_resolver, modulos_visibles,
+                              seccion_de_resolver, secciones_ocultas)
 
         if not request.user.is_authenticated:
             return None
@@ -91,5 +92,11 @@ class ModuloAccessMiddleware:
 
         if modulo not in modulos_visibles(request.user, request.empresa):
             messages.error(request, "No tienes acceso a este módulo.")
+            return redirect('home')
+
+        # Capa 3: bloqueo por pantalla/sección (permiso fino por usuario)
+        seccion = seccion_de_resolver(request.resolver_match)
+        if seccion and seccion in secciones_ocultas(request.user, request.empresa):
+            messages.error(request, "No tienes acceso a esta pantalla.")
             return redirect('home')
         return None
