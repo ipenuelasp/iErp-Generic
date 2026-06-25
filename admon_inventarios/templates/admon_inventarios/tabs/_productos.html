@@ -312,9 +312,32 @@
         setChk('id_es_retornable', d.retornable);
     }
 
-    function closeModal() { 
-        document.getElementById('modalProducto').classList.add('hidden'); 
+    function closeModal() {
+        document.getElementById('modalProducto').classList.add('hidden');
     }
+
+    // Margen financiero en el alta/edición: Venta = Costo / (1 - margen/100).
+    // Si editas la Venta a mano, recalcula el margen implícito.
+    function _ventaDesdeMargenProd() {
+        const costo = parseFloat((document.getElementById('id_costo_unitario')||{}).value) || 0;
+        const m = parseFloat((document.getElementById('id_margen')||{}).value) || 0;
+        const venta = document.getElementById('id_precio_venta');
+        if (venta && costo > 0 && m < 100) venta.value = (costo / (1 - m/100)).toFixed(2);
+    }
+    function _margenDesdeVentaProd() {
+        const costo = parseFloat((document.getElementById('id_costo_unitario')||{}).value) || 0;
+        const p = parseFloat((document.getElementById('id_precio_venta')||{}).value) || 0;
+        const margen = document.getElementById('id_margen');
+        if (margen && costo > 0 && p > 0) margen.value = ((1 - costo/p) * 100).toFixed(2);
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        const costo = document.getElementById('id_costo_unitario');
+        const margen = document.getElementById('id_margen');
+        const venta = document.getElementById('id_precio_venta');
+        if (costo) costo.addEventListener('input', _ventaDesdeMargenProd);
+        if (margen) margen.addEventListener('input', _ventaDesdeMargenProd);
+        if (venta) venta.addEventListener('input', _margenDesdeVentaProd);
+    });
 </script>
 <style>
     /* Buscamos el ID exacto que Django le pone al campo 'activo' */
