@@ -1,0 +1,29 @@
+name: Deploy a staging (pruebas/demos)
+
+# Cada push a la rama 'staging' actualiza el droplet de PRUEBAS.
+# Producción (main) NO se toca aquí. Usa secrets propios del droplet de staging.
+on:
+  push:
+    branches: [ staging ]
+  workflow_dispatch:        # permite dispararlo a mano desde la pestaña Actions
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Actualizar droplet de staging por SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          port: ${{ secrets.STAGING_SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd ~/iErp-Generic
+            git fetch origin staging
+            git checkout staging
+            git reset --hard origin/staging
+            docker compose -f docker-compose.prod.yml up -d --build
+            docker image prune -f
+            echo "==> Deploy STAGING OK"
