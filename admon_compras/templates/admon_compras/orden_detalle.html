@@ -168,14 +168,18 @@ function pedirMotivo(form) {
     promptModal('Motivo del rechazo:', function (m) {
         form.querySelector('#motivo_rech').value = m;
         form.submit();
-    }, { title: 'Rechazar orden', placeholder: 'Explica por qué se rechaza...', required: true, ok: 'Rechazar' });
+    }, { title: 'Rechazar orden', danger: true, required: true, ok: 'Rechazar orden',
+         placeholder: 'Explica por qué se rechaza...',
+         desc: 'La orden volverá al solicitante y no podrá recibirse ni facturarse hasta corregirla.' });
     return false;
 }
 function pedirCancelar(form) {
     promptModal('Motivo de cancelación:', function (m) {
         form.querySelector('#motivo_canc').value = m;
         form.submit();
-    }, { title: 'Cancelar orden', placeholder: 'Motivo de la cancelación (opcional)...', ok: 'Cancelar orden' });
+    }, { title: 'Cancelar orden', danger: true, ok: 'Sí, cancelar orden',
+         placeholder: 'Motivo de la cancelación (opcional)...',
+         desc: '<b>Esta acción no se puede deshacer.</b> La orden quedará cancelada y ya no podrás recibirla ni registrarle factura. Si necesitas comprarla de nuevo, deberás crear una orden nueva.' });
     return false;
 }
 </script>
