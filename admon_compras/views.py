@@ -496,7 +496,7 @@ class OrdenDetalleView(LoginRequiredMixin, View):
             'cadena': cadena,
             'puedo_autorizar': (orden.estado == 'SOLICITADO' and orden.autorizador_actual_id == request.user.id),
             'soy_creador': orden.creado_por_id == request.user.id,
-            'puede_recibir': orden.estado in ('AUTORIZADO', 'RECIBIDO'),
+            'puede_recibir': orden.estado in ('AUTORIZADO', 'RECIBIDO') and not orden.esta_recibida_completa,
             'sucursal_activa': sucursal,
             'seccion': 'compras',
         }

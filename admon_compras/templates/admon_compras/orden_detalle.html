@@ -41,7 +41,7 @@
                     <tr>
                         <td class="px-6 py-4"><div class="font-bold text-slate-800 text-xs">{{ d.producto.nombre }}</div><div class="text-[10px] text-slate-400 font-bold">{{ d.producto.sku }}</div></td>
                         <td class="px-4 py-4 text-center text-xs font-bold text-slate-600">{{ d.cantidad_pedida|floatformat:2 }}</td>
-                        <td class="px-4 py-4 text-center text-xs font-bold {% if d.cantidad_recibida >= d.cantidad_pedida %}text-emerald-600{% else %}text-amber-600{% endif %}">{{ d.cantidad_recibida|floatformat:2 }}</td>
+                        <td class="px-4 py-4 text-center text-xs font-bold {% if d.producto.es_servicio %}text-slate-400{% elif d.cantidad_recibida >= d.cantidad_pedida %}text-emerald-600{% else %}text-amber-600{% endif %}">{% if d.producto.es_servicio %}<span class="text-[9px] uppercase tracking-widest">Servicio</span>{% else %}{{ d.cantidad_recibida|floatformat:2 }}{% endif %}</td>
                         <td class="px-4 py-4 text-right text-xs font-bold text-slate-500">{{ orden.moneda.simbolo }}{{ d.precio_unitario|floatformat:2|intcomma }}</td>
                         <td class="px-6 py-4 text-right text-xs font-black text-slate-700">{{ orden.moneda.simbolo }}{{ d.importe|floatformat:2|intcomma }}</td>
                     </tr>
