@@ -303,6 +303,48 @@ class EstadoCuentaClientePDFView(LoginRequiredMixin, View):
         return resp
 
 
+class EstadosCuentaView(LoginRequiredMixin, View):
+    """Resumen por cliente: facturado, cobrado y saldo (estados de cuenta)."""
+    template_name = 'admon_finanzas/estados_cuenta.html'
+
+    def get(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        Z = decimal.Decimal('0')
+        q = (request.GET.get('q') or '').strip().lower()
+
+        facturas = FacturaCliente.objects.filter(empresa=empresa).exclude(
+            estado='CANCELADA').select_related('cliente').prefetch_related('aplicaciones')
+        data = {}
+        for f in facturas:
+            d = data.setdefault(f.cliente_id, {
+                'cliente': f.cliente, 'facturado': Z, 'cobrado': Z, 'saldo': Z,
+                'cxc': 0, 'pendientes': 0})
+            d['facturado'] += f.total
+            d['cobrado'] += f.total_pagado
+            d['saldo'] += f.saldo
+            d['cxc'] += 1
+            if f.saldo > 0:
+                d['pendientes'] += 1
+        filas = list(data.values())
+        if q:
+            filas = [x for x in filas if q in (x['cliente'].nombre_fiscal or '').lower()
+                     or q in (x['cliente'].nombre_comercial or '').lower()
+                     or q in (x['cliente'].rfc or '').lower()]
+        filas.sort(key=lambda x: x['saldo'], reverse=True)
+        totales = {
+            'facturado': sum((x['facturado'] for x in filas), Z),
+            'cobrado': sum((x['cobrado'] for x in filas), Z),
+            'saldo': sum((x['saldo'] for x in filas), Z),
+        }
+        return render(request, self.template_name, {
+            'filas': filas, 'totales': totales, 'q': request.GET.get('q', ''),
+            'sucursal_activa': sucursal, 'seccion': 'finanzas',
+        })
+
+
 class PagoPDFView(LoginRequiredMixin, View):
     """Recibo de cobro (INGRESO) o comprobante de pago (EGRESO)."""
     def get(self, request, pk):

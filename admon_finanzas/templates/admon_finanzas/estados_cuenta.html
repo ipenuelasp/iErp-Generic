@@ -1,0 +1,80 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-screen-2xl mx-auto p-8">
+
+    <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Estados de Cuenta</h1>
+            <p class="text-slate-500 mt-2 font-medium">Cuánto te debe y cuánto te ha pagado cada cliente</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 px-6 py-5">
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Facturado / vendido</p>
+            <p class="text-2xl font-black text-slate-800 mt-1">${{ totales.facturado|floatformat:2|intcomma }}</p>
+        </div>
+        <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 px-6 py-5">
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cobrado</p>
+            <p class="text-2xl font-black text-blue-600 mt-1">${{ totales.cobrado|floatformat:2|intcomma }}</p>
+        </div>
+        <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 px-6 py-5">
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Saldo por cobrar</p>
+            <p class="text-2xl font-black text-emerald-600 mt-1">${{ totales.saldo|floatformat:2|intcomma }}</p>
+        </div>
+    </div>
+
+    <form method="GET" class="bg-white rounded-[2rem] shadow-lg shadow-slate-200/40 border border-slate-100 p-5 mb-6">
+        <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-xs"></i>
+            <input type="text" name="q" value="{{ q }}" placeholder="Buscar cliente por nombre o RFC..."
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold text-slate-700">
+        </div>
+    </form>
+
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50">
+                <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-8 py-5 font-black">Cliente</th>
+                    <th class="px-6 py-5 font-black text-center">CxC</th>
+                    <th class="px-6 py-5 font-black text-right">Facturado</th>
+                    <th class="px-6 py-5 font-black text-right">Cobrado</th>
+                    <th class="px-6 py-5 font-black text-right">Saldo</th>
+                    <th class="px-8 py-5 font-black text-center">Estado de cuenta</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for f in filas %}
+                <tr class="hover:bg-slate-50/80 transition">
+                    <td class="px-8 py-4">
+                        <div class="text-xs font-black text-slate-700">{{ f.cliente.nombre_fiscal }}</div>
+                        <div class="text-[10px] font-bold text-slate-400">{{ f.cliente.rfc|default:"Sin RFC" }}</div>
+                    </td>
+                    <td class="px-6 py-4 text-center text-[11px] font-bold text-slate-500">{{ f.cxc }}{% if f.pendientes %} <span class="text-[9px] font-black text-amber-600">({{ f.pendientes }} pend.)</span>{% endif %}</td>
+                    <td class="px-6 py-4 text-right text-xs font-bold text-slate-600">${{ f.facturado|floatformat:2|intcomma }}</td>
+                    <td class="px-6 py-4 text-right text-xs font-bold text-blue-600">${{ f.cobrado|floatformat:2|intcomma }}</td>
+                    <td class="px-6 py-4 text-right text-sm font-black {% if f.saldo > 0 %}text-emerald-600{% else %}text-slate-400{% endif %}">${{ f.saldo|floatformat:2|intcomma }}</td>
+                    <td class="px-8 py-4 text-center">
+                        <a href="{% url 'admon_finanzas:estado_cuenta_cliente' f.cliente.id %}" target="_blank" class="text-[10px] font-black uppercase tracking-widest text-brand hover:underline"><i class="fa-solid fa-file-pdf mr-1 text-rose-500"></i> Ver PDF</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin clientes con cuentas por cobrar.</td></tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="bg-slate-50 border-t-2 border-slate-100">
+                <tr class="text-slate-700">
+                    <td class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400" colspan="2">{{ filas|length }} cliente(s)</td>
+                    <td class="px-6 py-4 text-right font-black text-slate-800 text-sm">${{ totales.facturado|floatformat:2|intcomma }}</td>
+                    <td class="px-6 py-4 text-right font-black text-blue-600 text-sm">${{ totales.cobrado|floatformat:2|intcomma }}</td>
+                    <td class="px-6 py-4 text-right font-black text-emerald-600 text-sm">${{ totales.saldo|floatformat:2|intcomma }}</td>
+                    <td class="px-8 py-4"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+{% endblock %}

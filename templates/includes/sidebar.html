@@ -88,6 +88,10 @@
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'cuentas_por_cobrar' or request.resolver_match.url_name == 'factura_cliente_detalle' or request.resolver_match.url_name == 'registrar_cobro' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-hand-holding-dollar mr-3"></i> Cuentas por Cobrar
         </a>
+        <a href="{% url 'admon_finanzas:estados_cuenta' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'estados_cuenta' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-address-book mr-3"></i> Estados de Cuenta
+        </a>
         <a href="{% url 'admon_finanzas:historial_pagos' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if 'pago' in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-money-bill-wave mr-3"></i> Pagos
