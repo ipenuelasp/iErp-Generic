@@ -165,16 +165,18 @@
 
 <script>
 function pedirMotivo(form) {
-    const m = prompt('Motivo del rechazo:');
-    if (!m) return false;
-    form.querySelector('#motivo_rech').value = m;
-    return true;
+    promptModal('Motivo del rechazo:', function (m) {
+        form.querySelector('#motivo_rech').value = m;
+        form.submit();
+    }, { title: 'Rechazar orden', placeholder: 'Explica por qué se rechaza...', required: true, ok: 'Rechazar' });
+    return false;
 }
 function pedirCancelar(form) {
-    const m = prompt('Motivo de cancelación:');
-    if (m === null) return false;
-    form.querySelector('#motivo_canc').value = m;
-    return true;
+    promptModal('Motivo de cancelación:', function (m) {
+        form.querySelector('#motivo_canc').value = m;
+        form.submit();
+    }, { title: 'Cancelar orden', placeholder: 'Motivo de la cancelación (opcional)...', ok: 'Cancelar orden' });
+    return false;
 }
 </script>
 <style>

@@ -177,6 +177,21 @@
             </div>
         </div>
     </div>
+    <!-- Prompt global estilizado (reemplaza prompt() nativo) -->
+    <div id="__promptModal" class="fixed inset-0 z-[200] hidden">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="__closePrompt()"></div>
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-9">
+                <div class="w-14 h-14 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mb-5"><i class="fa-solid fa-pen text-lg"></i></div>
+                <h2 id="__promptTitle" class="text-lg font-black text-slate-800 mb-4">Escribe un valor</h2>
+                <textarea id="__promptInput" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-brand"></textarea>
+                <div class="flex justify-end gap-3 mt-5">
+                    <button type="button" onclick="__closePrompt()" class="text-[10px] font-black uppercase text-slate-400 px-4">Cancelar</button>
+                    <button type="button" id="__promptOk" class="bg-brand text-white font-black py-3 px-8 rounded-2xl text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-transform">Aceptar</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
         let __confirmCb = null;
         function __closeConfirm() { document.getElementById('__confirmModal').classList.add('hidden'); __confirmCb = null; }
@@ -191,6 +206,28 @@
         }
         document.getElementById('__confirmOk').addEventListener('click', function () {
             const cb = __confirmCb; __closeConfirm(); if (typeof cb === 'function') cb();
+        });
+
+        // API global: promptModal('mensaje', callback(valor), {title, ok, placeholder, required})
+        // Reemplaza el prompt() nativo. El callback recibe el texto capturado.
+        let __promptCb = null;
+        function __closePrompt() { document.getElementById('__promptModal').classList.add('hidden'); __promptCb = null; }
+        function promptModal(message, onOk, opts) {
+            opts = opts || {};
+            document.getElementById('__promptTitle').textContent = opts.title || message || 'Escribe un valor';
+            const ta = document.getElementById('__promptInput');
+            ta.value = ''; ta.placeholder = opts.placeholder || '';
+            ta.dataset.required = opts.required ? '1' : '';
+            document.getElementById('__promptOk').textContent = opts.ok || 'Aceptar';
+            __promptCb = onOk;
+            document.getElementById('__promptModal').classList.remove('hidden');
+            setTimeout(function () { ta.focus(); }, 50);
+        }
+        document.getElementById('__promptOk').addEventListener('click', function () {
+            const ta = document.getElementById('__promptInput');
+            const val = ta.value.trim();
+            if (ta.dataset.required === '1' && !val) { ta.classList.add('ring-2', 'ring-rose-400'); return; }
+            const cb = __promptCb; __closePrompt(); if (typeof cb === 'function') cb(val);
         });
         // Intercepta formularios con data-confirm="mensaje" (en captura, antes del anti doble-clic)
         document.addEventListener('submit', function (e) {
