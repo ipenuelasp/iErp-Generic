@@ -14,7 +14,19 @@
     </a>
 </div>
 
-<nav class="flex-1 p-4 space-y-2 overflow-y-auto flex flex-col">
+<style>
+    /* Scroll delgado y discreto para el sidebar (se nota apenas; resalta al hover) */
+    .sidebar-scroll { scrollbar-width: thin; scrollbar-color: rgba(148,163,184,.25) transparent; }
+    .sidebar-scroll::-webkit-scrollbar { width: 6px; }
+    .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-scroll::-webkit-scrollbar-thumb {
+        background: rgba(148,163,184,.22); border-radius: 999px;
+        border: 1px solid transparent; background-clip: padding-box;
+    }
+    .sidebar-scroll:hover::-webkit-scrollbar-thumb { background: rgba(148,163,184,.45); background-clip: padding-box; }
+    .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,.65); background-clip: padding-box; }
+</style>
+<nav class="sidebar-scroll flex-1 p-4 space-y-2 overflow-y-auto flex flex-col">
 
     <!-- DASHBOARD EJECUTIVO -->
     {% if 'ventas' in modulos_visibles or 'finanzas' in modulos_visibles or 'compras' in modulos_visibles or 'inventarios' in modulos_visibles %}
