@@ -24,5 +24,10 @@ jobs:
             git checkout main
             git reset --hard origin/main
             docker compose -f docker-compose.prod.yml up -d --build
+            # Aplica cambios de la capa Traefik (páginas de error, etc.).
+            # Idempotente: docker compose no recrea nada si la config no cambió.
+            if [ -f deploy/traefik/.env ]; then
+              ( cd deploy/traefik && docker compose up -d )
+            fi
             docker image prune -f
             echo "==> Deploy OK"
