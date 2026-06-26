@@ -226,6 +226,12 @@ const EXISTENCIAS = {
     {% endfor %}
 };
 
+// Cantidad solicitada por partida (para sugerir el envío, no el total del almacén)
+const SOLICITADO = {
+    {% for det in detalles %}"{{ det.id }}": {{ det.cantidad_solicitada|stringformat:'s' }},
+    {% endfor %}
+};
+
 function agregarLineaEnvio(detId) {
     const cont = document.getElementById('lineas-envio-' + detId);
     const lista = EXISTENCIAS[detId] || [];
@@ -250,11 +256,29 @@ function agregarLineaEnvio(detId) {
 function ajustarMax(sel) {
     const opt = sel.options[sel.selectedIndex];
     const input = sel.parentElement.querySelector('input[type=number]');
-    if (opt.dataset.max) {
-        input.max = opt.dataset.max;
-        input.value = opt.dataset.serie === 'true' ? 1 : opt.dataset.max;
-        if (opt.dataset.serie === 'true') input.readOnly = true; else input.readOnly = false;
+    if (!opt || !opt.dataset.max) return;
+    const disp = parseFloat(opt.dataset.max) || 0;
+    input.max = disp;
+
+    if (opt.dataset.serie === 'true') {
+        input.value = 1;             // cada serie es 1 unidad
+        input.readOnly = true;
+        return;
     }
+    input.readOnly = false;
+
+    // Sugerimos lo que falta por enviar (solicitado − ya capturado), sin pasar de lo disponible
+    const m = sel.name.match(/env_exist_(\d+)/);
+    const detId = m ? m[1] : null;
+    let pendiente = disp;
+    if (detId && SOLICITADO[detId] != null) {
+        let otros = 0;
+        document.querySelectorAll(`input[name="env_cant_${detId}[]"]`).forEach(inp => {
+            if (inp !== input) otros += parseFloat(inp.value) || 0;
+        });
+        pendiente = Math.max(SOLICITADO[detId] - otros, 0);
+    }
+    input.value = Math.min(pendiente, disp);
 }
 
 // una línea inicial por partida
