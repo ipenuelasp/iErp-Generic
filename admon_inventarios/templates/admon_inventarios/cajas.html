@@ -1,7 +1,7 @@
 {% extends "admon_empresas/dashboard.html" %}
 {% load humanize %}
 {% block main_content %}
-<div class="max-w-6xl mx-auto p-8">
+<div class="max-w-screen-2xl mx-auto p-8">
     <div class="mb-8 flex justify-between items-end">
         <div>
             <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Cajas</h1>
@@ -12,7 +12,7 @@
         </button>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {% for c in cajas %}
         <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 flex flex-col"
              data-id="{{ c.id }}" data-codigo="{{ c.codigo_caja }}" data-nombre="{{ c.nombre|default:'' }}"

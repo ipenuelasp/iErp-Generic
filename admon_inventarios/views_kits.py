@@ -11,7 +11,7 @@ from .models import (
     Producto, Ubicacion, Existencia,
     Kit, DetalleKit, InstanciaKit, SalidaKit, ContenidoSalidaKit,
 )
-from .views import _contexto_valido, puede_editar_maestro
+from .views import _contexto_valido, puede_editar_maestro, _puede_ver_precios
 from .services import (registrar_movimiento, StockInsuficiente,
                        reabastecer_caja, ubicacion_de_caja, stock_disponible)
 
@@ -168,6 +168,7 @@ class SalidaKitDetalleView(LoginRequiredMixin, View):
             'componentes': componentes,
             'contenido': salida.contenido.select_related('producto', 'lote', 'serie', 'ubicacion_origen'),
             'sucursal_activa': sucursal,
+            'puede_ver_precios': _puede_ver_precios(request),
             'seccion': 'inventarios',
         }
         return render(request, self.template_name, context)

@@ -136,8 +136,10 @@
                         <th class="px-6 py-4 font-black">Producto</th>
                         <th class="px-6 py-4 font-black">Trazabilidad</th>
                         <th class="px-6 py-4 font-black text-center">Usado</th>
+                        {% if puede_ver_precios %}
                         <th class="px-6 py-4 font-black text-right">Precio Unit.</th>
                         <th class="px-6 py-4 font-black text-right">Importe</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-50">
@@ -149,8 +151,10 @@
                             {% if item.lote %}Lote {{ item.lote.numero_lote }}{% elif item.serie %}S/N {{ item.serie.serie }}{% else %}—{% endif %}
                         </td>
                         <td class="px-6 py-4 text-center text-xs font-black text-brand">{{ item.cantidad_usada|floatformat:2 }}</td>
+                        {% if puede_ver_precios %}
                         <td class="px-6 py-4 text-right text-xs font-bold text-slate-500">${{ item.producto.precio_venta|floatformat:2|intcomma }}</td>
                         <td class="px-6 py-4 text-right text-xs font-black text-emerald-600">${{ item.importe_usado|floatformat:2|intcomma }}</td>
+                        {% endif %}
                     </tr>
                     {% endif %}
                     {% endfor %}

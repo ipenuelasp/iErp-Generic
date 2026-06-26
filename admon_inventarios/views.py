@@ -331,6 +331,7 @@ class RecepcionesView(LoginRequiredMixin, View):
             'historico': res['page_obj'], 'page_obj': res['page_obj'],
             'totales': res['totales'], 'lista': res['lista'],
             'sucursal_activa': sucursal,
+            'puede_ver_precios': _puede_ver_precios(request),
             'seccion': 'inventarios',
         }
         return render(request, self.template_name, context)

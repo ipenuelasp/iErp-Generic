@@ -55,7 +55,7 @@
                                 <thead><tr class="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                     <th class="px-5 py-3">SKU</th><th class="px-5 py-3">Producto</th>
                                     <th class="px-5 py-3">Ubicación</th><th class="px-5 py-3">Lote</th>
-                                    <th class="px-5 py-3 text-center">Cantidad</th><th class="px-5 py-3 text-right">Costo unit.</th>
+                                    <th class="px-5 py-3 text-center">Cantidad</th>{% if puede_ver_precios %}<th class="px-5 py-3 text-right">Costo unit.</th>{% endif %}
                                 </tr></thead>
                                 <tbody class="divide-y divide-slate-50">
                                     {% for d in rec.detalles.all %}
@@ -65,7 +65,7 @@
                                         <td class="px-5 py-3 text-[10px] font-bold text-slate-500">{{ d.ubicacion.codigo|default:"—" }}</td>
                                         <td class="px-5 py-3 text-[10px] font-bold text-slate-500">{{ d.lote.numero_lote|default:"—" }}</td>
                                         <td class="px-5 py-3 text-center text-[11px] font-black text-brand">{{ d.cantidad_recibida|floatformat:"-2" }}</td>
-                                        <td class="px-5 py-3 text-right text-[11px] font-bold text-slate-500">${{ d.costo_unitario|floatformat:2|intcomma }}</td>
+                                        {% if puede_ver_precios %}<td class="px-5 py-3 text-right text-[11px] font-bold text-slate-500">${{ d.costo_unitario|floatformat:2|intcomma }}</td>{% endif %}
                                     </tr>
                                     {% endfor %}
                                 </tbody>
