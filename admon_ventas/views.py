@@ -779,7 +779,7 @@ class HistorialCotizacionesView(LoginRequiredMixin, View):
 class NuevaCotizacionView(LoginRequiredMixin, View):
     template_name = 'admon_ventas/cotizacion_form.html'
 
-    def _form_ctx(self, empresa, sucursal, cot=None):
+    def _form_ctx(self, request, empresa, sucursal, cot=None):
         return {
             'cotizacion': cot,
             'detalles': cot.detalles.select_related('producto') if cot else None,
@@ -797,7 +797,7 @@ class NuevaCotizacionView(LoginRequiredMixin, View):
         if not ctx:
             return redirect('home')
         empresa, sucursal = ctx
-        return render(request, self.template_name, self._form_ctx(empresa, sucursal))
+        return render(request, self.template_name, self._form_ctx(request, empresa, sucursal))
 
     @transaction.atomic
     def post(self, request):
@@ -855,7 +855,7 @@ class EditarCotizacionView(NuevaCotizacionView):
         if cot.estado not in ('BORRADOR', 'ENVIADA'):
             messages.error(request, "Esta cotización ya no se puede editar.")
             return redirect('admon_ventas:cotizacion_detalle', pk=pk)
-        return render(request, self.template_name, self._form_ctx(empresa, sucursal, cot))
+        return render(request, self.template_name, self._form_ctx(request, empresa, sucursal, cot))
 
     @transaction.atomic
     def post(self, request, pk):
