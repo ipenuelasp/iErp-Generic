@@ -33,11 +33,48 @@ class CajasView(LoginRequiredMixin, View):
             empresa=empresa, sucursal_actual=sucursal
         ).exclude(estado='BAJA').select_related('kit', 'consignante').prefetch_related('lineas')
 
-        # Resumen de contenido físico actual por caja
+        # Resumen de contenido físico actual + comparación contra la receta objetivo.
         for c in cajas:
             cont = list(c.contenido())
             c.num_productos = len(cont)
             c.total_piezas = sum((e.cantidad for e in cont), decimal.Decimal('0'))
+
+            # Cantidad actual agregada por producto (suma lotes/series)
+            actual = {}
+            nombre_de = {}
+            ret_de = {}
+            for e in cont:
+                actual[e.producto_id] = actual.get(e.producto_id, decimal.Decimal('0')) + e.cantidad
+                nombre_de[e.producto_id] = e.producto
+            objetivo = c.lineas_objetivo()  # [(producto, cantidad_objetivo, es_retornable)]
+            c.tiene_receta = bool(objetivo)
+
+            items = []
+            falta_total = decimal.Decimal('0')
+            ids_receta = set()
+            for prod, cant_obj, es_ret in objetivo:
+                ids_receta.add(prod.id)
+                ret_de[prod.id] = es_ret
+                act = actual.get(prod.id, decimal.Decimal('0'))
+                falta = cant_obj - act
+                if falta < 0:
+                    falta = decimal.Decimal('0')
+                falta_total += falta
+                items.append({
+                    'producto': prod, 'actual': act, 'objetivo': cant_obj,
+                    'falta': falta, 'es_retornable': es_ret, 'extra': False,
+                })
+            # Productos cargados que no están en la receta (extra)
+            for pid, act in actual.items():
+                if pid not in ids_receta:
+                    items.append({
+                        'producto': nombre_de[pid], 'actual': act,
+                        'objetivo': decimal.Decimal('0'), 'falta': decimal.Decimal('0'),
+                        'es_retornable': False, 'extra': True,
+                    })
+            c.items = items
+            c.falta_total = falta_total
+            c.completa = c.tiene_receta and falta_total == 0
 
         return render(request, self.template_name, {
             'cajas': cajas,

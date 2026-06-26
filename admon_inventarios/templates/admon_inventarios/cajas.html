@@ -35,20 +35,52 @@
             {% if c.propiedad == 'CONSIGNA' and c.consignante %}
             <p class="text-[10px] font-bold text-amber-500 mb-2"><i class="fa-solid fa-truck-field mr-1"></i>{{ c.consignante.nombre }}</p>
             {% endif %}
-            <div class="flex gap-4 text-[10px] font-black uppercase text-slate-400 mb-4">
-                <span>{{ c.num_productos }} productos</span>
-                <span>{{ c.total_piezas|floatformat:"-2" }} piezas</span>
-            </div>
-            <div class="mt-auto flex items-center justify-between">
+            <div class="flex items-center gap-2 flex-wrap mb-3">
                 <span class="text-[9px] font-black uppercase px-2 py-1 rounded
                     {% if c.estado == 'DISPONIBLE' %}bg-emerald-50 text-emerald-600
                     {% elif c.estado == 'EN_CAMPO' %}bg-blue-50 text-blue-600
                     {% elif c.estado == 'RETORNADA' %}bg-purple-50 text-purple-600
                     {% else %}bg-slate-100 text-slate-500{% endif %}">{{ c.get_estado_display }}</span>
-                <div class="flex gap-2">
+                {% if not c.tiene_receta %}
+                <span class="text-[9px] font-black uppercase px-2 py-1 rounded bg-slate-100 text-slate-400">Sin receta</span>
+                {% elif c.completa %}
+                <span class="text-[9px] font-black uppercase px-2 py-1 rounded bg-emerald-50 text-emerald-600"><i class="fa-solid fa-check mr-1"></i>Completa</span>
+                {% else %}
+                <span class="text-[9px] font-black uppercase px-2 py-1 rounded bg-amber-50 text-amber-600"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Faltan {{ c.falta_total|floatformat:"-2" }} pzs</span>
+                {% endif %}
+            </div>
+            <div class="flex gap-4 text-[10px] font-black uppercase text-slate-400 mb-3">
+                <span>{{ c.num_productos }} productos</span>
+                <span>{{ c.total_piezas|floatformat:"-2" }} piezas</span>
+            </div>
+
+            {% if c.items %}
+            <button type="button" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('i').classList.toggle('rotate-180')"
+                    class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 flex items-center gap-1 mb-2">
+                Ver contenido <i class="fa-solid fa-chevron-down text-[8px] transition-transform"></i>
+            </button>
+            <div class="hidden mb-3 space-y-1 max-h-44 overflow-y-auto pr-1">
+                {% for it in c.items %}
+                <div class="flex items-center justify-between text-[10px] border-b border-slate-50 pb-1">
+                    <span class="font-bold text-slate-600 truncate pr-2" title="[{{ it.producto.sku }}] {{ it.producto.nombre }}">
+                        [{{ it.producto.sku }}] {{ it.producto.nombre|truncatechars:24 }}
+                        {% if it.es_retornable %}<span class="text-[8px] text-amber-600 font-black">RENTA</span>{% endif %}
+                        {% if it.extra %}<span class="text-[8px] text-slate-300 font-black">EXTRA</span>{% endif %}
+                    </span>
+                    <span class="font-black whitespace-nowrap {% if it.falta > 0 %}text-amber-600{% else %}text-slate-500{% endif %}">
+                        {{ it.actual|floatformat:"-2" }}{% if it.objetivo > 0 %}/{{ it.objetivo|floatformat:"-2" }}{% endif %}
+                        {% if it.falta > 0 %} <span class="text-[8px]">(faltan {{ it.falta|floatformat:"-2" }})</span>{% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="mt-auto flex items-center justify-end pt-2 border-t border-slate-50">
+                <div class="flex gap-3">
                     <a href="{% url 'admon_inventarios:armar_caja' c.id %}" class="text-[10px] font-black uppercase text-brand hover:underline"><i class="fa-solid fa-box-open mr-1"></i>Armar</a>
                     {% if c.lineas.all or c.kit_id %}
-                    <a href="{% url 'admon_inventarios:reabastecer_caja' c.id %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrows-rotate mr-1"></i>Reabastecer</a>
+                    <a href="{% url 'admon_inventarios:reabastecer_caja' c.id %}" class="text-[10px] font-black uppercase {% if c.falta_total > 0 %}text-amber-600 hover:text-amber-700{% else %}text-slate-400 hover:text-slate-600{% endif %}"><i class="fa-solid fa-arrows-rotate mr-1"></i>Reabastecer</a>
                     {% endif %}
                 </div>
             </div>
