@@ -27,17 +27,35 @@ class CustomLoginView(LoginView):
 
 
 # views.py
+def _volver_seguro(request):
+    """Devuelve a la página previa (HTTP_REFERER) solo si es del mismo sitio y no
+    es un recurso que el navegador mostraría como texto (sw.js, manifest, estáticos).
+    En cualquier otro caso, manda a 'home'. Evita open-redirect y la pantalla de
+    código del service worker."""
+    from urllib.parse import urlparse
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    ref = request.META.get('HTTP_REFERER') or ''
+    if ref and url_has_allowed_host_and_scheme(
+            ref, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        path = urlparse(ref).path
+        bloqueados = ('/sw.js', '/manifest.json')
+        if path not in bloqueados and not path.startswith(('/static/', '/media/')):
+            return redirect(ref)
+    return redirect('home')
+
+
 def cambiar_contexto(request, sucursal_id):
     sucursal = get_object_or_404(Sucursal, id=sucursal_id, empresa=request.empresa)
-    
+
     # Guardamos en la sesión
     request.session['sucursal_id'] = sucursal.id
     request.session['sucursal_nombre'] = sucursal.nombre
-    
+
     messages.info(request, f"Cambiado a sucursal: {sucursal.nombre}")
-    
-    # Regresamos a la página donde estaba el usuario
-    return redirect(request.META.get('HTTP_REFERER', 'home'))
+
+    # Regresamos a la página donde estaba el usuario (de forma segura)
+    return _volver_seguro(request)
 
 def cambiar_empresa(request, empresa_id):
     # Verificamos que el usuario tenga permiso de acceder a esa empresa
