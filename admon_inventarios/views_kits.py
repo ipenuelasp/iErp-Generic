@@ -307,9 +307,17 @@ class ReabastecerCajaView(LoginRequiredMixin, View):
         for prod, requerida, _ret in caja.lineas_objetivo():
             act = actual.get(prod.id, 0)
             falta = requerida - act
+            if falta < 0:
+                falta = 0
+            disp = stock_disponible(prod, sucursal=sucursal)
+            # ¿El almacén tiene suficiente para dejar la caja al estándar?
+            cubre = (act + disp) >= requerida
+            # Sugerencia: lo que falta, pero sin pasar de lo disponible en almacén.
+            sugerido = falta if falta <= disp else disp
             filas.append({'producto': prod, 'requerida': requerida,
-                          'actual': act, 'falta': falta if falta > 0 else 0,
-                          'disp': stock_disponible(prod, sucursal=sucursal)})
+                          'actual': act, 'falta': falta, 'disp': disp,
+                          'cubre': cubre, 'sugerido': sugerido,
+                          'faltante_estandar': (requerida - act - disp) if not cubre else 0})
 
         ubicaciones = Ubicacion.objects.filter(
             almacen__sucursal=sucursal, activa=True).exclude(almacen__codigo='CAJAS').select_related('almacen')

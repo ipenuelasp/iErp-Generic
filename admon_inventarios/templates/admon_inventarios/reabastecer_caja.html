@@ -17,7 +17,7 @@
         <div class="px-8 pt-8 pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
                 <h3 class="text-sm font-black text-slate-800 uppercase italic">Llenar al estándar del kit</h3>
-                <p class="text-[10px] text-slate-400 font-bold">Se mueve del almacén a la caja la cantidad que indiques.</p>
+                <p class="text-[10px] text-slate-400 font-bold">Se mueve del almacén a la caja la cantidad que indiques. <span class="text-rose-500">En rojo: el almacén no alcanza para el estándar; puedes mover lo disponible, la caja quedará incompleta.</span></p>
             </div>
             <div class="space-y-1">
                 <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Tomar del almacén / ubicación</label>
@@ -36,13 +36,18 @@
             </tr></thead>
             <tbody class="divide-y divide-slate-50">
                 {% for f in filas %}
-                <tr>
-                    <td class="px-8 py-3 text-xs font-bold text-slate-700">[{{ f.producto.sku }}] {{ f.producto.nombre }}</td>
+                <tr class="{% if not f.cubre %}bg-rose-50/40{% endif %}">
+                    <td class="px-8 py-3 text-xs font-bold text-slate-700">
+                        [{{ f.producto.sku }}] {{ f.producto.nombre }}
+                        {% if not f.cubre %}
+                        <div class="text-[9px] font-black uppercase text-rose-500 mt-0.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i>No satisface el estándar (faltan {{ f.faltante_estandar|floatformat:"-2" }} en almacén)</div>
+                        {% endif %}
+                    </td>
                     <td class="px-4 py-3 text-center text-xs font-bold text-slate-500">{{ f.requerida|floatformat:"-2" }}</td>
                     <td class="px-4 py-3 text-center text-xs font-black {% if f.actual >= f.requerida %}text-emerald-600{% else %}text-amber-600{% endif %}">{{ f.actual|floatformat:"-2" }}</td>
-                    <td class="px-4 py-3 text-center text-[11px] font-bold text-slate-400">{{ f.disp|floatformat:"-2" }}</td>
+                    <td class="px-4 py-3 text-center text-[11px] font-black {% if not f.cubre %}text-rose-600{% else %}text-slate-400{% endif %}">{{ f.disp|floatformat:"-2" }}</td>
                     <td class="px-8 py-3 text-center">
-                        <input type="number" name="cant_{{ f.producto.id }}" step="0.0001" min="0" value="{{ f.falta|floatformat:'-2' }}" class="w-28 text-center font-black text-brand">
+                        <input type="number" name="cant_{{ f.producto.id }}" step="0.0001" min="0" max="{{ f.disp|floatformat:'-4' }}" value="{{ f.sugerido|floatformat:'-2' }}" class="w-28 text-center font-black text-brand">
                     </td>
                 </tr>
                 {% endfor %}
