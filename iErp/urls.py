@@ -36,3 +36,9 @@ urlpatterns = [
     # (static() solo funciona con DEBUG=True; esta ruta funciona siempre).
     re_path(r'^media/(?P<path>.*)$', _media_serve, {'document_root': settings.MEDIA_ROOT}),
 ]
+
+# Páginas de error amigables (tematizadas por empresa). Solo aplican con DEBUG=False.
+handler400 = 'iErp.views.error_400'
+handler403 = 'iErp.views.error_403'
+handler404 = 'iErp.views.error_404'
+handler500 = 'iErp.views.error_500'

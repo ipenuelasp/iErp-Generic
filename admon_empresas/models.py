@@ -51,6 +51,14 @@ class Empresa(models.Model):
     ]
     color_primario = models.CharField(max_length=20, choices=COLOR_CHOICES, default='indigo')
 
+    TEMA_ERROR_CHOICES = [
+        ('robot', 'Robot (formal / médico)'),
+        ('alien', 'Alien (informal / divertido)'),
+    ]
+    tema_error = models.CharField(
+        "Tema de página de error", max_length=10, choices=TEMA_ERROR_CHOICES, default='robot',
+        help_text="Estilo de la página amigable que se muestra ante errores o mantenimiento.")
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.logo:

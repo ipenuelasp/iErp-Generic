@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% if reintentar %}<meta http-equiv="refresh" content="10">{% endif %}
+    <title>{{ titulo }} · iErp</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            min-height: 100%; display: flex; align-items: center; justify-content: center;
+            text-align: center; padding: 2rem; overflow: hidden;
+        }
+        .card { position: relative; z-index: 1; max-width: 560px; }
+        .scene { width: 240px; height: 240px; margin: 0 auto 1.5rem; position: relative; }
+        h1 { font-size: 1.7rem; font-weight: 800; letter-spacing:-.02em; margin-bottom:.6rem; }
+        .code { font-size: .8rem; font-weight: 800; letter-spacing:.2em; opacity:.6; margin-bottom:.4rem; }
+        p { font-size: 1rem; line-height: 1.5; }
+        .badge { display:inline-flex; align-items:center; gap:.5rem; margin-top:1.4rem;
+                 padding:.55rem 1rem; border-radius:999px; font-size:.8rem; font-weight:600; }
+        .dot { width:8px; height:8px; border-radius:50%; animation: blink 1.2s infinite; }
+        @keyframes blink { 0%,100%{ opacity:1 } 50%{ opacity:.25 } }
+        .actions { margin-top:1.6rem; }
+        .btn { display:inline-block; text-decoration:none; padding:.7rem 1.5rem; border-radius:14px;
+               font-weight:800; font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; }
+        .brand { margin-top:2rem; font-size:.72rem; letter-spacing:.25em; text-transform:uppercase; font-weight:700; }
+
+        {% if tema == 'alien' %}
+        body { background: radial-gradient(1200px 600px at 50% -10%, #111c3a, #0b1224); color:#e7ecff; }
+        .stars::before, .stars::after { content:""; position:fixed; inset:0; z-index:0;
+            background-image:
+                radial-gradient(2px 2px at 20% 30%, #fff, transparent),
+                radial-gradient(2px 2px at 70% 60%, #cfe0ff, transparent),
+                radial-gradient(1px 1px at 40% 80%, #fff, transparent),
+                radial-gradient(1.5px 1.5px at 55% 15%, #bcd, transparent);
+            background-repeat: repeat; opacity:.5; animation: twinkle 4s ease-in-out infinite alternate; }
+        .stars::after { opacity:.25; animation-delay:2s; }
+        @keyframes twinkle { from{opacity:.2} to{opacity:.6} }
+        p { color:#9fb0e0; }
+        .badge { background: rgba(79,107,255,.15); border:1px solid rgba(79,107,255,.35); color:#bcd; }
+        .dot { background:#00d4a0; box-shadow:0 0 10px #00d4a0; }
+        .btn { background:#4f6bff; color:#fff; }
+        .brand { color:#5d6b9c; }
+        .ufo { position:absolute; left:50%; top:18px; transform:translateX(-50%); animation: float 3.2s ease-in-out infinite; }
+        @keyframes float { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-14px)} }
+        .beam { position:absolute; left:50%; top:96px; width:150px; height:130px; transform:translateX(-50%);
+                background: linear-gradient(to bottom, rgba(0,212,160,.35), rgba(0,212,160,0));
+                clip-path: polygon(38% 0,62% 0,100% 100%,0% 100%); animation: beamPulse 2.4s ease-in-out infinite; }
+        @keyframes beamPulse { 0%,100%{opacity:.45} 50%{opacity:.8} }
+        .alien { position:absolute; left:50%; bottom:6px; transform:translateX(-50%); animation: bob 2.6s ease-in-out infinite; }
+        @keyframes bob { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-6px)} }
+        .tool { transform-origin:78px 96px; animation: wrench 1.1s ease-in-out infinite; }
+        @keyframes wrench { 0%,100%{transform:rotate(-18deg)} 50%{transform:rotate(22deg)} }
+        {% else %}
+        body { background: linear-gradient(180deg, #f4f8fc, #e8eef6); color:#1f3050; }
+        p { color:#5a6b85; }
+        .badge { background:#e3edf9; border:1px solid #c5d8ef; color:#1f4e79; }
+        .dot { background:#1d9e75; box-shadow:0 0 8px rgba(29,158,117,.5); }
+        .btn { background:#1f4e79; color:#fff; }
+        .brand { color:#94a3b8; }
+        .robot { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); animation: rbob 3s ease-in-out infinite; }
+        @keyframes rbob { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-8px)} }
+        .gear { transform-origin:center; animation: spin 6s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg) } }
+        .scan { animation: scan 2.2s ease-in-out infinite; }
+        @keyframes scan { 0%,100%{opacity:.3} 50%{opacity:1} }
+        {% endif %}
+    </style>
+</head>
+<body>
+    {% if tema == 'alien' %}<div class="stars"></div>{% endif %}
+    <div class="card">
+        <div class="scene">
+        {% if tema == 'alien' %}
+            <div class="beam"></div>
+            <svg class="ufo" width="180" height="90" viewBox="0 0 180 90" xmlns="http://www.w3.org/2000/svg">
+                <ellipse cx="90" cy="58" rx="80" ry="22" fill="#26345f"/><ellipse cx="90" cy="54" rx="80" ry="22" fill="#3a4f8f"/>
+                <ellipse cx="90" cy="40" rx="42" ry="26" fill="#5e79c9"/><ellipse cx="90" cy="36" rx="42" ry="24" fill="#86a0e8"/>
+                <ellipse cx="78" cy="30" rx="14" ry="8" fill="#cdddff" opacity=".8"/>
+                <circle cx="50" cy="56" r="5" fill="#00d4a0"/><circle cx="90" cy="62" r="5" fill="#ffd166"/><circle cx="130" cy="56" r="5" fill="#ff6b9d"/>
+            </svg>
+            <svg class="alien" width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                <ellipse cx="60" cy="92" rx="26" ry="22" fill="#37d39b"/><ellipse cx="60" cy="56" rx="30" ry="26" fill="#46e3aa"/>
+                <line x1="60" y1="30" x2="60" y2="14" stroke="#46e3aa" stroke-width="4"/><circle cx="60" cy="11" r="5" fill="#ffd166"/>
+                <ellipse cx="49" cy="56" rx="8" ry="11" fill="#0b1224"/><ellipse cx="71" cy="56" rx="8" ry="11" fill="#0b1224"/>
+                <circle cx="51" cy="52" r="2.6" fill="#fff"/><circle cx="73" cy="52" r="2.6" fill="#fff"/>
+                <path d="M51 70 Q60 78 69 70" stroke="#0b1224" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <g class="tool">
+                    <line x1="60" y1="92" x2="84" y2="92" stroke="#37d39b" stroke-width="7" stroke-linecap="round"/>
+                    <rect x="80" y="78" width="9" height="28" rx="3" fill="#c7d2fe" transform="rotate(35 84 92)"/>
+                    <circle cx="92" cy="80" r="7" fill="#94a3d8"/>
+                </g>
+            </svg>
+        {% else %}
+            <svg class="robot" width="190" height="200" viewBox="0 0 190 200" xmlns="http://www.w3.org/2000/svg">
+                <line x1="95" y1="34" x2="95" y2="16" stroke="#9bb4d4" stroke-width="4"/>
+                <circle cx="95" cy="12" r="6" fill="#1d9e75"/>
+                <rect x="48" y="34" width="94" height="74" rx="20" fill="#dbe7f5" stroke="#b9cde6" stroke-width="2"/>
+                <rect x="60" y="48" width="70" height="46" rx="12" fill="#16263f"/>
+                <circle class="scan" cx="83" cy="71" r="7" fill="#39c0ff"/>
+                <circle class="scan" cx="107" cy="71" r="7" fill="#39c0ff"/>
+                <path d="M84 84 Q95 90 106 84" stroke="#39c0ff" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <rect x="58" y="112" width="74" height="64" rx="16" fill="#cdddf0" stroke="#b9cde6" stroke-width="2"/>
+                <g transform="translate(95,144)">
+                    <g class="gear">
+                        <circle r="15" fill="none" stroke="#1f4e79" stroke-width="6"/>
+                        <g fill="#1f4e79">
+                            <rect x="-3" y="-22" width="6" height="8"/><rect x="-3" y="14" width="6" height="8"/>
+                            <rect x="-22" y="-3" width="8" height="6"/><rect x="14" y="-3" width="8" height="6"/>
+                            <rect x="-17" y="-17" width="6" height="7" transform="rotate(45)"/>
+                            <rect x="-17" y="-17" width="6" height="7" transform="rotate(-45)"/>
+                        </g>
+                    </g>
+                </g>
+                <rect x="30" y="120" width="20" height="44" rx="9" fill="#dbe7f5" stroke="#b9cde6" stroke-width="2"/>
+                <rect x="140" y="120" width="20" height="44" rx="9" fill="#dbe7f5" stroke="#b9cde6" stroke-width="2"/>
+                <g transform="translate(150,108)">
+                    <rect x="-10" y="-10" width="20" height="20" rx="5" fill="#e24b4a"/>
+                    <rect x="-3" y="-7" width="6" height="14" fill="#fff"/><rect x="-7" y="-3" width="14" height="6" fill="#fff"/>
+                </g>
+            </svg>
+        {% endif %}
+        </div>
+        <div class="code">Error {{ codigo }}</div>
+        <h1>{{ titulo }}</h1>
+        <p>{{ mensaje|safe }}</p>
+        {% if reintentar %}
+        <div class="badge"><span class="dot"></span> Reconectando automáticamente…</div>
+        {% else %}
+        <div class="actions"><a class="btn" href="/">Volver al inicio</a></div>
+        {% endif %}
+        <div class="brand">{{ marca }}</div>
+    </div>
+</body>
+</html>
