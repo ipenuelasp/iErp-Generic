@@ -5,7 +5,7 @@ from .models import Empresa, Moneda, Sucursal
 class EmpresaForm(forms.ModelForm):
     class Meta:
         model = Empresa
-        fields = ['nombre_fiscal', 'rfc', 'moneda_principal', 'decimales_permitidos', 'color_primario', 'logo', 'isotipo']
+        fields = ['nombre_fiscal', 'rfc', 'moneda_principal', 'color_primario', 'logo', 'isotipo']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
