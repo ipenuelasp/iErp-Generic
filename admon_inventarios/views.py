@@ -356,6 +356,7 @@ class NuevaRecepcionDirectaView(LoginRequiredMixin, View):
             return redirect('admon_inventarios:catalogos_productos')
 
         productos = productos_disponibles_en(empresa, sucursal).filter(es_comprable=True)
+        ver_precios = _puede_ver_precios(request)
 
         context = {
             'productos_json': [
@@ -363,7 +364,8 @@ class NuevaRecepcionDirectaView(LoginRequiredMixin, View):
                     'id': p.id, 'sku': p.sku, 'nombre': p.nombre,
                     'es_loteable': 'True' if p.es_loteable else 'False',
                     'es_serializable': 'True' if p.es_serializable else 'False',
-                    'costo': str(p.costo_unitario),
+                    # El costo solo viaja al cliente si el usuario puede ver precios.
+                    'costo': str(p.costo_unitario) if ver_precios else '0',
                     'ubicacion_defecto': p.ubicacion_defecto_id or (p.grupo.ubicacion_defecto_id if p.grupo else None),
                 }
                 for p in productos.select_related('grupo')
@@ -373,7 +375,7 @@ class NuevaRecepcionDirectaView(LoginRequiredMixin, View):
                 for u in ubicaciones
             ],
             'consignantes': Consignante.objects.filter(empresa=empresa, activo=True),
-            'puede_ver_precios': _puede_ver_precios(request),
+            'puede_ver_precios': ver_precios,
             'sucursal_activa': sucursal,
             'seccion': 'inventarios',
         }
