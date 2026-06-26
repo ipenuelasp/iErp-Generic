@@ -13,6 +13,9 @@ services:
       # HTTP -> HTTPS
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      # Página amigable de mantenimiento ante CUALQUIER error 5xx (deploy en curso / app caída).
+      # Se aplica a todos los routers del entrypoint websecure (incluida la app).
+      - --entrypoints.websecure.http.middlewares=error-pages@docker
       # Let's Encrypt por DNS-01 (DigitalOcean) → permite cert wildcard *.ierp.mx
       - --certificatesresolvers.le.acme.dnschallenge=true
       - --certificatesresolvers.le.acme.dnschallenge.provider=digitalocean
@@ -30,6 +33,33 @@ services:
       - ./letsencrypt:/letsencrypt
     networks:
       - web
+
+  # Mini servidor que sirve la página de mantenimiento (alien trabajando).
+  error-pages:
+    image: nginx:alpine
+    container_name: error_pages
+    restart: always
+    volumes:
+      - ./error-pages/maintenance.html:/usr/share/nginx/html/maintenance.html:ro
+      - ./error-pages/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+      # Servicio interno
+      - traefik.http.services.error-pages.loadbalancer.server.port=80
+      # Middleware 'errors': intercepta 5xx y entrega la página (conserva el status original)
+      - traefik.http.middlewares.error-pages.errors.status=500-599
+      - traefik.http.middlewares.error-pages.errors.service=error-pages
+      - traefik.http.middlewares.error-pages.errors.query=/maintenance.html
+      # Router catch-all de baja prioridad: cubre el caso de app TOTALMENTE caída
+      # (cuando su router desaparece). Las rutas reales (*.ierp.mx) tienen mayor prioridad.
+      - "traefik.http.routers.error-pages.rule=HostRegexp(`.+`)"
+      - traefik.http.routers.error-pages.priority=1
+      - traefik.http.routers.error-pages.entrypoints=websecure
+      - traefik.http.routers.error-pages.tls=true
+      - traefik.http.routers.error-pages.service=error-pages
 
 networks:
   web:

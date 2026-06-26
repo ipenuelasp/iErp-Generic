@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Reintenta solo cada 10s: cuando la app vuelva, el visitante cae directo en ella -->
+    <meta http-equiv="refresh" content="10">
+    <title>Volvemos en un momento · iErp</title>
+    <style>
+        :root { --bg1:#0b1224; --bg2:#111c3a; --accent:#4f6bff; --accent2:#00d4a0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: radial-gradient(1200px 600px at 50% -10%, var(--bg2), var(--bg1));
+            color: #e7ecff; min-height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; padding: 2rem; overflow: hidden;
+        }
+        .stars::before, .stars::after {
+            content: ""; position: fixed; inset: 0; z-index: 0;
+            background-image:
+                radial-gradient(2px 2px at 20% 30%, #fff, transparent),
+                radial-gradient(2px 2px at 70% 60%, #cfe0ff, transparent),
+                radial-gradient(1px 1px at 40% 80%, #fff, transparent),
+                radial-gradient(1px 1px at 85% 25%, #fff, transparent),
+                radial-gradient(1.5px 1.5px at 55% 15%, #bcd, transparent);
+            background-repeat: repeat; opacity: .5;
+            animation: twinkle 4s ease-in-out infinite alternate;
+        }
+        .stars::after { opacity: .25; animation-delay: 2s; }
+        @keyframes twinkle { from { opacity:.2 } to { opacity:.6 } }
+
+        .card { position: relative; z-index: 1; max-width: 540px; }
+        .scene { width: 240px; height: 240px; margin: 0 auto 1.5rem; position: relative; }
+
+        /* UFO flotando */
+        .ufo { position: absolute; left: 50%; top: 18px; transform: translateX(-50%);
+               animation: float 3.2s ease-in-out infinite; }
+        @keyframes float { 0%,100%{ transform: translateX(-50%) translateY(0) } 50%{ transform: translateX(-50%) translateY(-14px) } }
+
+        /* Rayo tractor */
+        .beam { position:absolute; left:50%; top:96px; width:150px; height:130px;
+                transform: translateX(-50%);
+                background: linear-gradient(to bottom, rgba(0,212,160,.35), rgba(0,212,160,0));
+                clip-path: polygon(38% 0, 62% 0, 100% 100%, 0% 100%);
+                animation: beamPulse 2.4s ease-in-out infinite; }
+        @keyframes beamPulse { 0%,100%{ opacity:.45 } 50%{ opacity:.8 } }
+
+        /* Alien trabajando (gira una "llave" / herramienta) */
+        .alien { position:absolute; left:50%; bottom:6px; transform: translateX(-50%);
+                 animation: bob 2.6s ease-in-out infinite; }
+        @keyframes bob { 0%,100%{ transform: translateX(-50%) translateY(0) } 50%{ transform: translateX(-50%) translateY(-6px) } }
+        .tool { transform-origin: 78px 96px; animation: wrench 1.1s ease-in-out infinite; }
+        @keyframes wrench { 0%,100%{ transform: rotate(-18deg) } 50%{ transform: rotate(22deg) } }
+
+        h1 { font-size: 1.7rem; font-weight: 800; letter-spacing:-.02em; margin-bottom:.6rem; }
+        p { color:#9fb0e0; font-size:1rem; line-height:1.5; }
+        .badge { display:inline-flex; align-items:center; gap:.5rem; margin-top:1.4rem;
+                 background: rgba(79,107,255,.15); border:1px solid rgba(79,107,255,.35);
+                 color:#bcd; padding:.55rem 1rem; border-radius:999px; font-size:.8rem; font-weight:600; }
+        .dot { width:8px; height:8px; border-radius:50%; background: var(--accent2);
+               box-shadow:0 0 10px var(--accent2); animation: blink 1.2s infinite; }
+        @keyframes blink { 0%,100%{ opacity:1 } 50%{ opacity:.25 } }
+        .brand { margin-top:2rem; font-size:.72rem; letter-spacing:.25em; color:#5d6b9c; text-transform:uppercase; font-weight:700; }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    <div class="card">
+        <div class="scene">
+            <div class="beam"></div>
+            <!-- Platillo -->
+            <svg class="ufo" width="180" height="90" viewBox="0 0 180 90" xmlns="http://www.w3.org/2000/svg">
+                <ellipse cx="90" cy="58" rx="80" ry="22" fill="#26345f"/>
+                <ellipse cx="90" cy="54" rx="80" ry="22" fill="#3a4f8f"/>
+                <ellipse cx="90" cy="40" rx="42" ry="26" fill="#5e79c9"/>
+                <ellipse cx="90" cy="36" rx="42" ry="24" fill="#86a0e8"/>
+                <ellipse cx="78" cy="30" rx="14" ry="8" fill="#cdddff" opacity=".8"/>
+                <circle cx="50" cy="56" r="5" fill="#00d4a0"/>
+                <circle cx="90" cy="62" r="5" fill="#ffd166"/>
+                <circle cx="130" cy="56" r="5" fill="#ff6b9d"/>
+            </svg>
+            <!-- Alien trabajando -->
+            <svg class="alien" width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                <!-- cuerpo -->
+                <ellipse cx="60" cy="92" rx="26" ry="22" fill="#37d39b"/>
+                <!-- cabeza -->
+                <ellipse cx="60" cy="56" rx="30" ry="26" fill="#46e3aa"/>
+                <!-- antena -->
+                <line x1="60" y1="30" x2="60" y2="14" stroke="#46e3aa" stroke-width="4"/>
+                <circle cx="60" cy="11" r="5" fill="#ffd166"/>
+                <!-- ojos -->
+                <ellipse cx="49" cy="56" rx="8" ry="11" fill="#0b1224"/>
+                <ellipse cx="71" cy="56" rx="8" ry="11" fill="#0b1224"/>
+                <circle cx="51" cy="52" r="2.6" fill="#fff"/>
+                <circle cx="73" cy="52" r="2.6" fill="#fff"/>
+                <!-- sonrisa -->
+                <path d="M51 70 Q60 78 69 70" stroke="#0b1224" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <!-- brazo con herramienta -->
+                <g class="tool">
+                    <line x1="60" y1="92" x2="84" y2="92" stroke="#37d39b" stroke-width="7" stroke-linecap="round"/>
+                    <rect x="80" y="78" width="9" height="28" rx="3" fill="#c7d2fe" transform="rotate(35 84 92)"/>
+                    <circle cx="92" cy="80" r="7" fill="#94a3d8"/>
+                </g>
+            </svg>
+        </div>
+        <h1>Estamos trabajando 🛸</h1>
+        <p>Nuestro equipo (intergaláctico) está aplicando una actualización.<br>
+           En unos segundos volvemos a la normalidad.</p>
+        <div class="badge"><span class="dot"></span> Reconectando automáticamente…</div>
+        <div class="brand">iErp · Sistema de Gestión</div>
+    </div>
+</body>
+</html>
