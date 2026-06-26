@@ -13,8 +13,8 @@
     <form method="POST" class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         {% csrf_token %}
         <div class="px-8 pt-8 pb-2">
-            <h3 class="text-sm font-black text-slate-800 uppercase italic">Captura lo que regresó y lo que se cobra</h3>
-            <p class="text-[10px] text-slate-400 font-bold">"Se cobra" se autollena con enviado − regresó, pero puedes ajustarlo (ej. equipo prestado que no se cobra). La diferencia es merma/servicio no cobrado.</p>
+            <h3 class="text-sm font-black text-slate-800 uppercase italic">Captura lo que regresó</h3>
+            <p class="text-[10px] text-slate-400 font-bold">Solo capturas lo que <b>regresó</b>. "Se cobra" se calcula automáticamente como enviado − regresó.</p>
         </div>
         <table class="w-full text-left">
             <thead><tr class="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
@@ -22,8 +22,7 @@
                 <th class="px-4 py-4">Lote / Serie</th>
                 <th class="px-4 py-4 text-center">Enviado</th>
                 <th class="px-4 py-4 text-center w-32">Regresó</th>
-                <th class="px-4 py-4 text-center w-32">Se cobra</th>
-                <th class="px-8 py-4 text-center">Merma</th>
+                <th class="px-8 py-4 text-center w-32">Se cobra</th>
             </tr></thead>
             <tbody class="divide-y divide-slate-50">
                 {% for it in contenido %}
@@ -34,10 +33,7 @@
                     <td class="px-4 py-4 text-center">
                         <input type="number" name="ret_{{ it.id }}" step="0.0001" min="0" max="{{ it.cantidad_enviada }}" value="{% if it.es_retornable %}{{ it.cantidad_enviada|floatformat:'-4' }}{% else %}0{% endif %}" oninput="onReg(this)" class="w-24 text-center font-black text-brand">
                     </td>
-                    <td class="px-4 py-4 text-center">
-                        <input type="number" name="cob_{{ it.id }}" step="0.0001" min="0" value="{% if it.es_retornable %}0{% else %}{{ it.cantidad_enviada|floatformat:'-4' }}{% endif %}" oninput="calc(this.closest('tr'))" class="w-24 text-center font-black text-emerald-600">
-                    </td>
-                    <td class="px-8 py-4 text-center text-xs font-bold text-slate-400 merma">0</td>
+                    <td class="px-8 py-4 text-center text-sm font-black text-emerald-600 cobra">0</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -48,20 +44,14 @@
     </form>
 </div>
 <script>
+// "Se cobra" es solo lectura = enviado − regresó. El backend recalcula igual al guardar.
 function calc(tr){
     const env=parseFloat(tr.dataset.enviada)||0;
     const ret=parseFloat(tr.querySelector('input[name^=ret_]').value)||0;
-    const cob=parseFloat(tr.querySelector('input[name^=cob_]').value)||0;
-    const merma=env-ret-cob;
-    const cell=tr.querySelector('.merma');
-    cell.innerText=merma.toFixed(2);
-    cell.className='px-8 py-4 text-center text-xs font-bold merma '+(Math.abs(merma)<0.0001?'text-slate-300':'text-amber-600');
+    const cob=Math.max(0, env-ret);
+    tr.querySelector('.cobra').innerText=cob.toFixed(2);
 }
-function onReg(inp){
-    const tr=inp.closest('tr');const env=parseFloat(tr.dataset.enviada)||0;const ret=parseFloat(inp.value)||0;
-    tr.querySelector('input[name^=cob_]').value=(env-ret).toFixed(2);  // autollena lo cobrado
-    calc(tr);
-}
+function onReg(inp){ calc(inp.closest('tr')); }
 document.querySelectorAll('table tbody tr').forEach(tr=>calc(tr));
 </script>
 <style>input{padding:0.6rem 0.8rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.8rem;outline:none;font-weight:600;color:#334155;font-size:0.8rem}
