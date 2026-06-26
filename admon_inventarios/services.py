@@ -88,6 +88,36 @@ def _traspasar_existencias(*, empresa, sucursal, producto, origen_ubic, destino_
     return movido
 
 
+@transaction.atomic
+def traspaso_interno(*, empresa, sucursal, origen_ubic, destino_ubic, partidas, usuario,
+                     referencia='TRASP-INT'):
+    """Traspaso inmediato entre dos ubicaciones de la MISMA sucursal (puede ser
+    de almacenes distintos). `partidas` = lista de (producto, cantidad). Mueve
+    el stock al instante conservando lote/serie/propiedad. Lanza StockInsuficiente
+    si alguna partida no alcanza (la transacción revierte todo)."""
+    if origen_ubic.id == destino_ubic.id:
+        raise ValueError("La ubicación de origen y destino no pueden ser la misma.")
+
+    movido_total = decimal.Decimal('0')
+    for producto, cantidad in partidas:
+        cantidad = decimal.Decimal(cantidad or 0)
+        if cantidad <= 0:
+            continue
+        movido = _traspasar_existencias(
+            empresa=empresa, sucursal=sucursal, producto=producto,
+            origen_ubic=origen_ubic, destino_ubic=destino_ubic,
+            cantidad=cantidad, usuario=usuario, referencia=referencia)
+        if movido < cantidad:
+            raise StockInsuficiente(
+                f"No hay suficiente {producto.nombre} en {origen_ubic.codigo}: "
+                f"se pidieron {cantidad} y solo hay {movido} disponibles.")
+        movido_total += movido
+
+    if movido_total <= 0:
+        raise ValueError("Agrega al menos una partida con cantidad mayor a 0.")
+    return movido_total
+
+
 # Tipos que suman stock; el resto resta
 TIPOS_ENTRADA = {
     'ENTRADA', 'AJUSTE_POS', 'TRASPASO_ENT', 'KIT_RETORNO', 'PROD_ENTRADA',

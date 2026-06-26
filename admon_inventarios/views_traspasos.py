@@ -13,7 +13,7 @@ from .models import (
     SolicitudTraspaso, DetalleTraspaso, TrazabilidadTraspaso,
 )
 from .views import _contexto_valido, productos_disponibles_en
-from .services import registrar_movimiento, StockInsuficiente
+from .services import registrar_movimiento, StockInsuficiente, traspaso_interno
 
 
 class TraspasosView(LoginRequiredMixin, View):
@@ -35,17 +35,23 @@ class TraspasosView(LoginRequiredMixin, View):
                 'sucursal_origen', 'sucursal_destino', 'solicitado_por'),
             'otras_sucursales': Sucursal.objects.filter(empresa=empresa).exclude(id=sucursal.id),
             'productos': productos_disponibles_en(empresa, sucursal),
+            'ubicaciones': Ubicacion.objects.filter(
+                almacen__sucursal=sucursal, activa=True).select_related('almacen').order_by(
+                'almacen__nombre', 'codigo'),
             'sucursal_activa': sucursal,
             'seccion': 'inventarios',
         }
         return render(request, self.template_name, context)
 
     def post(self, request):
-        """Crear nueva solicitud de traspaso (yo soy el destino que pide)."""
+        """Crear nueva solicitud entre sucursales, o un traspaso interno inmediato."""
         ctx = _contexto_valido(request)
         if not ctx:
             return redirect('home')
         empresa, sucursal = ctx
+
+        if request.POST.get('accion') == 'interno':
+            return self._traspaso_interno(request, empresa, sucursal)
 
         origen_id = request.POST.get('sucursal_origen')
         producto_ids = request.POST.getlist('producto_id[]')
@@ -80,6 +86,37 @@ class TraspasosView(LoginRequiredMixin, View):
             )
 
         messages.success(request, f"Solicitud {solicitud.folio} enviada a {origen.nombre}.")
+        return redirect('admon_inventarios:traspasos')
+
+    def _traspaso_interno(self, request, empresa, sucursal):
+        """Traspaso inmediato entre ubicaciones/almacenes de la misma sucursal."""
+        origen = get_object_or_404(
+            Ubicacion, id=request.POST.get('ubic_origen'), almacen__sucursal=sucursal)
+        destino = get_object_or_404(
+            Ubicacion, id=request.POST.get('ubic_destino'), almacen__sucursal=sucursal)
+
+        producto_ids = request.POST.getlist('producto_id[]')
+        cantidades = request.POST.getlist('cantidad[]')
+        partidas = []
+        for i, pid in enumerate(producto_ids):
+            if not pid:
+                continue
+            producto = get_object_or_404(Producto, id=pid, empresa=empresa)
+            partidas.append((producto, cantidades[i] if i < len(cantidades) else '0'))
+
+        try:
+            traspaso_interno(
+                empresa=empresa, sucursal=sucursal,
+                origen_ubic=origen, destino_ubic=destino,
+                partidas=partidas, usuario=request.user)
+        except (ValueError, StockInsuficiente) as e:
+            messages.error(request, f"No se pudo traspasar: {e}")
+            return redirect('admon_inventarios:traspasos')
+
+        messages.success(
+            request,
+            f"Traspaso interno realizado: {origen.almacen.nombre} › {origen.codigo} "
+            f"→ {destino.almacen.nombre} › {destino.codigo}.")
         return redirect('admon_inventarios:traspasos')
 
 
