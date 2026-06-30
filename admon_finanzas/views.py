@@ -10,7 +10,7 @@ from django.db.models import Sum
 
 from admon_empresas.models import Moneda
 from admon_compras.models import OrdenCompra, Proveedor
-from .models import FacturaProveedor, FacturaCliente, Pago, AplicacionPago, MetodoPago
+from .models import FacturaProveedor, FacturaCliente, CfdiCliente, Pago, AplicacionPago, MetodoPago
 from . import services
 
 
@@ -451,12 +451,12 @@ class CuentasPorCobrarView(LoginRequiredMixin, View):
         qs = FacturaCliente.objects.filter(empresa=empresa).select_related(
             'cliente', 'moneda', 'pedido').prefetch_related('aplicaciones', 'cfdis')
 
-        # Filtro de facturación (una CxC está facturada si tiene UUID o XML)
+        # Filtro de facturación: "con factura" = tiene UUID/XML único o algún CFDI ligado.
         from django.db.models import Q
-        facturada_q = Q(uuid_cfdi__gt='') | Q(archivo_xml__gt='')
+        facturada_q = Q(uuid_cfdi__gt='') | Q(archivo_xml__gt='') | Q(cfdis__isnull=False)
         f_fact = (request.GET.get('facturacion') or '').strip()
         if f_fact == 'si':
-            qs = qs.filter(facturada_q)
+            qs = qs.filter(facturada_q).distinct()
         elif f_fact == 'no':
             qs = qs.exclude(facturada_q)
 
@@ -506,8 +506,8 @@ class CuentasPorCobrarView(LoginRequiredMixin, View):
             if f.estado == 'CANCELADA':
                 continue
             if not f.esta_facturada:
-                # Lo que falta por timbrar (total de lo no facturado, vigente)
-                kpi['pendiente_facturar'] += f.total
+                # Lo que falta por timbrar (saldo por facturar, considera parciales)
+                kpi['pendiente_facturar'] += f.saldo_por_facturar
                 if abierta:
                     kpi['por_cobrar_sin_factura'] += f.saldo
             elif abierta:
@@ -628,8 +628,11 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
         factura = get_object_or_404(
             FacturaCliente.objects.select_related('cliente', 'moneda', 'pedido'),
             pk=pk, empresa=empresa)
+        partidas = factura.pedido.detalles.select_related('producto') if factura.pedido_id else []
         context = {
             'factura': factura,
+            'partidas': partidas,
+            'cfdis': factura.cfdis.all(),
             'aplicaciones': factura.aplicaciones.select_related('pago', 'pago__metodo'),
             'sucursal_activa': sucursal,
             'seccion': 'finanzas',
@@ -647,14 +650,36 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
             xml = request.FILES.get('archivo_xml')
             pdf = request.FILES.get('archivo_pdf')
             uuid = (request.POST.get('uuid_cfdi') or '').strip()
-            if xml:
-                factura.archivo_xml = xml
-            if pdf:
-                factura.archivo_pdf = pdf
-            if uuid:
-                factura.uuid_cfdi = uuid
-            factura.save()
-            messages.success(request, "CFDI adjuntado a la cuenta por cobrar.")
+            serie = (request.POST.get('cfdi_serie') or '').strip()
+            fecha = request.POST.get('cfdi_fecha') or None
+            try:
+                total = decimal.Decimal(request.POST.get('cfdi_total') or '0')
+            except decimal.InvalidOperation:
+                total = decimal.Decimal('0')
+            # Si no capturaron monto, asumimos lo que falta por facturar
+            if total <= 0:
+                total = factura.saldo_por_facturar
+            if not uuid and not xml and not pdf:
+                messages.error(request, "Sube al menos el XML/PDF o captura el UUID del CFDI.")
+                return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
+            # UUID único por CxC; si falta, generamos uno temporal para no chocar
+            uuid_val = uuid or f"SIN-UUID-{factura.cfdis.count() + 1}"
+            if factura.cfdis.filter(uuid=uuid_val).exists():
+                messages.error(request, f"Ese CFDI ({uuid_val}) ya está ligado a esta CxC.")
+                return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
+            CfdiCliente.objects.create(
+                factura=factura, uuid=uuid_val, serie_folio=serie,
+                fecha=fecha, total=total, archivo_xml=xml, archivo_pdf=pdf)
+            factura.refresh_from_db()
+            restante = factura.saldo_por_facturar
+            if restante > 0:
+                messages.success(
+                    request,
+                    f"CFDI agregado. Facturado {factura.moneda.simbolo}{factura.total_facturado:,.2f} "
+                    f"de {factura.moneda.simbolo}{factura.total:,.2f}; faltan "
+                    f"{factura.moneda.simbolo}{restante:,.2f} por facturar.")
+            else:
+                messages.success(request, "CFDI agregado. La CxC quedó totalmente facturada.")
         elif accion == 'cancelar' and factura.total_pagado == 0:
             factura.estado = 'CANCELADA'
             factura.save(update_fields=['estado'])

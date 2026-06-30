@@ -36,14 +36,61 @@
         </div>
     </div>
 
+    <!-- Detalle del pedido (qué se pidió en esta CxC) -->
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-8">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center"><i class="fa-solid fa-box-open mr-3 text-brand"></i> Detalle del pedido {{ factura.pedido.folio }}</h3>
+            <a href="{% url 'admon_ventas:pedido_detalle' factura.pedido_id %}" class="text-[10px] font-black text-brand uppercase tracking-widest hover:underline">Ver pedido completo</a>
+        </div>
+        <div class="overflow-hidden rounded-2xl border border-slate-100">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50"><tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-5 py-3 font-black">Producto</th>
+                    <th class="px-5 py-3 font-black text-center">Cantidad</th>
+                    <th class="px-5 py-3 font-black text-right">P. Unitario</th>
+                    <th class="px-5 py-3 font-black text-right">Importe</th>
+                </tr></thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for d in partidas %}
+                    <tr>
+                        <td class="px-5 py-3">
+                            <div class="text-xs font-bold text-slate-700">{{ d.producto.nombre }}</div>
+                            <div class="text-[10px] text-slate-400 font-bold">{{ d.producto.sku }}{% if d.tipo_linea == 'RENTA' %} · <span class="text-amber-600">RENTA</span>{% endif %}</div>
+                        </td>
+                        <td class="px-5 py-3 text-center text-xs font-bold text-slate-600">{{ d.cantidad|floatformat:"-2" }}</td>
+                        <td class="px-5 py-3 text-right text-xs font-bold text-slate-500">{{ factura.moneda.simbolo }}{{ d.precio_unitario|floatformat:2|intcomma }}</td>
+                        <td class="px-5 py-3 text-right text-xs font-black text-slate-700">{{ factura.moneda.simbolo }}{{ d.importe|floatformat:2|intcomma }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="px-5 py-8 text-center text-slate-400 italic text-sm">Sin partidas en el pedido.</td></tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-slate-50/60">
+                    <tr><td colspan="3" class="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase">Subtotal</td><td class="px-5 py-3 text-right text-xs font-bold text-slate-600">{{ factura.moneda.simbolo }}{{ factura.subtotal|floatformat:2|intcomma }}</td></tr>
+                    <tr><td colspan="3" class="px-5 py-2 text-right text-[10px] font-black text-slate-400 uppercase">Impuestos</td><td class="px-5 py-2 text-right text-xs font-bold text-slate-600">{{ factura.moneda.simbolo }}{{ factura.impuestos|floatformat:2|intcomma }}</td></tr>
+                    <tr><td colspan="3" class="px-5 py-3 text-right text-[10px] font-black text-slate-500 uppercase border-t border-slate-200">Total</td><td class="px-5 py-3 text-right text-sm font-black text-slate-800 border-t border-slate-200">{{ factura.moneda.simbolo }}{{ factura.total|floatformat:2|intcomma }}</td></tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
     <!-- CFDI emitido al cliente -->
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-8">
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-bold text-slate-800 flex items-center"><i class="fa-solid fa-file-invoice mr-3 text-brand"></i> CFDI (factura al cliente)</h3>
-            <div class="flex gap-3">
-                {% if factura.archivo_xml %}<a href="{{ factura.archivo_xml.url }}" target="_blank" class="text-[10px] font-black text-brand uppercase tracking-widest hover:underline"><i class="fa-solid fa-file-code mr-1"></i> XML</a>{% endif %}
-                {% if factura.archivo_pdf %}<a href="{{ factura.archivo_pdf.url }}" target="_blank" class="text-[10px] font-black text-rose-500 uppercase tracking-widest hover:underline"><i class="fa-solid fa-file-pdf mr-1"></i> PDF</a>{% endif %}
-                {% if not factura.archivo_xml and not factura.archivo_pdf and not factura.cfdis.all %}<span class="text-[10px] text-slate-300 italic">Sin CFDI adjunto</span>{% endif %}
+            <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ factura.color_facturacion }}-100 text-{{ factura.color_facturacion }}-700">{{ factura.estado_facturacion_display }}</span>
+        </div>
+
+        <!-- Progreso de facturación (puede haber varios CFDI hasta cubrir el total) -->
+        <div class="rounded-2xl bg-slate-50 border border-slate-100 p-5 mb-6">
+            <div class="flex justify-between text-[11px] font-bold mb-2">
+                <span class="text-slate-500">Facturado: <span class="text-slate-800">{{ factura.moneda.simbolo }}{{ factura.total_facturado|floatformat:2|intcomma }}</span> de {{ factura.moneda.simbolo }}{{ factura.total|floatformat:2|intcomma }}</span>
+                <span class="{% if factura.saldo_por_facturar > 0 %}text-amber-600{% else %}text-emerald-600{% endif %}">
+                    {% if factura.saldo_por_facturar > 0 %}Por facturar: {{ factura.moneda.simbolo }}{{ factura.saldo_por_facturar|floatformat:2|intcomma }}{% else %}<i class="fa-solid fa-circle-check mr-1"></i>Completo{% endif %}
+                </span>
+            </div>
+            <div class="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div class="h-full bg-{{ factura.color_facturacion }}-500" style="width: {% widthratio factura.total_facturado factura.total 100 %}%"></div>
             </div>
         </div>
 
@@ -67,12 +114,20 @@
                     </tr>
                     {% endfor %}
                 </tbody>
+                <tfoot class="bg-slate-50/60">
+                    <tr>
+                        <td colspan="2" class="px-5 py-3 text-[10px] font-black text-slate-400 uppercase">Total facturado</td>
+                        <td class="px-3 py-3 text-right text-xs font-black text-slate-800">${{ factura.total_facturado|floatformat:2|intcomma }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
         {% endif %}
 
+        {% if factura.saldo_por_facturar > 0 %}
         <form method="POST" enctype="multipart/form-data"
-              data-rfc="{{ factura.cliente.rfc|default:''|upper }}" data-total="{{ factura.total|floatformat:2 }}">
+              data-rfc="{{ factura.cliente.rfc|default:''|upper }}" data-saldo="{{ factura.saldo_por_facturar|floatformat:2 }}">
             {% csrf_token %}
             <input type="hidden" name="accion" value="subir_cfdi">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
@@ -106,15 +161,35 @@
             <!-- Panel de validación (se llena al leer el XML) -->
             <div id="cfdiValida" class="hidden rounded-2xl border p-4 mb-5 text-[11px] font-bold space-y-1"></div>
 
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Monto de este CFDI</label>
+                    <input type="number" step="0.01" min="0" name="cfdi_total" id="cfdiTotal" placeholder="0.00"
+                           class="w-full mt-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-right">
+                    <p class="text-[9px] text-slate-400 font-bold ml-1 mt-1">Si lo dejas vacío, toma el saldo por facturar.</p>
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Fecha</label>
+                    <input type="date" name="cfdi_fecha" class="w-full mt-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Serie / Folio</label>
+                    <input type="text" name="cfdi_serie" placeholder="A-123" class="w-full mt-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold">
+                </div>
+            </div>
+
             <div class="flex items-end gap-4">
                 <div class="flex-1">
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-1">UUID</label>
-                    <input type="text" name="uuid_cfdi" id="cfdiUuid" value="{{ factura.uuid_cfdi|default:'' }}" placeholder="Se autocompleta del XML"
+                    <input type="text" name="uuid_cfdi" id="cfdiUuid" placeholder="Se autocompleta del XML"
                            class="w-full mt-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-mono">
                 </div>
-                <button type="submit" class="bg-brand text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-paperclip mr-2"></i> Adjuntar CFDI</button>
+                <button type="submit" class="bg-brand text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-paperclip mr-2"></i> Agregar CFDI</button>
             </div>
         </form>
+        {% else %}
+        <p class="text-center text-[11px] font-bold text-emerald-600 py-2"><i class="fa-solid fa-circle-check mr-1"></i> Esta cuenta por cobrar ya está totalmente facturada.</p>
+        {% endif %}
     </div>
 
     <script>
@@ -140,24 +215,26 @@
                 const uuid = tfd ? (tfd.getAttribute('UUID') || '') : '';
 
                 if (uuid) document.getElementById('cfdiUuid').value = uuid;
+                // Autocompleta el monto de este CFDI con el total del XML
+                const inpTotal = document.getElementById('cfdiTotal');
+                if (inpTotal && totalXml > 0) inpTotal.value = totalXml.toFixed(2);
 
                 const rfcEsperado = (form.dataset.rfc || '').toUpperCase();
-                const totalEsperado = parseFloat(form.dataset.total || '0');
+                const saldo = parseFloat(form.dataset.saldo || '0');
                 const okRfc = rfcEsperado && rfcXml === rfcEsperado;
-                const okTotal = Math.abs(totalXml - totalEsperado) < 0.01;
+                const cabe = totalXml <= saldo + 0.01;
                 const fmt = (n) => '$' + n.toLocaleString('es-MX', {minimumFractionDigits: 2});
 
                 let html = '';
                 html += okRfc
                     ? `<div class="text-emerald-600"><i class="fa-solid fa-circle-check mr-2"></i>RFC del cliente coincide (${rfcXml})</div>`
                     : `<div class="text-rose-600"><i class="fa-solid fa-triangle-exclamation mr-2"></i>RFC no coincide — XML: ${rfcXml || '—'} vs cliente: ${rfcEsperado || '—'}</div>`;
-                html += okTotal
-                    ? `<div class="text-emerald-600"><i class="fa-solid fa-circle-check mr-2"></i>Total coincide (${fmt(totalXml)})</div>`
-                    : `<div class="text-rose-600"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Total no coincide — XML: ${fmt(totalXml)} vs CxC: ${fmt(totalEsperado)}</div>`;
+                html += `<div class="text-slate-600"><i class="fa-solid fa-file-invoice-dollar mr-2"></i>Monto de este CFDI: ${fmt(totalXml)} · saldo por facturar: ${fmt(saldo)}</div>`;
+                if (!cabe) html += `<div class="text-amber-600"><i class="fa-solid fa-triangle-exclamation mr-2"></i>El monto supera lo que falta por facturar. Verifica antes de agregar.</div>`;
                 if (uuid) html += `<div class="text-slate-500"><i class="fa-solid fa-fingerprint mr-2"></i>UUID: ${uuid}</div>`;
 
                 panel.className = "rounded-2xl border p-4 mb-5 text-[11px] font-bold space-y-1 " +
-                    ((okRfc && okTotal) ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100");
+                    ((okRfc && cabe) ? "bg-emerald-50 border-emerald-100" : "bg-amber-50 border-amber-100");
                 panel.innerHTML = html;
             } catch (err) {
                 panel.className = "rounded-2xl border p-4 mb-5 text-[11px] font-bold bg-rose-50 border-rose-100 text-rose-600";

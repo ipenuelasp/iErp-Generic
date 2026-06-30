@@ -156,23 +156,47 @@ class FacturaCliente(models.Model):
         return {'PENDIENTE': 'amber', 'PARCIAL': 'blue', 'PAGADA': 'emerald', 'CANCELADA': 'slate'}.get(self.estado, 'slate')
 
     @property
-    def esta_facturada(self):
-        """True si ya se le subió/asignó al menos un CFDI (UUID, XML, o un CFDI
-        de la tabla hija para facturación por artículo/parcial)."""
-        if bool(self.uuid_cfdi) or bool(self.archivo_xml):
-            return True
-        # Usa el prefetch 'cfdis' si está disponible para no disparar N+1
+    def total_facturado(self):
+        """Suma de los CFDI ligados a esta CxC (el contador puede subir varios
+        hasta cubrir el total). Compat: si no hay CFDI hijos pero sí un UUID/XML
+        único antiguo, se considera facturado el total."""
         try:
-            return len(self.cfdis.all()) > 0
+            s = sum((c.total for c in self.cfdis.all()), decimal.Decimal('0'))
         except Exception:
-            return self.cfdis.exists()
+            s = self.cfdis.aggregate(x=models.Sum('total'))['x'] or decimal.Decimal('0')
+        if s <= 0 and (bool(self.uuid_cfdi) or bool(self.archivo_xml)):
+            return self.total
+        return s
+
+    @property
+    def saldo_por_facturar(self):
+        r = self.total - self.total_facturado
+        return r if r > 0 else decimal.Decimal('0')
+
+    @property
+    def esta_facturada(self):
+        """True solo cuando lo facturado cubre el total de la CxC (con tolerancia)."""
+        return self.total_facturado >= (self.total - decimal.Decimal('0.01'))
 
     @property
     def estado_facturacion(self):
-        return 'FACTURADA' if self.esta_facturada else 'PENDIENTE_FACTURAR'
+        tf = self.total_facturado
+        if tf <= 0:
+            return 'PENDIENTE_FACTURAR'
+        if tf < self.total - decimal.Decimal('0.01'):
+            return 'PARCIAL_FACTURAR'
+        return 'FACTURADA'
 
     def estado_facturacion_display(self):
-        return 'Facturado' if self.esta_facturada else 'Pendiente de facturar'
+        return {
+            'PENDIENTE_FACTURAR': 'Pendiente de facturar',
+            'PARCIAL_FACTURAR': 'Facturación parcial',
+            'FACTURADA': 'Facturado',
+        }[self.estado_facturacion]
+
+    def color_facturacion(self):
+        return {'PENDIENTE_FACTURAR': 'amber', 'PARCIAL_FACTURAR': 'blue',
+                'FACTURADA': 'emerald'}[self.estado_facturacion]
 
     def __str__(self):
         return f"CxC {self.folio} — {self.cliente}"
