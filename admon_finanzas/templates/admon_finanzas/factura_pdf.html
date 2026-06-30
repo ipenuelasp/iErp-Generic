@@ -30,6 +30,8 @@
     .tot .ret { color: #b91c1c; }
     .tot .grand { font-size: 13px; font-weight: bold; color: #fff; background: #1e3a8a; }
     .uuid { font-family: Courier, monospace; font-size: 8px; color: #475569; }
+    .sello { font-family: Courier, monospace; font-size: 6px; color: #64748b; word-wrap: break-word;
+             word-break: break-all; margin: 1px 0 6px 0; line-height: 1.25; }
 </style>
 </head>
 <body>
@@ -109,6 +111,38 @@
         </tr>
     </table>
 
+    {% if timbre %}
+    <!-- TIMBRE FISCAL DIGITAL (SAT) -->
+    <div style="margin-top:22px; border-top:1px solid #cbd5e1; padding-top:10px;">
+        <table>
+            <tr>
+                <td width="20%" valign="top" align="center">
+                    {% if timbre.qr %}<img src="{{ timbre.qr }}" style="width:108px; height:108px;">{% endif %}
+                </td>
+                <td width="80%" valign="top" style="padding-left:8px;">
+                    <span class="label">SELLO DIGITAL DEL CFDI</span>
+                    <div class="sello">{{ timbre.sello_cfdi }}</div>
+                    <span class="label">SELLO DEL SAT</span>
+                    <div class="sello">{{ timbre.sello_sat }}</div>
+                    <span class="label">CADENA ORIGINAL DEL COMPLEMENTO DE CERTIFICACIÓN DEL SAT</span>
+                    <div class="sello">{{ timbre.cadena }}</div>
+                </td>
+            </tr>
+        </table>
+        <table style="margin-top:6px;">
+            <tr>
+                <td width="50%"><span class="label">FOLIO FISCAL (UUID)</span> <span class="uuid">{{ timbre.uuid }}</span></td>
+                <td width="50%"><span class="label">FECHA Y HORA DE CERTIFICACIÓN</span> <span class="val">{{ timbre.fecha_timbrado }}</span></td>
+            </tr>
+            <tr>
+                <td><span class="label">RFC PROVEEDOR DE CERTIFICACIÓN</span> <span class="val">{{ timbre.rfc_prov_certif }}</span></td>
+                <td><span class="label">NO. DE SERIE DEL CERTIFICADO SAT</span> <span class="val">{{ timbre.no_cert_sat }}</span></td>
+            </tr>
+        </table>
+    </div>
+    <p style="margin-top:12px; text-align:center; font-size:9px; font-weight:bold; color:#334155;">Este documento es una representación impresa de un CFDI</p>
+    {% else %}
     <p class="muted" style="margin-top:34px; text-align:center;">Documento generado por iErp · Sistema de Gestión. La representación fiscal oficial es el CFDI (XML) timbrado por el SAT · {{ empresa.nombre_fiscal }}</p>
+    {% endif %}
 </body>
 </html>

@@ -11,3 +11,4 @@ openpyxl
 pypdf
 gunicorn
 whitenoise
+qrcode==7.4.2

@@ -32,13 +32,25 @@ def _leer_cfdi(xml_file):
 
     info = {'subtotal': _d(root.get('SubTotal')), 'total': _d(root.get('Total')),
             'traslados': decimal.Decimal('0'), 'retenidos': decimal.Decimal('0'),
-            'uuid': '', 'rfc_receptor': ''}
+            'uuid': '', 'rfc_receptor': '',
+            # Timbre fiscal (para la representación impresa)
+            'sello_cfdi': root.get('Sello') or '', 'rfc_emisor': '',
+            'fecha_timbrado': '', 'rfc_prov_certif': '', 'sello_cfd': '',
+            'no_cert_sat': '', 'sello_sat': '', 'tfd_version': '1.1'}
     for el in root.iter():
         tag = el.tag.split('}')[-1]
-        if tag == 'Receptor':
+        if tag == 'Emisor':
+            info['rfc_emisor'] = (el.get('Rfc') or '').upper()
+        elif tag == 'Receptor':
             info['rfc_receptor'] = (el.get('Rfc') or '').upper()
         elif tag == 'TimbreFiscalDigital':
             info['uuid'] = (el.get('UUID') or '').upper()
+            info['fecha_timbrado'] = el.get('FechaTimbrado') or ''
+            info['rfc_prov_certif'] = el.get('RfcProvCertif') or ''
+            info['sello_cfd'] = el.get('SelloCFD') or ''
+            info['no_cert_sat'] = el.get('NoCertificadoSAT') or ''
+            info['sello_sat'] = el.get('SelloSAT') or ''
+            info['tfd_version'] = el.get('Version') or '1.1'
         elif tag == 'Impuestos':
             t, r = el.get('TotalImpuestosTrasladados'), el.get('TotalImpuestosRetenidos')
             if t is not None:
@@ -46,6 +58,50 @@ def _leer_cfdi(xml_file):
             if r is not None:
                 info['retenidos'] = _d(r) or decimal.Decimal('0')
     return info
+
+
+def _qr_data_uri(texto):
+    """Genera un QR (PNG data URI) para la representación impresa del CFDI."""
+    try:
+        import io, base64, qrcode
+        img = qrcode.make(texto)
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        return 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode()
+    except Exception as e:
+        print(f'[QR] {e}')
+        return ''
+
+
+def _timbre_para_pdf(factura):
+    """Lee el XML del CFDI ligado y arma los datos del timbre fiscal + QR del SAT."""
+    cfdi_row = factura.cfdis.exclude(archivo_xml='').exclude(archivo_xml=None).first()
+    if not cfdi_row or not cfdi_row.archivo_xml:
+        return None
+    try:
+        cfdi_row.archivo_xml.open('rb')
+        data = cfdi_row.archivo_xml
+        info = _leer_cfdi(data)
+        cfdi_row.archivo_xml.close()
+    except Exception:
+        return None
+    if not info or not info.get('uuid'):
+        return None
+
+    cadena = (f"||{info['tfd_version']}|{info['uuid']}|{info['fecha_timbrado']}|"
+              f"{info['rfc_prov_certif']}|{info['sello_cfd']}|{info['no_cert_sat']}||")
+    total = info.get('total') or decimal.Decimal('0')
+    fe = (info.get('sello_cfdi') or '')[-8:]
+    qr_url = (
+        "https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx?"
+        f"id={info['uuid']}&re={info['rfc_emisor']}&rr={info['rfc_receptor']}"
+        f"&tt={total:017.6f}&fe={fe}")
+    return {
+        'uuid': info['uuid'], 'fecha_timbrado': info['fecha_timbrado'],
+        'sello_cfdi': info['sello_cfdi'], 'sello_sat': info['sello_sat'],
+        'rfc_prov_certif': info['rfc_prov_certif'], 'no_cert_sat': info['no_cert_sat'],
+        'cadena': cadena, 'qr': _qr_data_uri(qr_url),
+    }
 
 
 def _img_url_abs(request, field):
@@ -86,6 +142,7 @@ def _render_factura_pdf(factura, empresa):
     html = get_template('admon_finanzas/factura_pdf.html').render({
         'factura': factura, 'empresa': empresa, 'partidas': partidas, 'uuid': uuid,
         'fecha_cfdi': (cfdi0.fecha if cfdi0 and cfdi0.fecha else factura.fecha_emision),
+        'timbre': _timbre_para_pdf(factura),
     })
     out = io.BytesIO()
     pdf = pisa.pisaDocument(io.BytesIO(html.encode('UTF-8')), out)
