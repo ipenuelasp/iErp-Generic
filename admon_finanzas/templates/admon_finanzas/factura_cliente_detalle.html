@@ -241,25 +241,27 @@
                 const tfd = tag('TimbreFiscalDigital');
                 const rfcXml = ((receptor && receptor.getAttribute('Rfc')) || '').toUpperCase();
                 const totalXml = parseFloat(comp.getAttribute('Total') || '0');
+                const subXml = parseFloat(comp.getAttribute('SubTotal') || '0');
                 const uuid = tfd ? (tfd.getAttribute('UUID') || '') : '';
 
                 if (uuid) document.getElementById('cfdiUuid').value = uuid;
-                // Autocompleta el monto de este CFDI con el total del XML
+                // El monto a registrar es el total neto del CFDI (con IVA y retenciones)
                 const inpTotal = document.getElementById('cfdiTotal');
                 if (inpTotal && totalXml > 0) inpTotal.value = totalXml.toFixed(2);
 
                 const rfcEsperado = (form.dataset.rfc || '').toUpperCase();
-                const saldo = parseFloat(form.dataset.saldo || '0');
+                // data-saldo es la BASE por facturar (subtotal), comparamos base contra base
+                const saldoBase = parseFloat(form.dataset.saldo || '0');
                 const okRfc = rfcEsperado && rfcXml === rfcEsperado;
-                const cabe = totalXml <= saldo + 0.01;
+                const cabe = subXml <= saldoBase + 0.01;
                 const fmt = (n) => '$' + n.toLocaleString('es-MX', {minimumFractionDigits: 2});
 
                 let html = '';
                 html += okRfc
                     ? `<div class="text-emerald-600"><i class="fa-solid fa-circle-check mr-2"></i>RFC del cliente coincide (${rfcXml})</div>`
                     : `<div class="text-rose-600"><i class="fa-solid fa-triangle-exclamation mr-2"></i>RFC no coincide — XML: ${rfcXml || '—'} vs cliente: ${rfcEsperado || '—'}</div>`;
-                html += `<div class="text-slate-600"><i class="fa-solid fa-file-invoice-dollar mr-2"></i>Monto de este CFDI: ${fmt(totalXml)} · saldo por facturar: ${fmt(saldo)}</div>`;
-                if (!cabe) html += `<div class="text-amber-600"><i class="fa-solid fa-triangle-exclamation mr-2"></i>El monto supera lo que falta por facturar. Verifica antes de agregar.</div>`;
+                html += `<div class="text-slate-600"><i class="fa-solid fa-file-invoice-dollar mr-2"></i>Base de este CFDI: ${fmt(subXml)} · base por facturar: ${fmt(saldoBase)} · total: ${fmt(totalXml)}</div>`;
+                if (!cabe) html += `<div class="text-amber-600"><i class="fa-solid fa-triangle-exclamation mr-2"></i>La base supera lo que falta por facturar. Verifica antes de agregar.</div>`;
                 if (uuid) html += `<div class="text-slate-500"><i class="fa-solid fa-fingerprint mr-2"></i>UUID: ${uuid}</div>`;
 
                 panel.className = "rounded-2xl border p-4 mb-5 text-[11px] font-bold space-y-1 " +
