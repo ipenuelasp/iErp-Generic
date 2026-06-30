@@ -113,7 +113,10 @@ class FacturaCliente(models.Model):
 
     moneda = models.ForeignKey(Moneda, on_delete=models.PROTECT)
     subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    impuestos = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    impuestos = models.DecimalField(max_digits=14, decimal_places=2, default=0,
+                                    help_text="IVA trasladado (suma al total)")
+    retenciones = models.DecimalField(max_digits=14, decimal_places=2, default=0,
+                                      help_text="ISR/IVA retenidos (restan del total). Servicios.")
     total = models.DecimalField(max_digits=14, decimal_places=2)
 
     estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, default='PENDIENTE')

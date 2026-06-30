@@ -14,6 +14,40 @@ from .models import FacturaProveedor, FacturaCliente, CfdiCliente, Pago, Aplicac
 from . import services
 
 
+def _leer_cfdi(xml_file):
+    """Extrae subtotal, IVA trasladado, retenciones, total, UUID y RFC receptor
+    de un XML CFDI (4.0/3.3). Devuelve dict o None si no se pudo leer."""
+    import xml.etree.ElementTree as ET
+    try:
+        xml_file.seek(0)
+        root = ET.fromstring(xml_file.read())
+    except Exception:
+        return None
+
+    def _d(v):
+        try:
+            return decimal.Decimal(v)
+        except (TypeError, decimal.InvalidOperation):
+            return None
+
+    info = {'subtotal': _d(root.get('SubTotal')), 'total': _d(root.get('Total')),
+            'traslados': decimal.Decimal('0'), 'retenidos': decimal.Decimal('0'),
+            'uuid': '', 'rfc_receptor': ''}
+    for el in root.iter():
+        tag = el.tag.split('}')[-1]
+        if tag == 'Receptor':
+            info['rfc_receptor'] = (el.get('Rfc') or '').upper()
+        elif tag == 'TimbreFiscalDigital':
+            info['uuid'] = (el.get('UUID') or '').upper()
+        elif tag == 'Impuestos':
+            t, r = el.get('TotalImpuestosTrasladados'), el.get('TotalImpuestosRetenidos')
+            if t is not None:
+                info['traslados'] = _d(t) or decimal.Decimal('0')
+            if r is not None:
+                info['retenidos'] = _d(r) or decimal.Decimal('0')
+    return info
+
+
 def _contexto(request):
     if not request.empresa:
         messages.warning(request, "No hay una empresa activa.")
@@ -649,20 +683,28 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
         if accion == 'subir_cfdi':
             xml = request.FILES.get('archivo_xml')
             pdf = request.FILES.get('archivo_pdf')
-            uuid = (request.POST.get('uuid_cfdi') or '').strip()
+            uuid = (request.POST.get('uuid_cfdi') or '').strip().upper()
             serie = (request.POST.get('cfdi_serie') or '').strip()
             fecha = request.POST.get('cfdi_fecha') or None
+
+            # Lee el XML (traslados, retenciones, total, UUID) para cuadrar con el SAT
+            cfdi = _leer_cfdi(xml) if xml else None
+            if cfdi:
+                if not uuid and cfdi['uuid']:
+                    uuid = cfdi['uuid']
+
             try:
                 total = decimal.Decimal(request.POST.get('cfdi_total') or '0')
             except decimal.InvalidOperation:
                 total = decimal.Decimal('0')
-            # Si no capturaron monto, asumimos lo que falta por facturar
+            if total <= 0 and cfdi and cfdi['total']:
+                total = cfdi['total']
             if total <= 0:
                 total = factura.saldo_por_facturar
+
             if not uuid and not xml and not pdf:
                 messages.error(request, "Sube al menos el XML/PDF o captura el UUID del CFDI.")
                 return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
-            # UUID único por CxC; si falta, generamos uno temporal para no chocar
             uuid_val = uuid or f"SIN-UUID-{factura.cfdis.count() + 1}"
             if factura.cfdis.filter(uuid=uuid_val).exists():
                 messages.error(request, f"Ese CFDI ({uuid_val}) ya está ligado a esta CxC.")
@@ -670,14 +712,35 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
             CfdiCliente.objects.create(
                 factura=factura, uuid=uuid_val, serie_folio=serie,
                 fecha=fecha, total=total, archivo_xml=xml, archivo_pdf=pdf)
+
+            # Reconciliación: si es el único CFDI, no hay cobros y el XML trae montos,
+            # ajustamos la CxC para que cuadre con el SAT (incluye retenciones).
+            ajustada = False
+            if (cfdi and cfdi['total'] and factura.total_pagado == 0
+                    and factura.cfdis.count() == 1):
+                if cfdi['subtotal'] is not None:
+                    factura.subtotal = cfdi['subtotal']
+                factura.impuestos = cfdi['traslados']
+                factura.retenciones = cfdi['retenidos']
+                factura.total = cfdi['total']
+                # Limpia el UUID/archivo único antiguo para no confundir
+                factura.uuid_cfdi = cfdi['uuid'] or factura.uuid_cfdi
+                factura.save(update_fields=['subtotal', 'impuestos', 'retenciones', 'total', 'uuid_cfdi'])
+                ajustada = True
+
             factura.refresh_from_db()
-            restante = factura.saldo_por_facturar
-            if restante > 0:
+            if ajustada and factura.retenciones > 0:
+                messages.success(
+                    request,
+                    f"CFDI agregado y CxC ajustada al SAT: IVA {factura.moneda.simbolo}{factura.impuestos:,.2f}, "
+                    f"retenciones {factura.moneda.simbolo}{factura.retenciones:,.2f}, "
+                    f"total {factura.moneda.simbolo}{factura.total:,.2f}.")
+            elif factura.saldo_por_facturar > 0:
                 messages.success(
                     request,
                     f"CFDI agregado. Facturado {factura.moneda.simbolo}{factura.total_facturado:,.2f} "
                     f"de {factura.moneda.simbolo}{factura.total:,.2f}; faltan "
-                    f"{factura.moneda.simbolo}{restante:,.2f} por facturar.")
+                    f"{factura.moneda.simbolo}{factura.saldo_por_facturar:,.2f} por facturar.")
             else:
                 messages.success(request, "CFDI agregado. La CxC quedó totalmente facturada.")
         elif accion == 'eliminar_cfdi':

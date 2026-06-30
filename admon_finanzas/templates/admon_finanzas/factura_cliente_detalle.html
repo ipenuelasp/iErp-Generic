@@ -27,7 +27,12 @@
             </dl>
         </div>
         <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 space-y-3">
-            <div class="flex justify-between text-xs font-bold text-slate-500"><span>Total</span><span>{{ factura.moneda.simbolo }}{{ factura.total|floatformat:2|intcomma }}</span></div>
+            {% if factura.retenciones > 0 %}
+            <div class="flex justify-between text-[11px] font-bold text-slate-400"><span>Subtotal</span><span>{{ factura.moneda.simbolo }}{{ factura.subtotal|floatformat:2|intcomma }}</span></div>
+            <div class="flex justify-between text-[11px] font-bold text-slate-400"><span>(+) IVA</span><span>{{ factura.moneda.simbolo }}{{ factura.impuestos|floatformat:2|intcomma }}</span></div>
+            <div class="flex justify-between text-[11px] font-bold text-rose-400"><span>(−) Retenciones</span><span>−{{ factura.moneda.simbolo }}{{ factura.retenciones|floatformat:2|intcomma }}</span></div>
+            {% endif %}
+            <div class="flex justify-between text-xs font-bold text-slate-500 {% if factura.retenciones > 0 %}pt-1 border-t border-slate-100{% endif %}"><span>Total a cobrar</span><span>{{ factura.moneda.simbolo }}{{ factura.total|floatformat:2|intcomma }}</span></div>
             <div class="flex justify-between text-xs font-bold text-emerald-600"><span>Cobrado</span><span>{{ factura.moneda.simbolo }}{{ factura.total_pagado|floatformat:2|intcomma }}</span></div>
             <div class="flex justify-between text-lg font-black {% if factura.saldo > 0 %}text-emerald-600{% else %}text-slate-400{% endif %} pt-2 border-t border-slate-100"><span>Saldo</span><span>{{ factura.moneda.simbolo }}{{ factura.saldo|floatformat:2|intcomma }}</span></div>
             {% if factura.saldo > 0 and factura.estado != 'CANCELADA' %}
@@ -67,8 +72,11 @@
                 </tbody>
                 <tfoot class="bg-slate-50/60">
                     <tr><td colspan="3" class="px-5 py-3 text-right text-[10px] font-black text-slate-400 uppercase">Subtotal</td><td class="px-5 py-3 text-right text-xs font-bold text-slate-600">{{ factura.moneda.simbolo }}{{ factura.subtotal|floatformat:2|intcomma }}</td></tr>
-                    <tr><td colspan="3" class="px-5 py-2 text-right text-[10px] font-black text-slate-400 uppercase">Impuestos</td><td class="px-5 py-2 text-right text-xs font-bold text-slate-600">{{ factura.moneda.simbolo }}{{ factura.impuestos|floatformat:2|intcomma }}</td></tr>
-                    <tr><td colspan="3" class="px-5 py-3 text-right text-[10px] font-black text-slate-500 uppercase border-t border-slate-200">Total</td><td class="px-5 py-3 text-right text-sm font-black text-slate-800 border-t border-slate-200">{{ factura.moneda.simbolo }}{{ factura.total|floatformat:2|intcomma }}</td></tr>
+                    <tr><td colspan="3" class="px-5 py-2 text-right text-[10px] font-black text-slate-400 uppercase">(+) IVA trasladado</td><td class="px-5 py-2 text-right text-xs font-bold text-slate-600">{{ factura.moneda.simbolo }}{{ factura.impuestos|floatformat:2|intcomma }}</td></tr>
+                    {% if factura.retenciones > 0 %}
+                    <tr><td colspan="3" class="px-5 py-2 text-right text-[10px] font-black text-rose-400 uppercase">(−) Retenciones</td><td class="px-5 py-2 text-right text-xs font-bold text-rose-500">−{{ factura.moneda.simbolo }}{{ factura.retenciones|floatformat:2|intcomma }}</td></tr>
+                    {% endif %}
+                    <tr><td colspan="3" class="px-5 py-3 text-right text-[10px] font-black text-slate-500 uppercase border-t border-slate-200">Total a cobrar</td><td class="px-5 py-3 text-right text-sm font-black text-slate-800 border-t border-slate-200">{{ factura.moneda.simbolo }}{{ factura.total|floatformat:2|intcomma }}</td></tr>
                 </tfoot>
             </table>
         </div>
