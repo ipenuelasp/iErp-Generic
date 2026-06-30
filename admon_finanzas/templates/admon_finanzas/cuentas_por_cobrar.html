@@ -100,6 +100,9 @@
                         {% else %}
                         <span class="inline-flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-500"><i class="fa-regular fa-clock text-[10px]"></i> Sin factura</span>
                         {% endif %}
+                        {% if f.estado_envio != 'NA' %}
+                        <div class="mt-1 text-[8px] font-black uppercase tracking-widest text-{{ f.color_envio }}-600"><i class="fa-solid fa-paper-plane mr-1"></i>{{ f.estado_envio_display }}</div>
+                        {% endif %}
                     </td>
                     <td class="px-8 py-4 text-center">
                         <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ f.color_estado }}-100 text-{{ f.color_estado }}-700">{{ f.get_estado_display }}</span>

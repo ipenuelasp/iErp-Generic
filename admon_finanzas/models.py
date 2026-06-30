@@ -122,6 +122,9 @@ class FacturaCliente(models.Model):
     estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, default='PENDIENTE')
     notas = models.TextField(blank=True, null=True)
 
+    # Envío al cliente (CxC legacy sin CFDIs hijos)
+    enviado_en = models.DateTimeField(null=True, blank=True)
+
     # CFDI emitido al cliente
     archivo_xml = models.FileField(upload_to='cfdi/cobrar/xml/', null=True, blank=True)
     archivo_pdf = models.FileField(upload_to='cfdi/cobrar/pdf/', null=True, blank=True)
@@ -212,6 +215,38 @@ class FacturaCliente(models.Model):
         return {'PENDIENTE_FACTURAR': 'amber', 'PARCIAL_FACTURAR': 'blue',
                 'FACTURADA': 'emerald'}[self.estado_facturacion]
 
+    @property
+    def estado_envio(self):
+        """Si las facturas se enviaron al cliente por correo. NA si no hay nada que enviar."""
+        cfdis = list(self.cfdis.all())
+        if cfdis:
+            enviados = sum(1 for c in cfdis if c.enviado_en)
+            if enviados == 0:
+                return 'NO_ENVIADO'
+            return 'ENVIADO' if enviados == len(cfdis) else 'PARCIAL_ENVIO'
+        if self.enviado_en:
+            return 'ENVIADO'
+        if self.uuid_cfdi or self.archivo_xml:
+            return 'NO_ENVIADO'
+        return 'NA'
+
+    def envio_resumen(self):
+        """Texto 'N/M' de CFDIs enviados (para la etiqueta)."""
+        cfdis = list(self.cfdis.all())
+        if not cfdis:
+            return ''
+        return f"{sum(1 for c in cfdis if c.enviado_en)}/{len(cfdis)}"
+
+    def estado_envio_display(self):
+        base = {'NO_ENVIADO': 'Sin enviar', 'PARCIAL_ENVIO': 'Envío parcial',
+                'ENVIADO': 'Enviada al cliente', 'NA': '—'}[self.estado_envio]
+        r = self.envio_resumen()
+        return f"{base} ({r})" if (r and self.estado_envio != 'NA') else base
+
+    def color_envio(self):
+        return {'NO_ENVIADO': 'slate', 'PARCIAL_ENVIO': 'amber',
+                'ENVIADO': 'emerald', 'NA': 'slate'}[self.estado_envio]
+
     def __str__(self):
         return f"CxC {self.folio} — {self.cliente}"
 
@@ -233,6 +268,8 @@ class CfdiCliente(models.Model):
     archivo_xml = models.FileField(upload_to='cfdi/cobrar/xml/', null=True, blank=True)
     archivo_pdf = models.FileField(upload_to='cfdi/cobrar/pdf/', null=True, blank=True)
     cargado_en = models.DateTimeField(auto_now_add=True)
+    enviado_en = models.DateTimeField(null=True, blank=True,
+                                      help_text="Cuándo se envió este CFDI al cliente por correo")
 
     class Meta:
         unique_together = ('factura', 'uuid')

@@ -96,6 +96,9 @@
                 <button type="button" onclick="document.getElementById('modalEnviar').classList.remove('hidden')" class="bg-brand text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest shadow hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-paper-plane mr-1"></i> Enviar al cliente</button>
                 {% endif %}
                 <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ factura.color_facturacion }}-100 text-{{ factura.color_facturacion }}-700">{{ factura.estado_facturacion_display }}</span>
+                {% if factura.estado_envio != 'NA' %}
+                <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ factura.color_envio }}-100 text-{{ factura.color_envio }}-700"><i class="fa-solid fa-paper-plane mr-1"></i>{{ factura.estado_envio_display }}</span>
+                {% endif %}
             </div>
         </div>
 
@@ -226,6 +229,7 @@
                             {% endif %}
                         </td>
                         <td class="px-5 py-3 text-right whitespace-nowrap">
+                            {% if c.enviado_en %}<span title="Enviada al cliente {{ c.enviado_en|date:'d/m/Y H:i' }}" class="text-emerald-500 mr-3"><i class="fa-solid fa-paper-plane text-[10px]"></i></span>{% endif %}
                             {% if c.archivo_xml %}<a href="{{ c.archivo_xml.url }}" target="_blank" class="text-[10px] font-black text-brand uppercase hover:underline mr-3"><i class="fa-solid fa-file-code mr-1"></i>XML</a>
                             <a href="{% url 'admon_finanzas:cfdi_pdf' factura.pk c.id %}" target="_blank" class="text-[10px] font-black text-rose-500 uppercase hover:underline mr-3"><i class="fa-solid fa-file-pdf mr-1"></i>PDF</a>{% endif %}
                             {% if c.archivo_pdf %}<a href="{{ c.archivo_pdf.url }}" target="_blank" class="text-[10px] font-black text-slate-400 uppercase hover:underline mr-3"><i class="fa-solid fa-file-pdf mr-1"></i>PDF SAT</a>{% endif %}

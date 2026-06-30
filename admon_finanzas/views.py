@@ -999,6 +999,15 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
                 to=destino,
                 attachments=adjuntos)
             if ok:
+                from django.utils import timezone as _tz
+                ahora = _tz.now()
+                if cfdis:
+                    for c in cfdis:
+                        c.enviado_en = ahora
+                        c.save(update_fields=['enviado_en'])
+                else:
+                    factura.enviado_en = ahora
+                    factura.save(update_fields=['enviado_en'])
                 messages.success(request, f"Enviado a {destino}: {len(adjuntos)} archivo(s).")
             else:
                 messages.error(request, "No se pudo enviar el correo. Revisa la configuración de correo.")
