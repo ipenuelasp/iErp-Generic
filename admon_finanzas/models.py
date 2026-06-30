@@ -240,6 +240,24 @@ class CfdiCliente(models.Model):
         verbose_name = "CFDI de cliente"
         verbose_name_plural = "CFDI de cliente"
 
+    @property
+    def total_pagado(self):
+        agg = self.aplicaciones.aggregate(s=models.Sum('monto_aplicado'))
+        return agg['s'] or decimal.Decimal('0')
+
+    @property
+    def saldo(self):
+        return self.total - self.total_pagado
+
+    @property
+    def esta_pagada(self):
+        return self.total_pagado >= (self.total - decimal.Decimal('0.01'))
+
+    def estado_cobro_display(self):
+        if self.esta_pagada:
+            return 'Pagada'
+        return 'Parcial' if self.total_pagado > 0 else 'Pendiente'
+
     def __str__(self):
         return f"{self.uuid} — {self.factura.folio}"
 
@@ -309,6 +327,9 @@ class AplicacionPago(models.Model):
                                 null=True, blank=True, related_name='aplicaciones')
     factura_cliente = models.ForeignKey(FacturaCliente, on_delete=models.PROTECT,
                                         null=True, blank=True, related_name='aplicaciones')
+    # Opcional: a qué CFDI (factura) específico de la CxC se aplica el cobro
+    cfdi = models.ForeignKey('CfdiCliente', on_delete=models.PROTECT,
+                             null=True, blank=True, related_name='aplicaciones')
     monto_aplicado = models.DecimalField(max_digits=14, decimal_places=2,
                                          help_text="En la moneda de la factura")
     tipo_cambio = models.DecimalField(max_digits=12, decimal_places=6, default=1,

@@ -77,6 +77,7 @@ def registrar_cobro(*, empresa, cliente, fecha, moneda, metodo,
     total_pago = decimal.Decimal('0')
     for ap in aplicaciones:
         factura = ap['factura']
+        cfdi = ap.get('cfdi')  # CfdiCliente opcional: cobro por factura específica
         monto = decimal.Decimal(ap['monto_aplicado'])
         tc = decimal.Decimal(ap.get('tipo_cambio') or '1')
 
@@ -84,12 +85,16 @@ def registrar_cobro(*, empresa, cliente, fecha, moneda, metodo,
             continue
         if factura.estado == 'CANCELADA':
             raise ErrorPago(f"La factura {factura.folio} está cancelada.")
-        if monto > factura.saldo:
+        if cfdi is not None:
+            if monto > cfdi.saldo + decimal.Decimal('0.01'):
+                raise ErrorPago(
+                    f"El monto ({monto}) supera el saldo de la factura {cfdi.serie_folio or cfdi.uuid[:8]} ({cfdi.saldo}).")
+        elif monto > factura.saldo:
             raise ErrorPago(
                 f"El monto aplicado a {factura.folio} ({monto}) supera su saldo ({factura.saldo}).")
 
         AplicacionPago.objects.create(
-            pago=pago, factura_cliente=factura, monto_aplicado=monto, tipo_cambio=tc)
+            pago=pago, factura_cliente=factura, cfdi=cfdi, monto_aplicado=monto, tipo_cambio=tc)
         factura.recalcular_estado()
         total_pago += monto * tc
 
