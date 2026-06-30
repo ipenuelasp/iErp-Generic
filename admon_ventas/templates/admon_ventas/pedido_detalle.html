@@ -12,6 +12,9 @@
             </p>
         </div>
         <div class="flex items-center gap-4">
+            {% if puede_corregir_cxc %}
+            <button type="button" onclick="document.getElementById('modalCorregir').classList.remove('hidden')" class="bg-amber-500 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all shadow-lg shadow-amber-200"><i class="fa-solid fa-pen-to-square mr-2"></i> Corregir pedido</button>
+            {% endif %}
             <a href="{% url 'admon_ventas:pedido_pdf' pedido.pk %}" target="_blank" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all"><i class="fa-solid fa-file-pdf mr-2 text-rose-500"></i> Imprimir pedido</a>
             <a href="{% url 'admon_ventas:historial_pedidos' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver</a>
         </div>
@@ -58,6 +61,70 @@
             </tfoot>
         </table>
     </div>
+
+    {% if cambios %}
+    <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 mb-6">
+        <h3 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3"><i class="fa-solid fa-clock-rotate-left mr-2 text-amber-500"></i> Bitácora de correcciones</h3>
+        <div class="space-y-2">
+            {% for c in cambios %}
+            <div class="text-[11px] border-l-2 border-amber-300 pl-3">
+                <span class="font-bold text-slate-700">{{ c.creado_en|date:"d/m/Y H:i" }} · {{ c.usuario.username }}</span>
+                <span class="text-slate-500"> — {{ c.resumen }}</span>
+                <div class="text-slate-400 italic">Motivo: {{ c.motivo }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if puede_corregir_cxc %}
+    <!-- MODAL: corregir pedido con CxC (solo admin, con motivo) -->
+    <div id="modalCorregir" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalCorregir').classList.add('hidden')"></div>
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="relative bg-white w-full max-w-3xl rounded-[2.5rem] shadow-2xl p-10">
+                <button type="button" onclick="document.getElementById('modalCorregir').classList.add('hidden')" class="absolute top-8 right-8 w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold text-slate-800">Corregir pedido</h2>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Cantidad, precio o IVA · la CxC se actualiza sola</p>
+                </div>
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="corregir_cxc">
+                    <div class="overflow-hidden rounded-2xl border border-slate-100 mb-5">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50"><tr class="text-slate-400 text-[9px] uppercase tracking-[0.15em]">
+                                <th class="px-4 py-3 font-black">Producto</th>
+                                <th class="px-3 py-3 font-black text-center w-28">Cantidad</th>
+                                <th class="px-3 py-3 font-black text-center w-28">Precio</th>
+                                <th class="px-3 py-3 font-black text-center w-24">IVA %</th>
+                            </tr></thead>
+                            <tbody class="divide-y divide-slate-50">
+                                {% for d in detalles %}
+                                <tr>
+                                    <td class="px-4 py-3 text-[11px] font-bold text-slate-700">[{{ d.producto.sku }}] {{ d.producto.nombre }}</td>
+                                    <td class="px-3 py-3"><input type="number" step="0.0001" min="0" name="cant_{{ d.id }}" value="{{ d.cantidad|floatformat:'-4' }}" class="w-full text-center font-black text-brand"></td>
+                                    <td class="px-3 py-3"><input type="number" step="0.0001" min="0" name="precio_{{ d.id }}" value="{{ d.precio_unitario|floatformat:'-4' }}" class="w-full text-right font-bold"></td>
+                                    <td class="px-3 py-3"><input type="number" step="0.01" min="0" name="iva_{{ d.id }}" value="{{ d.iva_porcentaje|floatformat:'-2' }}" class="w-full text-center font-bold"></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mb-5">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">Motivo del cambio (obligatorio)</label>
+                        <textarea name="motivo" rows="2" required placeholder="Ej. Se capturó IVA 16% en vez de 8%, se corrige la cantidad…" class="w-full"></textarea>
+                    </div>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="document.getElementById('modalCorregir').classList.add('hidden')" class="px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-400 hover:text-slate-600">Cancelar</button>
+                        <button type="submit" class="bg-amber-500 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-amber-200 hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-check mr-2"></i> Aplicar corrección</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <style>#modalCorregir input, #modalCorregir textarea { padding:0.55rem 0.7rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.7rem; outline:none; font-weight:600; color:#334155; font-size:0.8rem; } #modalCorregir input:focus, #modalCorregir textarea:focus { border-color: var(--brand-color); background:#fff; }</style>
+    {% endif %}
 
     {% if puede_ver_costos %}
     <div class="bg-emerald-50/60 border border-emerald-100 rounded-[2rem] p-6 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">

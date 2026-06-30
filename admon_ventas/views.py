@@ -59,6 +59,20 @@ def _puede_ver_costos(request):
     return bool(perfil and perfil.tipo_usuario == 'OWNER')
 
 
+def _cxc_corregible(pedido):
+    """Devuelve la CxC del pedido si se puede corregir el pedido: una sola
+    factura vigente, sin cobros y sin CFDI (no facturada). None si no aplica."""
+    if pedido.estado == 'CANCELADO':
+        return None
+    facturas = list(pedido.facturas.exclude(estado='CANCELADA')) if hasattr(pedido, 'facturas') else []
+    if len(facturas) != 1:
+        return None
+    fac = facturas[0]
+    if fac.total_pagado > 0 or fac.esta_facturada:
+        return None
+    return fac
+
+
 def productos_para_pedido(empresa, sucursal):
     """Productos vendibles con su existencia en la sucursal, para el selector del
     pedido. Ordena primero lo disponible (con stock o servicio), luego lo agotado."""
@@ -441,6 +455,9 @@ class PedidoDetalleView(LoginRequiredMixin, View):
             'puede_entregar': pedido.estado in ('CONFIRMADO', 'ENTREGADO_PARCIAL'),
             # Extras/comisiones se editan mientras el pedido no esté cancelado ni la CxC cobrada
             'puede_editar_extras': pedido.estado != 'CANCELADO' and not cxc_cobrada,
+            # Corrección de partidas (cantidad/precio/IVA) con CxC sin facturar: solo admin
+            'puede_corregir_cxc': _puede_ver_costos(request) and _cxc_corregible(pedido) is not None,
+            'cambios': pedido.cambios.select_related('usuario') if hasattr(pedido, 'cambios') else [],
             'sucursal_activa': sucursal,
             'seccion': 'ventas',
         }
@@ -456,6 +473,60 @@ class PedidoDetalleView(LoginRequiredMixin, View):
 
         cxc_cobrada = any(f.total_pagado > 0 for f in pedido.facturas.all()) if hasattr(pedido, 'facturas') else False
         bloqueado = pedido.estado == 'CANCELADO' or cxc_cobrada
+
+        if accion == 'corregir_cxc':
+            # Corregir cantidad/precio/IVA de las partidas de un pedido con CxC sin
+            # facturar. Solo dueño/superadmin, con motivo; queda en bitácora y la CxC
+            # se recalcula sola.
+            if not _puede_ver_costos(request):
+                messages.error(request, "Solo el dueño o un superadmin puede corregir un pedido con CxC.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
+            fac = _cxc_corregible(pedido)
+            if not fac:
+                messages.error(request, "Este pedido no se puede corregir: su CxC ya fue facturada o tiene cobros.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
+            motivo = (request.POST.get('motivo') or '').strip()
+            if not motivo:
+                messages.error(request, "El motivo del cambio es obligatorio.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
+
+            cambios = []
+            for det in pedido.detalles.all():
+                try:
+                    n_cant = decimal.Decimal(request.POST.get(f'cant_{det.id}') or det.cantidad)
+                    n_precio = decimal.Decimal(request.POST.get(f'precio_{det.id}') or det.precio_unitario)
+                    n_iva = decimal.Decimal(request.POST.get(f'iva_{det.id}') or det.iva_porcentaje)
+                except decimal.InvalidOperation:
+                    messages.error(request, "Hay un valor numérico inválido.")
+                    return redirect('admon_ventas:pedido_detalle', pk=pk)
+                if n_cant <= 0:
+                    messages.error(request, f"La cantidad de {det.producto.sku} debe ser mayor a 0.")
+                    return redirect('admon_ventas:pedido_detalle', pk=pk)
+                partes = []
+                if n_cant != det.cantidad:
+                    partes.append(f"cant {det.cantidad:.2f}→{n_cant:.2f}")
+                if n_precio != det.precio_unitario:
+                    partes.append(f"precio {det.precio_unitario:.2f}→{n_precio:.2f}")
+                if n_iva != det.iva_porcentaje:
+                    partes.append(f"IVA {det.iva_porcentaje:.2f}%→{n_iva:.2f}%")
+                if partes:
+                    cambios.append(f"{det.producto.sku}: " + ", ".join(partes))
+                    det.cantidad = n_cant
+                    det.precio_unitario = n_precio
+                    det.iva_porcentaje = n_iva
+                    det.save(update_fields=['cantidad', 'precio_unitario', 'iva_porcentaje'])
+
+            if not cambios:
+                messages.info(request, "No hubo cambios que aplicar.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
+
+            services.recalcular_pedido(pedido)
+            from .models import CambioPedido
+            CambioPedido.objects.create(
+                pedido=pedido, usuario=request.user, motivo=motivo,
+                resumen=" · ".join(cambios))
+            messages.success(request, f"Pedido corregido y CxC {fac.folio} actualizada.")
+            return redirect('admon_ventas:pedido_detalle', pk=pk)
 
         if accion == 'add_extra':
             if bloqueado:

@@ -229,6 +229,24 @@ class Cotizacion(models.Model):
         return f"{self.folio} - {self.cliente}"
 
 
+class CambioPedido(models.Model):
+    """Bitácora de correcciones a un pedido que ya generó CxC (cantidad/precio/IVA).
+    Solo dueño/superadmin, con motivo obligatorio. Auditable."""
+    pedido = models.ForeignKey(Pedido, related_name='cambios', on_delete=models.CASCADE)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    motivo = models.TextField()
+    resumen = models.TextField(blank=True, help_text="Qué cambió (antes → después)")
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creado_en']
+        verbose_name = "Cambio de pedido"
+        verbose_name_plural = "Cambios de pedido"
+
+    def __str__(self):
+        return f"Cambio {self.pedido.folio} · {self.creado_en:%d/%m/%Y %H:%M}"
+
+
 class DetalleCotizacion(models.Model):
     cotizacion = models.ForeignKey(Cotizacion, related_name='detalles', on_delete=models.CASCADE)
     producto = models.ForeignKey('admon_inventarios.Producto', on_delete=models.PROTECT)
