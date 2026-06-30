@@ -158,37 +158,48 @@ class FacturaCliente(models.Model):
     def color_estado(self):
         return {'PENDIENTE': 'amber', 'PARCIAL': 'blue', 'PAGADA': 'emerald', 'CANCELADA': 'slate'}.get(self.estado, 'slate')
 
+    def _suma_cfdis(self, campo):
+        try:
+            return sum((getattr(c, campo) for c in self.cfdis.all()), decimal.Decimal('0'))
+        except Exception:
+            return self.cfdis.aggregate(x=models.Sum(campo))['x'] or decimal.Decimal('0')
+
+    @property
+    def subtotal_facturado(self):
+        """Base (pre-impuestos) ya facturada — yardstick estable, sin retenciones."""
+        return self._suma_cfdis('subtotal')
+
     @property
     def total_facturado(self):
-        """Suma de los CFDI ligados a esta CxC (el contador puede subir varios
-        hasta cubrir el total). Compat: si no hay CFDI hijos pero sí un UUID/XML
-        único antiguo, se considera facturado el total."""
-        try:
-            s = sum((c.total for c in self.cfdis.all()), decimal.Decimal('0'))
-        except Exception:
-            s = self.cfdis.aggregate(x=models.Sum('total'))['x'] or decimal.Decimal('0')
+        """Suma neta (con retenciones) de los CFDI ligados. Compat: si no hay CFDI
+        hijos pero sí un UUID/XML único antiguo, se considera facturado el total."""
+        s = self._suma_cfdis('total')
         if s <= 0 and (bool(self.uuid_cfdi) or bool(self.archivo_xml)):
             return self.total
         return s
 
     @property
     def saldo_por_facturar(self):
-        r = self.total - self.total_facturado
+        """Lo que falta por facturar, medido sobre la base (subtotal del pedido)."""
+        if not self.cfdis.exists():
+            return decimal.Decimal('0') if (self.uuid_cfdi or self.archivo_xml) else self.subtotal
+        r = self.subtotal - self.subtotal_facturado
         return r if r > 0 else decimal.Decimal('0')
 
     @property
     def esta_facturada(self):
-        """True solo cuando lo facturado cubre el total de la CxC (con tolerancia)."""
-        return self.total_facturado >= (self.total - decimal.Decimal('0.01'))
+        """Facturada cuando la base facturada cubre el subtotal del pedido."""
+        if self.cfdis.exists():
+            return self.subtotal_facturado >= (self.subtotal - decimal.Decimal('0.01'))
+        return bool(self.uuid_cfdi) or bool(self.archivo_xml)
 
     @property
     def estado_facturacion(self):
-        tf = self.total_facturado
-        if tf <= 0:
-            return 'PENDIENTE_FACTURAR'
-        if tf < self.total - decimal.Decimal('0.01'):
-            return 'PARCIAL_FACTURAR'
-        return 'FACTURADA'
+        if not self.cfdis.exists():
+            return 'FACTURADA' if (self.uuid_cfdi or self.archivo_xml) else 'PENDIENTE_FACTURAR'
+        if self.esta_facturada:
+            return 'FACTURADA'
+        return 'PARCIAL_FACTURAR'
 
     def estado_facturacion_display(self):
         return {
@@ -213,6 +224,11 @@ class CfdiCliente(models.Model):
     uuid = models.CharField(max_length=40)
     serie_folio = models.CharField(max_length=60, blank=True, default='')
     fecha = models.DateField(null=True, blank=True)
+    subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    traslados = models.DecimalField(max_digits=14, decimal_places=2, default=0,
+                                    help_text="IVA trasladado de este CFDI")
+    retenciones = models.DecimalField(max_digits=14, decimal_places=2, default=0,
+                                      help_text="ISR/IVA retenidos de este CFDI")
     total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     archivo_xml = models.FileField(upload_to='cfdi/cobrar/xml/', null=True, blank=True)
     archivo_pdf = models.FileField(upload_to='cfdi/cobrar/pdf/', null=True, blank=True)

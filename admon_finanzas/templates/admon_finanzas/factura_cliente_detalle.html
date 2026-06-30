@@ -92,14 +92,17 @@
         <!-- Progreso de facturación (puede haber varios CFDI hasta cubrir el total) -->
         <div class="rounded-2xl bg-slate-50 border border-slate-100 p-5 mb-6">
             <div class="flex justify-between text-[11px] font-bold mb-2">
-                <span class="text-slate-500">Facturado: <span class="text-slate-800">{{ factura.moneda.simbolo }}{{ factura.total_facturado|floatformat:2|intcomma }}</span> de {{ factura.moneda.simbolo }}{{ factura.total|floatformat:2|intcomma }}</span>
+                <span class="text-slate-500">Base facturada: <span class="text-slate-800">{{ factura.moneda.simbolo }}{{ factura.subtotal_facturado|floatformat:2|intcomma }}</span> de {{ factura.moneda.simbolo }}{{ factura.subtotal|floatformat:2|intcomma }}</span>
                 <span class="{% if factura.saldo_por_facturar > 0 %}text-amber-600{% else %}text-emerald-600{% endif %}">
-                    {% if factura.saldo_por_facturar > 0 %}Por facturar: {{ factura.moneda.simbolo }}{{ factura.saldo_por_facturar|floatformat:2|intcomma }}{% else %}<i class="fa-solid fa-circle-check mr-1"></i>Completo{% endif %}
+                    {% if factura.saldo_por_facturar > 0 %}Por facturar (base): {{ factura.moneda.simbolo }}{{ factura.saldo_por_facturar|floatformat:2|intcomma }}{% else %}<i class="fa-solid fa-circle-check mr-1"></i>Completo{% endif %}
                 </span>
             </div>
             <div class="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                <div class="h-full bg-{{ factura.color_facturacion }}-500" style="width: {% widthratio factura.total_facturado factura.total 100 %}%"></div>
+                <div class="h-full bg-{{ factura.color_facturacion }}-500" style="width: {% widthratio factura.subtotal_facturado factura.subtotal 100 %}%"></div>
             </div>
+            {% if factura.cfdis.all %}
+            <p class="text-[10px] text-slate-400 font-bold mt-2">Total cobrable (neto, con retenciones): <span class="text-slate-700">{{ factura.moneda.simbolo }}{{ factura.total_facturado|floatformat:2|intcomma }}</span></p>
+            {% endif %}
         </div>
 
         {% if not factura.cfdis.all and factura.uuid_cfdi %}
