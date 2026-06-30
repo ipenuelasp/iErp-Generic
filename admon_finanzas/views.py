@@ -840,6 +840,26 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
         empresa, sucursal = ctx
         factura = get_object_or_404(FacturaCliente, pk=pk, empresa=empresa)
         accion = request.POST.get('accion')
+        if accion == 'cobrar_cxc':
+            try:
+                monto = decimal.Decimal(request.POST.get('monto') or '0')
+            except decimal.InvalidOperation:
+                monto = decimal.Decimal('0')
+            if monto <= 0:
+                messages.error(request, "Captura un monto mayor a 0.")
+                return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
+            moneda = get_object_or_404(Moneda, id=request.POST.get('moneda'), empresa=empresa)
+            metodo = MetodoPago.objects.filter(id=request.POST.get('metodo'), empresa=empresa).first()
+            try:
+                cobro = services.registrar_cobro(
+                    empresa=empresa, cliente=factura.cliente,
+                    fecha=request.POST.get('fecha') or None, moneda=moneda, metodo=metodo,
+                    usuario=request.user, referencia=request.POST.get('referencia'),
+                    aplicaciones=[{'factura': factura, 'monto_aplicado': monto, 'tipo_cambio': '1'}])
+                messages.success(request, f"Cobro {cobro.folio} registrado a {factura.folio}.")
+            except services.ErrorPago as e:
+                messages.error(request, str(e))
+            return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
         if accion == 'cobrar_cfdi':
             cfdi = get_object_or_404(CfdiCliente, id=request.POST.get('cfdi_id'), factura=factura)
             try:
