@@ -96,11 +96,16 @@ def _timbre_para_pdf(factura):
         "https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx?"
         f"id={info['uuid']}&re={info['rfc_emisor']}&rr={info['rfc_receptor']}"
         f"&tt={total:017.6f}&fe={fe}")
+    def _wrap(s, n=80):
+        # xhtml2pdf no corta cadenas largas sin espacios: insertamos cortes cada n chars
+        s = s or ''
+        return ' '.join(s[i:i + n] for i in range(0, len(s), n))
+
     return {
         'uuid': info['uuid'], 'fecha_timbrado': info['fecha_timbrado'],
-        'sello_cfdi': info['sello_cfdi'], 'sello_sat': info['sello_sat'],
+        'sello_cfdi': _wrap(info['sello_cfdi']), 'sello_sat': _wrap(info['sello_sat']),
         'rfc_prov_certif': info['rfc_prov_certif'], 'no_cert_sat': info['no_cert_sat'],
-        'cadena': cadena, 'qr': _qr_data_uri(qr_url),
+        'cadena': _wrap(cadena), 'qr': _qr_data_uri(qr_url),
     }
 
 

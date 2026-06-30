@@ -5,9 +5,17 @@
   <div style="max-width:560px;margin:0 auto;padding:32px 20px;">
     <div style="background:#fff;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0;">
       <div style="background:#1f2d4f;padding:24px 28px;">
-        {% if isotipo_uri %}<img src="{{ isotipo_uri }}" alt="{{ empresa }}" style="height:40px;margin-bottom:10px;">{% endif %}
-        <p style="margin:0;color:#cbd5e1;font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;">{{ empresa }}</p>
-        <p style="margin:6px 0 0;color:#fff;font-size:20px;font-weight:800;">Tu factura está lista</p>
+        <table style="width:100%;border-collapse:collapse;"><tr>
+          <td style="vertical-align:middle;">
+            <p style="margin:0;color:#cbd5e1;font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;">{{ empresa }}</p>
+            <p style="margin:6px 0 0;color:#fff;font-size:20px;font-weight:800;">Tu factura está lista</p>
+          </td>
+          {% if isotipo_uri %}
+          <td style="vertical-align:middle;text-align:right;width:80px;">
+            <img src="{{ isotipo_uri }}" alt="{{ empresa }}" style="height:52px;max-width:80px;">
+          </td>
+          {% endif %}
+        </tr></table>
       </div>
       <div style="padding:28px;">
         <p style="margin:0 0 14px;font-size:15px;">Hola{% if cliente %} {{ cliente }}{% endif %},</p>
