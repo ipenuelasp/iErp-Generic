@@ -1,0 +1,117 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+    @page { size: letter; margin: 1.4cm 1.5cm; }
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #334155; }
+    .muted { color: #94a3b8; font-size: 8.5px; }
+    table { width: 100%; border-collapse: collapse; }
+    td { vertical-align: top; }
+    .doc-title { font-size: 11px; font-weight: bold; color: #1e3a8a; letter-spacing: 1px; }
+    .doc-folio { font-size: 16px; font-weight: bold; color: #0f172a; }
+    .bar { height: 3px; background: #1e3a8a; margin: 10px 0 16px 0; font-size: 0; line-height: 0; }
+    .label { color: #1e3a8a; font-size: 8px; font-weight: bold; letter-spacing: 0.5px; }
+    .val { font-size: 9.5px; color: #1e293b; }
+    .panel { border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; }
+    .items th { background: #1e3a8a; color: #fff; padding: 7px 9px; text-align: left; font-size: 8.5px; letter-spacing: 0.4px; }
+    .items td { padding: 7px 9px; border-bottom: 1px solid #eef2f7; font-size: 9.5px; }
+    .items tr.alt td { background: #f8fafc; }
+    .right { text-align: right; }
+    .center { text-align: center; }
+    .tot td { padding: 4px 9px; font-size: 10px; }
+    .tot .k { color: #64748b; text-align: right; }
+    .tot .v { text-align: right; width: 110px; }
+    .tot .ret { color: #b91c1c; }
+    .tot .grand { font-size: 13px; font-weight: bold; color: #fff; background: #1e3a8a; }
+    .uuid { font-family: Courier, monospace; font-size: 8px; color: #475569; }
+    .sello { font-family: Courier, monospace; font-size: 6px; color: #64748b; word-break: break-all; margin: 1px 0 6px 0; line-height: 1.3; }
+</style>
+</head>
+<body>
+
+    {% include 'includes/pdf_header_open.html' %}
+            <td width="42%" class="right" align="right">
+                <div class="doc-title">FACTURA · CFDI</div>
+                <div class="doc-folio">{% if info.serie %}{{ info.serie }}-{% endif %}{{ info.folio }}</div>
+                <div class="muted" style="margin-top:8px;">Fecha: <b style="color:#334155;">{{ info.fecha|slice:":10" }}</b></div>
+                {% if info.moneda %}<div class="muted">Moneda: {{ info.moneda }}</div>{% endif %}
+            </td>
+        </tr>
+    </table>
+    <div class="bar">&nbsp;</div>
+
+    <table style="margin-bottom:16px;"><tr><td class="panel">
+        <table><tr>
+            <td width="60%">
+                <span class="label">CLIENTE</span><br>
+                <span class="val" style="font-weight:bold; font-size:11px;">{{ info.nombre_receptor }}</span>
+            </td>
+            <td width="40%">
+                <span class="label">RFC</span> <span class="val">{{ info.rfc_receptor }}</span>
+            </td>
+        </tr></table>
+    </td></tr></table>
+
+    <table class="items">
+        <thead><tr>
+            <th width="56%">Concepto</th>
+            <th class="center" width="10%">Cant.</th>
+            <th class="right" width="17%">P. Unitario</th>
+            <th class="right" width="17%">Importe</th>
+        </tr></thead>
+        <tbody>
+            {% for c in info.conceptos %}
+            <tr class="{% cycle '' 'alt' %}">
+                <td>{{ c.descripcion }}</td>
+                <td class="center">{{ c.cantidad|floatformat:"-2" }}{% if c.unidad %} {{ c.unidad }}{% endif %}</td>
+                <td class="right">${{ c.valor_unitario|floatformat:2|intcomma }}</td>
+                <td class="right">${{ c.importe|floatformat:2|intcomma }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <table style="margin-top:14px;"><tr>
+        <td width="58%"></td>
+        <td width="42%"><table class="tot">
+            <tr><td class="k">Subtotal</td><td class="v">${{ info.subtotal|floatformat:2|intcomma }}</td></tr>
+            <tr><td class="k">(+) IVA trasladado</td><td class="v">${{ info.traslados|floatformat:2|intcomma }}</td></tr>
+            {% if info.retenidos > 0 %}
+            <tr><td class="k ret">(−) Retenciones</td><td class="v ret">−${{ info.retenidos|floatformat:2|intcomma }}</td></tr>
+            {% endif %}
+            <tr><td class="k grand">TOTAL {{ info.moneda }}</td><td class="v grand">${{ info.total|floatformat:2|intcomma }}</td></tr>
+        </table></td>
+    </tr></table>
+
+    {% if timbre %}
+    <div style="margin-top:22px; border-top:1px solid #cbd5e1; padding-top:10px;">
+        <table><tr>
+            <td width="20%" valign="top" align="center">
+                {% if timbre.qr %}<img src="{{ timbre.qr }}" style="width:108px; height:108px;">{% endif %}
+            </td>
+            <td width="80%" valign="top" style="padding-left:8px;">
+                <span class="label">SELLO DIGITAL DEL CFDI</span>
+                <div class="sello">{{ timbre.sello_cfdi }}</div>
+                <span class="label">SELLO DEL SAT</span>
+                <div class="sello">{{ timbre.sello_sat }}</div>
+                <span class="label">CADENA ORIGINAL DEL COMPLEMENTO DE CERTIFICACIÓN DEL SAT</span>
+                <div class="sello">{{ timbre.cadena }}</div>
+            </td>
+        </tr></table>
+        <table style="margin-top:6px;">
+            <tr>
+                <td width="50%"><span class="label">FOLIO FISCAL (UUID)</span> <span class="uuid">{{ timbre.uuid }}</span></td>
+                <td width="50%"><span class="label">FECHA Y HORA DE CERTIFICACIÓN</span> <span class="val">{{ timbre.fecha_timbrado }}</span></td>
+            </tr>
+            <tr>
+                <td><span class="label">RFC PROVEEDOR DE CERTIFICACIÓN</span> <span class="val">{{ timbre.rfc_prov_certif }}</span></td>
+                <td><span class="label">NO. DE SERIE DEL CERTIFICADO SAT</span> <span class="val">{{ timbre.no_cert_sat }}</span></td>
+            </tr>
+        </table>
+    </div>
+    <p style="margin-top:12px; text-align:center; font-size:9px; font-weight:bold; color:#334155;">Este documento es una representación impresa de un CFDI</p>
+    {% endif %}
+</body>
+</html>

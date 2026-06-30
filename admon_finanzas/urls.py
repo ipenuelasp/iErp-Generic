@@ -17,6 +17,7 @@ urlpatterns = [
     path('por-cobrar/facturar-xlsx/', views.ExcelFacturacionView.as_view(), name='facturar_xlsx'),
     path('cxc/<int:pk>/', views.FacturaClienteDetalleView.as_view(), name='factura_cliente_detalle'),
     path('cxc/<int:pk>/pdf/', views.FacturaPDFView.as_view(), name='factura_cliente_pdf'),
+    path('cxc/<int:pk>/cfdi/<int:cfdi_id>/pdf/', views.CfdiPDFView.as_view(), name='cfdi_pdf'),
     path('estados-cuenta/', views.EstadosCuentaView.as_view(), name='estados_cuenta'),
     path('estado-cuenta/<int:cliente_id>/', views.EstadoCuentaClientePDFView.as_view(), name='estado_cuenta_cliente'),
     path('cobros/nuevo/', views.RegistrarCobroView.as_view(), name='registrar_cobro'),

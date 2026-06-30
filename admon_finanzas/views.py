@@ -32,17 +32,30 @@ def _leer_cfdi(xml_file):
 
     info = {'subtotal': _d(root.get('SubTotal')), 'total': _d(root.get('Total')),
             'traslados': decimal.Decimal('0'), 'retenidos': decimal.Decimal('0'),
-            'uuid': '', 'rfc_receptor': '',
+            'uuid': '', 'rfc_receptor': '', 'nombre_receptor': '',
+            'serie': root.get('Serie') or '', 'folio': root.get('Folio') or '',
+            'moneda': root.get('Moneda') or '', 'fecha': root.get('Fecha') or '',
+            'conceptos': [],
             # Timbre fiscal (para la representación impresa)
-            'sello_cfdi': root.get('Sello') or '', 'rfc_emisor': '',
+            'sello_cfdi': root.get('Sello') or '', 'rfc_emisor': '', 'nombre_emisor': '',
             'fecha_timbrado': '', 'rfc_prov_certif': '', 'sello_cfd': '',
             'no_cert_sat': '', 'sello_sat': '', 'tfd_version': '1.1'}
     for el in root.iter():
         tag = el.tag.split('}')[-1]
         if tag == 'Emisor':
             info['rfc_emisor'] = (el.get('Rfc') or '').upper()
+            info['nombre_emisor'] = el.get('Nombre') or ''
         elif tag == 'Receptor':
             info['rfc_receptor'] = (el.get('Rfc') or '').upper()
+            info['nombre_receptor'] = el.get('Nombre') or ''
+        elif tag == 'Concepto':
+            info['conceptos'].append({
+                'descripcion': el.get('Descripcion') or '',
+                'cantidad': _d(el.get('Cantidad')) or decimal.Decimal('0'),
+                'unidad': el.get('Unidad') or '',
+                'valor_unitario': _d(el.get('ValorUnitario')) or decimal.Decimal('0'),
+                'importe': _d(el.get('Importe')) or decimal.Decimal('0'),
+            })
         elif tag == 'TimbreFiscalDigital':
             info['uuid'] = (el.get('UUID') or '').upper()
             info['fecha_timbrado'] = el.get('FechaTimbrado') or ''
@@ -73,21 +86,10 @@ def _qr_data_uri(texto):
         return ''
 
 
-def _timbre_para_pdf(factura):
-    """Lee el XML del CFDI ligado y arma los datos del timbre fiscal + QR del SAT."""
-    cfdi_row = factura.cfdis.exclude(archivo_xml='').exclude(archivo_xml=None).first()
-    if not cfdi_row or not cfdi_row.archivo_xml:
-        return None
-    try:
-        cfdi_row.archivo_xml.open('rb')
-        data = cfdi_row.archivo_xml
-        info = _leer_cfdi(data)
-        cfdi_row.archivo_xml.close()
-    except Exception:
-        return None
+def _timbre_de_info(info):
+    """Construye el dict del timbre fiscal + QR a partir del XML ya parseado."""
     if not info or not info.get('uuid'):
         return None
-
     cadena = (f"||{info['tfd_version']}|{info['uuid']}|{info['fecha_timbrado']}|"
               f"{info['rfc_prov_certif']}|{info['sello_cfd']}|{info['no_cert_sat']}||")
     total = info.get('total') or decimal.Decimal('0')
@@ -96,8 +98,8 @@ def _timbre_para_pdf(factura):
         "https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx?"
         f"id={info['uuid']}&re={info['rfc_emisor']}&rr={info['rfc_receptor']}"
         f"&tt={total:017.6f}&fe={fe}")
+
     def _wrap(s, n=80):
-        # xhtml2pdf no corta cadenas largas sin espacios: insertamos cortes cada n chars
         s = s or ''
         return ' '.join(s[i:i + n] for i in range(0, len(s), n))
 
@@ -107,6 +109,42 @@ def _timbre_para_pdf(factura):
         'rfc_prov_certif': info['rfc_prov_certif'], 'no_cert_sat': info['no_cert_sat'],
         'cadena': _wrap(cadena), 'qr': _qr_data_uri(qr_url),
     }
+
+
+def _info_de_cfdi_row(cfdi_row):
+    """Parsea el XML de un CfdiCliente. Devuelve dict info o None."""
+    if not cfdi_row or not cfdi_row.archivo_xml:
+        return None
+    try:
+        cfdi_row.archivo_xml.open('rb')
+        info = _leer_cfdi(cfdi_row.archivo_xml)
+        cfdi_row.archivo_xml.close()
+        return info
+    except Exception:
+        return None
+
+
+def _timbre_para_pdf(factura):
+    """Timbre del primer CFDI con XML de la CxC (para el PDF a nivel cuenta)."""
+    cfdi_row = factura.cfdis.exclude(archivo_xml='').exclude(archivo_xml=None).first()
+    return _timbre_de_info(_info_de_cfdi_row(cfdi_row))
+
+
+def _render_cfdi_pdf(cfdi_row, empresa):
+    """Representación impresa (marca) de UN CFDI, construida desde su propio XML."""
+    import io
+    from django.template.loader import get_template
+    from xhtml2pdf import pisa
+    info = _info_de_cfdi_row(cfdi_row)
+    if not info:
+        return None
+    html = get_template('admon_finanzas/cfdi_pdf.html').render({
+        'empresa': empresa, 'cfdi': cfdi_row, 'info': info,
+        'timbre': _timbre_de_info(info),
+    })
+    out = io.BytesIO()
+    pdf = pisa.pisaDocument(io.BytesIO(html.encode('UTF-8')), out)
+    return None if pdf.err else out.getvalue()
 
 
 def _img_url_abs(request, field):
@@ -865,29 +903,39 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
                 messages.error(request, "El cliente no tiene correo. Captura uno para enviar.")
                 return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
 
-            # Reúne los archivos del CFDI (de las filas CfdiCliente y del legacy)
             adjuntos = []
-            def _add(f, ext):
+            def _add_field(f, fallback):
                 if f:
                     try:
                         f.open('rb'); data = f.read(); f.close()
-                        adjuntos.append({'filename': f.name.split('/')[-1] or f"cfdi.{ext}",
+                        adjuntos.append({'filename': f.name.split('/')[-1] or fallback,
                                          'content': data})
                     except Exception as e:
                         print(f'[ADJUNTO CFDI] {e}')
-            # Solo adjuntamos el XML (archivo fiscal). El PDF lo genera el sistema (marca).
-            for c in factura.cfdis.all():
-                _add(c.archivo_xml, 'xml')
-            if not factura.cfdis.exists():
-                _add(factura.archivo_xml, 'xml')
 
-            # PDF propio (bonito) de la factura
-            pdf_bytes = _render_factura_pdf(factura, request.empresa)
-            if pdf_bytes:
-                adjuntos.append({'filename': f"Factura-{factura.folio}.pdf", 'content': pdf_bytes})
+            # CFDI seleccionados (si no marcan ninguno, se envían todos)
+            seleccion = set(request.POST.getlist('cfdi_ids'))
+            cfdis = list(factura.cfdis.all())
+            if seleccion:
+                cfdis = [c for c in cfdis if str(c.id) in seleccion]
+            n_facturas = 0
+            for c in cfdis:
+                _add_field(c.archivo_xml, f"{c.uuid}.xml")          # XML fiscal de cada factura
+                pdf = _render_cfdi_pdf(c, request.empresa)          # un PDF por cada factura
+                if pdf:
+                    nombre = f"Factura-{c.serie_folio or c.uuid[:8]}.pdf"
+                    adjuntos.append({'filename': nombre, 'content': pdf})
+                n_facturas += 1
+
+            # Compat: CxC vieja con XML/PDF únicos (sin filas CfdiCliente)
+            if not cfdis and not factura.cfdis.exists():
+                _add_field(factura.archivo_xml, 'cfdi.xml')
+                pdf_bytes = _render_factura_pdf(factura, request.empresa)
+                if pdf_bytes:
+                    adjuntos.append({'filename': f"Factura-{factura.folio}.pdf", 'content': pdf_bytes})
 
             if not adjuntos:
-                messages.error(request, "No hay nada que enviar. Sube el XML del CFDI primero.")
+                messages.error(request, "No hay facturas que enviar. Sube el XML del CFDI primero o selecciona al menos una.")
                 return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
 
             ok = send_html(
@@ -907,7 +955,7 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
                 to=destino,
                 attachments=adjuntos)
             if ok:
-                messages.success(request, f"Factura enviada a {destino} ({len(adjuntos)} archivo(s)).")
+                messages.success(request, f"Enviado a {destino}: {len(adjuntos)} archivo(s).")
             else:
                 messages.error(request, "No se pudo enviar el correo. Revisa la configuración de correo.")
         elif accion == 'quitar_cfdi_legacy':
@@ -945,6 +993,21 @@ class FacturaPDFView(LoginRequiredMixin, View):
             return HttpResponse("Error al generar el PDF", status=400)
         resp = HttpResponse(pdf_bytes, content_type='application/pdf')
         resp['Content-Disposition'] = f'inline; filename="Factura-{factura.folio}.pdf"'
+        return resp
+
+
+class CfdiPDFView(LoginRequiredMixin, View):
+    """Representación impresa (marca) de UN CFDI específico de la CxC."""
+    def get(self, request, pk, cfdi_id):
+        if not request.empresa:
+            return redirect('home')
+        factura = get_object_or_404(FacturaCliente, pk=pk, empresa=request.empresa)
+        cfdi = get_object_or_404(CfdiCliente, id=cfdi_id, factura=factura)
+        pdf_bytes = _render_cfdi_pdf(cfdi, request.empresa)
+        if not pdf_bytes:
+            return HttpResponse("No se pudo generar el PDF (¿el CFDI tiene XML?).", status=400)
+        resp = HttpResponse(pdf_bytes, content_type='application/pdf')
+        resp['Content-Disposition'] = f'inline; filename="Factura-{cfdi.serie_folio or cfdi.uuid[:8]}.pdf"'
         return resp
 
 

@@ -100,11 +100,23 @@
             <div class="relative min-h-screen flex items-center justify-center p-4">
                 <div class="relative bg-white w-full max-w-lg rounded-[2rem] shadow-2xl p-8">
                     <button type="button" onclick="document.getElementById('modalEnviar').classList.add('hidden')" class="absolute top-6 right-6 w-9 h-9 flex items-center justify-center rounded-full bg-slate-50 text-slate-400"><i class="fa-solid fa-xmark"></i></button>
-                    <h3 class="text-lg font-bold text-slate-800 mb-1">Enviar factura por correo</h3>
-                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-5">Se adjuntan el XML y el PDF del CFDI</p>
+                    <h3 class="text-lg font-bold text-slate-800 mb-1">Enviar facturas por correo</h3>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-5">Por cada factura va su XML y su PDF</p>
                     <form method="POST">
                         {% csrf_token %}
                         <input type="hidden" name="accion" value="enviar_cfdi">
+                        {% if factura.cfdis.all %}
+                        <label class="block text-[10px] font-black text-slate-400 uppercase ml-1 mb-1">Facturas a enviar</label>
+                        <div class="mb-4 border border-slate-100 rounded-xl divide-y divide-slate-50">
+                            {% for c in cfdis %}
+                            <label class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-slate-50">
+                                <input type="checkbox" name="cfdi_ids" value="{{ c.id }}" checked class="w-4 h-4">
+                                <span class="flex-1 text-[11px] font-mono text-slate-600">{{ c.serie_folio|default:c.uuid }}</span>
+                                <span class="text-xs font-black text-slate-700">{{ factura.moneda.simbolo }}{{ c.total|floatformat:2|intcomma }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                         <label class="block text-[10px] font-black text-slate-400 uppercase ml-1 mb-1">Correo del cliente</label>
                         <input type="email" name="email_destino" required value="{{ factura.cliente.email|default:'' }}" placeholder="cliente@correo.com" class="w-full mb-4 text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold">
                         <label class="block text-[10px] font-black text-slate-400 uppercase ml-1 mb-1">Mensaje (opcional)</label>
@@ -161,8 +173,9 @@
                         <td class="px-3 py-3 text-[10px] font-bold text-slate-400">{{ c.fecha|date:"d/m/Y"|default:"—" }}</td>
                         <td class="px-3 py-3 text-right text-xs font-black text-slate-700">${{ c.total|floatformat:2|intcomma }}</td>
                         <td class="px-5 py-3 text-right whitespace-nowrap">
-                            {% if c.archivo_xml %}<a href="{{ c.archivo_xml.url }}" target="_blank" class="text-[10px] font-black text-brand uppercase hover:underline mr-3"><i class="fa-solid fa-file-code mr-1"></i>XML</a>{% endif %}
-                            {% if c.archivo_pdf %}<a href="{{ c.archivo_pdf.url }}" target="_blank" class="text-[10px] font-black text-rose-500 uppercase hover:underline mr-3"><i class="fa-solid fa-file-pdf mr-1"></i>PDF</a>{% endif %}
+                            {% if c.archivo_xml %}<a href="{{ c.archivo_xml.url }}" target="_blank" class="text-[10px] font-black text-brand uppercase hover:underline mr-3"><i class="fa-solid fa-file-code mr-1"></i>XML</a>
+                            <a href="{% url 'admon_finanzas:cfdi_pdf' factura.pk c.id %}" target="_blank" class="text-[10px] font-black text-rose-500 uppercase hover:underline mr-3"><i class="fa-solid fa-file-pdf mr-1"></i>PDF</a>{% endif %}
+                            {% if c.archivo_pdf %}<a href="{{ c.archivo_pdf.url }}" target="_blank" class="text-[10px] font-black text-slate-400 uppercase hover:underline mr-3"><i class="fa-solid fa-file-pdf mr-1"></i>PDF SAT</a>{% endif %}
                             <form method="POST" class="inline" data-confirm="¿Eliminar este CFDI ({{ c.uuid }}) de la cuenta por cobrar?">{% csrf_token %}
                                 <input type="hidden" name="accion" value="eliminar_cfdi">
                                 <input type="hidden" name="cfdi_id" value="{{ c.id }}">
