@@ -86,7 +86,35 @@
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-8">
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-bold text-slate-800 flex items-center"><i class="fa-solid fa-file-invoice mr-3 text-brand"></i> CFDI (factura al cliente)</h3>
-            <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ factura.color_facturacion }}-100 text-{{ factura.color_facturacion }}-700">{{ factura.estado_facturacion_display }}</span>
+            <div class="flex items-center gap-3">
+                {% if factura.cfdis.all or factura.archivo_xml or factura.archivo_pdf %}
+                <button type="button" onclick="document.getElementById('modalEnviar').classList.remove('hidden')" class="bg-brand text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest shadow hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-paper-plane mr-1"></i> Enviar al cliente</button>
+                {% endif %}
+                <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ factura.color_facturacion }}-100 text-{{ factura.color_facturacion }}-700">{{ factura.estado_facturacion_display }}</span>
+            </div>
+        </div>
+
+        <div id="modalEnviar" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalEnviar').classList.add('hidden')"></div>
+            <div class="relative min-h-screen flex items-center justify-center p-4">
+                <div class="relative bg-white w-full max-w-lg rounded-[2rem] shadow-2xl p-8">
+                    <button type="button" onclick="document.getElementById('modalEnviar').classList.add('hidden')" class="absolute top-6 right-6 w-9 h-9 flex items-center justify-center rounded-full bg-slate-50 text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+                    <h3 class="text-lg font-bold text-slate-800 mb-1">Enviar factura por correo</h3>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-5">Se adjuntan el XML y el PDF del CFDI</p>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="enviar_cfdi">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase ml-1 mb-1">Correo del cliente</label>
+                        <input type="email" name="email_destino" required value="{{ factura.cliente.email|default:'' }}" placeholder="cliente@correo.com" class="w-full mb-4 text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase ml-1 mb-1">Mensaje (opcional)</label>
+                        <textarea name="mensaje" rows="2" placeholder="Cualquier nota para el cliente…" class="w-full mb-5 text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold"></textarea>
+                        <div class="flex justify-end gap-3">
+                            <button type="button" onclick="document.getElementById('modalEnviar').classList.add('hidden')" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-400 hover:text-slate-600">Cancelar</button>
+                            <button type="submit" class="bg-brand text-white px-7 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-paper-plane mr-2"></i> Enviar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <!-- Progreso de facturación (puede haber varios CFDI hasta cubrir el total) -->

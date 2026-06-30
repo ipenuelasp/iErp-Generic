@@ -752,6 +752,52 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
                     f"{factura.moneda.simbolo}{factura.saldo_por_facturar:,.2f} por facturar.")
             else:
                 messages.success(request, "CFDI agregado. La CxC quedó totalmente facturada.")
+        elif accion == 'enviar_cfdi':
+            from admon_empresas.emails import send_html
+            destino = (request.POST.get('email_destino') or factura.cliente.email or '').strip()
+            if not destino:
+                messages.error(request, "El cliente no tiene correo. Captura uno para enviar.")
+                return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
+
+            # Reúne los archivos del CFDI (de las filas CfdiCliente y del legacy)
+            adjuntos = []
+            def _add(f, ext):
+                if f:
+                    try:
+                        f.open('rb'); data = f.read(); f.close()
+                        adjuntos.append({'filename': f.name.split('/')[-1] or f"cfdi.{ext}",
+                                         'content': data})
+                    except Exception as e:
+                        print(f'[ADJUNTO CFDI] {e}')
+            for c in factura.cfdis.all():
+                _add(c.archivo_xml, 'xml')
+                _add(c.archivo_pdf, 'pdf')
+            if not factura.cfdis.exists():
+                _add(factura.archivo_xml, 'xml')
+                _add(factura.archivo_pdf, 'pdf')
+            if not adjuntos:
+                messages.error(request, "No hay archivos de CFDI (XML/PDF) que enviar. Súbelos primero.")
+                return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
+
+            ok = send_html(
+                subject=f"Factura {factura.folio} — {request.empresa.nombre_fiscal}",
+                template='admon_finanzas/emails/factura_cliente.html',
+                context={
+                    'empresa': request.empresa.nombre_fiscal,
+                    'cliente': str(factura.cliente),
+                    'pedido': factura.pedido.folio if factura.pedido_id else '',
+                    'folio': factura.folio,
+                    'uuid': factura.uuid_cfdi or '',
+                    'moneda': factura.moneda.simbolo,
+                    'total': f"{factura.total:,.2f}",
+                    'mensaje': (request.POST.get('mensaje') or '').strip(),
+                },
+                to=destino,
+                attachments=adjuntos)
+            if ok:
+                messages.success(request, f"Factura enviada a {destino} ({len(adjuntos)} archivo(s)).")
+            else:
+                messages.error(request, "No se pudo enviar el correo. Revisa la configuración de correo.")
         elif accion == 'quitar_cfdi_legacy':
             ref = factura.uuid_cfdi or 'CFDI'
             factura.uuid_cfdi = None

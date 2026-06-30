@@ -42,19 +42,28 @@ def enviar_invitacion_cliente(cliente):
     )
 
 
-def send_html(subject, template, context, to, request=None):
-    """Envía un correo HTML via Resend. Retorna True si fue exitoso."""
+def send_html(subject, template, context, to, request=None, attachments=None):
+    """Envía un correo HTML via Resend. Retorna True si fue exitoso.
+    `attachments`: lista opcional de dicts {'filename': str, 'content': bytes}."""
     try:
         html_content = render_to_string(template, context)
         text_content = strip_tags(html_content)
         resend.api_key = settings.RESEND_API_KEY
-        resend.Emails.send({
+        payload = {
             'from': settings.DEFAULT_FROM_EMAIL,
             'to': [to],
             'subject': subject,
             'html': html_content,
             'text': text_content,
-        })
+        }
+        if attachments:
+            import base64
+            payload['attachments'] = [
+                {'filename': a['filename'],
+                 'content': base64.b64encode(a['content']).decode()}
+                for a in attachments
+            ]
+        resend.Emails.send(payload)
         return True
     except Exception as e:
         print(f'[EMAIL ERROR] {e}')
