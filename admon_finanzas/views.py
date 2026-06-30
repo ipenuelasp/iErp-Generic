@@ -743,6 +743,13 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
                     f"{factura.moneda.simbolo}{factura.saldo_por_facturar:,.2f} por facturar.")
             else:
                 messages.success(request, "CFDI agregado. La CxC quedó totalmente facturada.")
+        elif accion == 'quitar_cfdi_legacy':
+            ref = factura.uuid_cfdi or 'CFDI'
+            factura.uuid_cfdi = None
+            factura.archivo_xml = None
+            factura.archivo_pdf = None
+            factura.save(update_fields=['uuid_cfdi', 'archivo_xml', 'archivo_pdf'])
+            messages.info(request, f"CFDI {ref} quitado. Ya puedes subir el correcto.")
         elif accion == 'eliminar_cfdi':
             cfdi = get_object_or_404(CfdiCliente, id=request.POST.get('cfdi_id'), factura=factura)
             ref = cfdi.uuid
