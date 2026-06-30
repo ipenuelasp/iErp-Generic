@@ -48,6 +48,40 @@ def _leer_cfdi(xml_file):
     return info
 
 
+def _img_data_uri(field):
+    """Devuelve un data URI base64 de un ImageField (para correo/PDF), o '' si no hay."""
+    if not field:
+        return ''
+    import base64
+    try:
+        field.open('rb')
+        data = field.read()
+        field.close()
+        ext = (field.name.rsplit('.', 1)[-1] or 'png').lower()
+        mime = 'jpeg' if ext in ('jpg', 'jpeg') else ext
+        return f"data:image/{mime};base64," + base64.b64encode(data).decode()
+    except Exception:
+        return ''
+
+
+def _render_factura_pdf(factura, empresa):
+    """Genera el PDF propio (marca) de la factura. Devuelve bytes o None."""
+    import io
+    from django.template.loader import get_template
+    from xhtml2pdf import pisa
+    partidas = factura.pedido.detalles.select_related('producto') if factura.pedido_id else []
+    uuid = factura.uuid_cfdi or (factura.cfdis.first().uuid if factura.cfdis.exists() else '')
+    cfdi0 = factura.cfdis.first()
+    html = get_template('admon_finanzas/factura_pdf.html').render({
+        'factura': factura, 'empresa': empresa, 'partidas': partidas, 'uuid': uuid,
+        'fecha_cfdi': (cfdi0.fecha if cfdi0 and cfdi0.fecha else factura.fecha_emision),
+        'logo_uri': _img_data_uri(empresa.isotipo or empresa.logo),
+    })
+    out = io.BytesIO()
+    pdf = pisa.pisaDocument(io.BytesIO(html.encode('UTF-8')), out)
+    return None if pdf.err else out.getvalue()
+
+
 def _sync_factura_cfdis(factura):
     """Acumula el desglose de TODOS los CFDI ligados en la CxC (IVA, retenciones,
     total neto). No toca el subtotal (es el objetivo/base del pedido) ni si ya
@@ -769,14 +803,19 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
                                          'content': data})
                     except Exception as e:
                         print(f'[ADJUNTO CFDI] {e}')
+            # Solo adjuntamos el XML (archivo fiscal). El PDF lo genera el sistema (marca).
             for c in factura.cfdis.all():
                 _add(c.archivo_xml, 'xml')
-                _add(c.archivo_pdf, 'pdf')
             if not factura.cfdis.exists():
                 _add(factura.archivo_xml, 'xml')
-                _add(factura.archivo_pdf, 'pdf')
+
+            # PDF propio (bonito) de la factura
+            pdf_bytes = _render_factura_pdf(factura, request.empresa)
+            if pdf_bytes:
+                adjuntos.append({'filename': f"Factura-{factura.folio}.pdf", 'content': pdf_bytes})
+
             if not adjuntos:
-                messages.error(request, "No hay archivos de CFDI (XML/PDF) que enviar. Súbelos primero.")
+                messages.error(request, "No hay nada que enviar. Sube el XML del CFDI primero.")
                 return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
 
             ok = send_html(
@@ -784,6 +823,7 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
                 template='admon_finanzas/emails/factura_cliente.html',
                 context={
                     'empresa': request.empresa.nombre_fiscal,
+                    'isotipo_uri': _img_data_uri(request.empresa.isotipo or request.empresa.logo),
                     'cliente': str(factura.cliente),
                     'pedido': factura.pedido.folio if factura.pedido_id else '',
                     'folio': factura.folio,
@@ -818,6 +858,22 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
         else:
             messages.error(request, "No se puede cancelar una factura con cobros aplicados.")
         return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
+
+
+class FacturaPDFView(LoginRequiredMixin, View):
+    """Descarga el PDF propio (marca) de la factura del cliente."""
+    def get(self, request, pk):
+        if not request.empresa:
+            return redirect('home')
+        factura = get_object_or_404(
+            FacturaCliente.objects.select_related('cliente', 'moneda', 'pedido'),
+            pk=pk, empresa=request.empresa)
+        pdf_bytes = _render_factura_pdf(factura, request.empresa)
+        if not pdf_bytes:
+            return HttpResponse("Error al generar el PDF", status=400)
+        resp = HttpResponse(pdf_bytes, content_type='application/pdf')
+        resp['Content-Disposition'] = f'inline; filename="Factura-{factura.folio}.pdf"'
+        return resp
 
 
 class RegistrarCobroView(LoginRequiredMixin, View):
