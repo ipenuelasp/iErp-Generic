@@ -75,7 +75,6 @@ def _render_factura_pdf(factura, empresa):
     html = get_template('admon_finanzas/factura_pdf.html').render({
         'factura': factura, 'empresa': empresa, 'partidas': partidas, 'uuid': uuid,
         'fecha_cfdi': (cfdi0.fecha if cfdi0 and cfdi0.fecha else factura.fecha_emision),
-        'logo_uri': _img_data_uri(empresa.isotipo or empresa.logo),
     })
     out = io.BytesIO()
     pdf = pisa.pisaDocument(io.BytesIO(html.encode('UTF-8')), out)

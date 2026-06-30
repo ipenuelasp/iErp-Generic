@@ -1,96 +1,114 @@
+{% load humanize %}
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <style>
-    @page { size: letter; margin: 1.6cm 1.5cm; }
-    body { font-family: Helvetica, Arial, sans-serif; color: #1f2937; font-size: 9.5px; }
-    .head { background: #1f2d4f; color: #fff; padding: 14px 16px; border-radius: 8px; }
-    .head td { vertical-align: middle; }
-    .brand-name { font-size: 15px; font-weight: bold; }
-    .brand-sub { font-size: 8px; color: #cbd5e1; letter-spacing: 1px; }
-    .doc-title { font-size: 13px; font-weight: bold; text-align: right; }
-    .doc-sub { font-size: 8px; color: #cbd5e1; text-align: right; }
-    .box { border: 1px solid #e2e8f0; border-radius: 7px; padding: 9px 11px; }
-    .lbl { font-size: 7px; color: #94a3b8; letter-spacing: .5px; text-transform: uppercase; }
-    .val { font-size: 9.5px; font-weight: bold; color: #1e293b; }
-    table.items { width: 100%; border-collapse: collapse; margin-top: 4px; }
-    table.items th { background: #f1f5f9; color: #64748b; font-size: 7.5px; text-transform: uppercase;
-        letter-spacing: .5px; padding: 6px 8px; text-align: left; }
-    table.items td { padding: 7px 8px; border-bottom: 1px solid #eef2f7; font-size: 9px; }
-    .r { text-align: right; } .c { text-align: center; }
-    .tot td { padding: 3px 8px; font-size: 9.5px; }
+    @page { size: letter; margin: 1.4cm 1.5cm; }
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #334155; }
+    .muted { color: #94a3b8; font-size: 8.5px; }
+    table { width: 100%; border-collapse: collapse; }
+    td { vertical-align: top; }
+
+    .doc-title { font-size: 11px; font-weight: bold; color: #1e3a8a; letter-spacing: 1px; }
+    .doc-folio { font-size: 17px; font-weight: bold; color: #0f172a; }
+    .bar { height: 3px; background: #1e3a8a; margin: 10px 0 16px 0; font-size: 0; line-height: 0; }
+
+    .label { color: #1e3a8a; font-size: 8px; font-weight: bold; letter-spacing: 0.5px; }
+    .val { font-size: 9.5px; color: #1e293b; }
+    .panel { border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; }
+
+    .items th { background: #1e3a8a; color: #fff; padding: 7px 9px; text-align: left; font-size: 8.5px; letter-spacing: 0.4px; }
+    .items td { padding: 7px 9px; border-bottom: 1px solid #eef2f7; font-size: 9.5px; }
+    .items tr.alt td { background: #f8fafc; }
+    .right { text-align: right; }
+    .center { text-align: center; }
+
+    .tot td { padding: 4px 9px; font-size: 10px; }
     .tot .k { color: #64748b; text-align: right; }
-    .tot .v { text-align: right; font-weight: bold; color: #1e293b; }
-    .grand { background: #0f766e; color: #fff; font-weight: bold; }
-    .uuid { font-family: Courier, monospace; font-size: 8px; color: #475569; word-break: break-all; }
-    .muted { color: #94a3b8; font-size: 8px; }
+    .tot .v { text-align: right; width: 110px; }
+    .tot .ret { color: #b91c1c; }
+    .tot .grand { font-size: 13px; font-weight: bold; color: #fff; background: #1e3a8a; }
+    .uuid { font-family: Courier, monospace; font-size: 8px; color: #475569; }
 </style>
 </head>
 <body>
-    <table style="width:100%;"><tr><td class="head">
-        <table style="width:100%;"><tr>
-            <td style="width:55%;">
-                {% if logo_uri %}<img src="{{ logo_uri }}" style="height:34px;">{% else %}
-                <div class="brand-name">{{ empresa.nombre_fiscal }}</div>{% endif %}
-                <div class="brand-sub">{{ empresa.nombre_fiscal }} · RFC {{ empresa.rfc }}</div>
-            </td>
-            <td style="width:45%;">
+
+    <!-- ENCABEZADO -->
+    {% include 'includes/pdf_header_open.html' %}
+            <td width="42%" class="right" align="right">
                 <div class="doc-title">FACTURA</div>
-                <div class="doc-sub">{{ factura.folio }} · {{ fecha_cfdi|date:"d/m/Y" }}</div>
+                <div class="doc-folio">{{ factura.folio }}</div>
+                <div class="muted" style="margin-top:8px;">Fecha: <b style="color:#334155;">{{ fecha_cfdi|date:"d/m/Y" }}</b></div>
+                {% if factura.pedido %}<div class="muted">Pedido: {{ factura.pedido.folio }}</div>{% endif %}
+                {% if factura.moneda %}<div class="muted">Moneda: {{ factura.moneda.codigo }}</div>{% endif %}
             </td>
-        </tr></table>
-    </td></tr></table>
+        </tr>
+    </table>
+    <div class="bar">&nbsp;</div>
 
-    <table style="width:100%;margin-top:12px;"><tr>
-        <td style="width:49%;padding-right:6px;"><div class="box">
-            <div class="lbl">Cliente</div>
-            <div class="val">{{ factura.cliente.nombre_fiscal|default:factura.cliente }}</div>
-            <div class="muted">RFC {{ factura.cliente.rfc|default:"—" }}</div>
-            {% if factura.cliente.email %}<div class="muted">{{ factura.cliente.email }}</div>{% endif %}
-        </div></td>
-        <td style="width:2%;"></td>
-        <td style="width:49%;padding-left:6px;"><div class="box">
-            <div class="lbl">Datos</div>
-            <table style="width:100%;">
-                <tr><td class="muted">Pedido</td><td class="r val">{{ factura.pedido.folio }}</td></tr>
-                <tr><td class="muted">Emisión</td><td class="r val">{{ factura.fecha_emision|date:"d/m/Y" }}</td></tr>
-                <tr><td class="muted">Vencimiento</td><td class="r val">{{ factura.fecha_vencimiento|date:"d/m/Y"|default:"—" }}</td></tr>
+    <!-- CLIENTE -->
+    <table style="margin-bottom:16px;">
+        <tr><td class="panel">
+            <table>
+                <tr>
+                    <td width="60%">
+                        <span class="label">CLIENTE</span><br>
+                        <span class="val" style="font-weight:bold; font-size:11px;">{{ factura.cliente.nombre_fiscal|default:factura.cliente }}</span><br>
+                        {% if factura.cliente.nombre_comercial %}<span class="muted">{{ factura.cliente.nombre_comercial }}</span><br>{% endif %}
+                        {% if factura.cliente.direccion %}<span class="val">{{ factura.cliente.direccion }}</span>{% endif %}
+                    </td>
+                    <td width="40%">
+                        {% if factura.cliente.rfc %}<span class="label">RFC</span> <span class="val">{{ factura.cliente.rfc }}</span><br>{% endif %}
+                        {% if factura.cliente.telefono %}<span class="label">TEL</span> <span class="val">{{ factura.cliente.telefono }}</span><br>{% endif %}
+                        {% if factura.cliente.email %}<span class="label">EMAIL</span> <span class="val">{{ factura.cliente.email }}</span>{% endif %}
+                    </td>
+                </tr>
             </table>
-        </div></td>
-    </tr></table>
+        </td></tr>
+    </table>
 
+    <!-- PARTIDAS -->
     <table class="items">
-        <thead><tr>
-            <th style="width:50%;">Concepto</th><th class="c">Cant.</th>
-            <th class="r">P. Unitario</th><th class="r">Importe</th>
-        </tr></thead>
-        <tbody>
-        {% for d in partidas %}
+        <thead>
             <tr>
-                <td>{{ d.producto.nombre }}<br><span class="muted">{{ d.producto.sku }}{% if d.tipo_linea == 'RENTA' %} · RENTA{% endif %}</span></td>
-                <td class="c">{{ d.cantidad|floatformat:"-2" }}</td>
-                <td class="r">{{ factura.moneda.simbolo }}{{ d.precio_unitario|floatformat:2 }}</td>
-                <td class="r">{{ factura.moneda.simbolo }}{{ d.importe|floatformat:2 }}</td>
+                <th width="58%">Concepto</th>
+                <th class="center" width="10%">Cant.</th>
+                <th class="right" width="16%">P. Unitario</th>
+                <th class="right" width="16%">Importe</th>
             </tr>
-        {% endfor %}
+        </thead>
+        <tbody>
+            {% for d in partidas %}
+            <tr class="{% cycle '' 'alt' %}">
+                <td><b>{{ d.producto.nombre }}</b><br><span class="muted">{{ d.producto.sku }}{% if d.tipo_linea == 'RENTA' %} · Renta{% endif %}</span></td>
+                <td class="center">{{ d.cantidad|floatformat:"-2" }}</td>
+                <td class="right">{{ factura.moneda.simbolo }}{{ d.precio_unitario|floatformat:2|intcomma }}</td>
+                <td class="right">{{ factura.moneda.simbolo }}{{ d.importe|floatformat:2|intcomma }}</td>
+            </tr>
+            {% endfor %}
         </tbody>
     </table>
 
-    <table style="width:100%;margin-top:8px;"><tr>
-        <td style="width:55%;vertical-align:top;">
-            {% if uuid %}<div class="box"><div class="lbl">Folio fiscal (UUID)</div><div class="uuid">{{ uuid }}</div></div>{% endif %}
-        </td>
-        <td style="width:45%;"><table class="tot" style="width:100%;">
-            <tr><td class="k">Subtotal</td><td class="v">{{ factura.moneda.simbolo }}{{ factura.subtotal|floatformat:2 }}</td></tr>
-            <tr><td class="k">(+) IVA trasladado</td><td class="v">{{ factura.moneda.simbolo }}{{ factura.impuestos|floatformat:2 }}</td></tr>
-            {% if factura.retenciones > 0 %}
-            <tr><td class="k">(−) Retenciones</td><td class="v" style="color:#b91c1c;">−{{ factura.moneda.simbolo }}{{ factura.retenciones|floatformat:2 }}</td></tr>
-            {% endif %}
-            <tr class="grand"><td class="k" style="color:#fff;">TOTAL</td><td class="v" style="color:#fff;">{{ factura.moneda.simbolo }}{{ factura.total|floatformat:2 }}</td></tr>
-        </table></td>
-    </tr></table>
+    <!-- TOTALES -->
+    <table style="margin-top:14px;">
+        <tr>
+            <td width="58%" style="vertical-align:bottom;">
+                {% if uuid %}<div class="panel" style="background:#f8fafc;"><span class="label">FOLIO FISCAL (UUID)</span><br><span class="uuid">{{ uuid }}</span></div>{% endif %}
+            </td>
+            <td width="42%">
+                <table class="tot">
+                    <tr><td class="k">Subtotal</td><td class="v">{{ factura.moneda.simbolo }}{{ factura.subtotal|floatformat:2|intcomma }}</td></tr>
+                    <tr><td class="k">(+) IVA trasladado</td><td class="v">{{ factura.moneda.simbolo }}{{ factura.impuestos|floatformat:2|intcomma }}</td></tr>
+                    {% if factura.retenciones > 0 %}
+                    <tr><td class="k ret">(−) Retenciones</td><td class="v ret">−{{ factura.moneda.simbolo }}{{ factura.retenciones|floatformat:2|intcomma }}</td></tr>
+                    {% endif %}
+                    <tr><td class="k grand">TOTAL {{ factura.moneda.codigo }}</td><td class="v grand">{{ factura.moneda.simbolo }}{{ factura.total|floatformat:2|intcomma }}</td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 
-    <p class="muted" style="margin-top:18px;text-align:center;">Documento generado por iErp · Sistema de Gestión. La representación fiscal oficial es el CFDI (XML) timbrado por el SAT.</p>
+    <p class="muted" style="margin-top:34px; text-align:center;">Documento generado por iErp · Sistema de Gestión. La representación fiscal oficial es el CFDI (XML) timbrado por el SAT · {{ empresa.nombre_fiscal }}</p>
 </body>
 </html>
