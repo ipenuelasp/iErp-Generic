@@ -144,10 +144,15 @@ def _render_factura_pdf(factura, empresa):
     partidas = factura.pedido.detalles.select_related('producto') if factura.pedido_id else []
     uuid = factura.uuid_cfdi or (factura.cfdis.first().uuid if factura.cfdis.exists() else '')
     cfdi0 = factura.cfdis.first()
+    # Una CxC puede tener varios CFDI: si es uno, mostramos el timbre completo;
+    # si son varios, mostramos un resumen de todos.
+    n_cfdis = factura.cfdis.count()
+    timbre = _timbre_para_pdf(factura) if n_cfdis <= 1 else None
+    cfdis_lista = list(factura.cfdis.all()) if n_cfdis > 1 else None
     html = get_template('admon_finanzas/factura_pdf.html').render({
         'factura': factura, 'empresa': empresa, 'partidas': partidas, 'uuid': uuid,
         'fecha_cfdi': (cfdi0.fecha if cfdi0 and cfdi0.fecha else factura.fecha_emision),
-        'timbre': _timbre_para_pdf(factura),
+        'timbre': timbre, 'cfdis_lista': cfdis_lista,
     })
     out = io.BytesIO()
     pdf = pisa.pisaDocument(io.BytesIO(html.encode('UTF-8')), out)
