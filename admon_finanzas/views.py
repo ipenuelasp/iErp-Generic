@@ -48,6 +48,17 @@ def _leer_cfdi(xml_file):
     return info
 
 
+def _img_url_abs(request, field):
+    """URL absoluta y pública de un ImageField (para imágenes en correo, que no
+    soportan data: URIs y se cortan si van en base64). '' si no hay."""
+    if not field:
+        return ''
+    try:
+        return request.build_absolute_uri(field.url)
+    except Exception:
+        return ''
+
+
 def _img_data_uri(field):
     """Devuelve un data URI base64 de un ImageField (para correo/PDF), o '' si no hay."""
     if not field:
@@ -822,7 +833,7 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
                 template='admon_finanzas/emails/factura_cliente.html',
                 context={
                     'empresa': request.empresa.nombre_fiscal,
-                    'isotipo_uri': _img_data_uri(request.empresa.isotipo or request.empresa.logo),
+                    'isotipo_uri': _img_url_abs(request, request.empresa.isotipo or request.empresa.logo),
                     'cliente': str(factura.cliente),
                     'pedido': factura.pedido.folio if factura.pedido_id else '',
                     'folio': factura.folio,
