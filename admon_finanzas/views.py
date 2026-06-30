@@ -680,6 +680,11 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
                     f"{factura.moneda.simbolo}{restante:,.2f} por facturar.")
             else:
                 messages.success(request, "CFDI agregado. La CxC quedó totalmente facturada.")
+        elif accion == 'eliminar_cfdi':
+            cfdi = get_object_or_404(CfdiCliente, id=request.POST.get('cfdi_id'), factura=factura)
+            ref = cfdi.uuid
+            cfdi.delete()
+            messages.info(request, f"CFDI {ref} eliminado de la cuenta por cobrar.")
         elif accion == 'cancelar' and factura.total_pagado == 0:
             factura.estado = 'CANCELADA'
             factura.save(update_fields=['estado'])

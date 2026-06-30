@@ -109,7 +109,12 @@
                         <td class="px-3 py-3 text-right text-xs font-black text-slate-700">${{ c.total|floatformat:2|intcomma }}</td>
                         <td class="px-5 py-3 text-right whitespace-nowrap">
                             {% if c.archivo_xml %}<a href="{{ c.archivo_xml.url }}" target="_blank" class="text-[10px] font-black text-brand uppercase hover:underline mr-3"><i class="fa-solid fa-file-code mr-1"></i>XML</a>{% endif %}
-                            {% if c.archivo_pdf %}<a href="{{ c.archivo_pdf.url }}" target="_blank" class="text-[10px] font-black text-rose-500 uppercase hover:underline"><i class="fa-solid fa-file-pdf mr-1"></i>PDF</a>{% endif %}
+                            {% if c.archivo_pdf %}<a href="{{ c.archivo_pdf.url }}" target="_blank" class="text-[10px] font-black text-rose-500 uppercase hover:underline mr-3"><i class="fa-solid fa-file-pdf mr-1"></i>PDF</a>{% endif %}
+                            <form method="POST" class="inline" data-confirm="¿Eliminar este CFDI ({{ c.uuid }}) de la cuenta por cobrar?">{% csrf_token %}
+                                <input type="hidden" name="accion" value="eliminar_cfdi">
+                                <input type="hidden" name="cfdi_id" value="{{ c.id }}">
+                                <button type="submit" title="Eliminar CFDI" class="text-slate-300 hover:text-rose-500"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                            </form>
                         </td>
                     </tr>
                     {% endfor %}
