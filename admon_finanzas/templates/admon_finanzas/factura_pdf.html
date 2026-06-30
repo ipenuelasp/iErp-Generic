@@ -31,11 +31,7 @@
     .tot .grand { font-size: 13px; font-weight: bold; color: #fff; background: #1e3a8a; }
     .uuid { font-family: Courier, monospace; font-size: 8px; color: #475569; }
     .sello { font-family: Courier, monospace; font-size: 6px; color: #64748b; word-wrap: break-word;
-             word-break: break-all; margin: 1px 0 6px 0; line-height: 1.3; }
-    .timbre { margin-top: 22px; border: 1px solid #e2e8f0; border-radius: 6px; }
-    .timbre-head { background: #1e3a8a; color: #fff; font-size: 8px; font-weight: bold;
-                   letter-spacing: 0.6px; padding: 6px 12px; }
-    .timbre-body { padding: 10px 12px; }
+             word-break: break-all; margin: 1px 0 6px 0; line-height: 1.25; }
 </style>
 </head>
 <body>
@@ -117,58 +113,34 @@
 
     {% if timbre %}
     <!-- TIMBRE FISCAL DIGITAL (SAT) -->
-    <div class="timbre">
-        <div class="timbre-head">TIMBRE FISCAL DIGITAL · SAT</div>
-        <div class="timbre-body">
-            <table>
-                <tr>
-                    <td width="22%" valign="top" align="center">
-                        {% if timbre.qr %}<img src="{{ timbre.qr }}" style="width:104px; height:104px;">{% endif %}
-                        <div class="uuid" style="margin-top:5px;">{{ timbre.uuid }}</div>
-                    </td>
-                    <td width="78%" valign="top" style="padding-left:12px;">
-                        <table style="margin-bottom:6px;">
-                            <tr>
-                                <td width="50%"><div class="label">RFC PROV. CERTIFICACIÓN</div><div class="val">{{ timbre.rfc_prov_certif }}</div></td>
-                                <td width="50%"><div class="label">FECHA Y HORA DE CERTIFICACIÓN</div><div class="val">{{ timbre.fecha_timbrado }}</div></td>
-                            </tr>
-                            <tr><td colspan="2" style="padding-top:4px;"><div class="label">NO. DE SERIE DEL CERTIFICADO SAT</div><div class="val">{{ timbre.no_cert_sat }}</div></td></tr>
-                        </table>
-                        <div class="label">SELLO DIGITAL DEL CFDI</div>
-                        <div class="sello">{{ timbre.sello_cfdi }}</div>
-                        <div class="label">SELLO DEL SAT</div>
-                        <div class="sello">{{ timbre.sello_sat }}</div>
-                        <div class="label">CADENA ORIGINAL DEL COMPLEMENTO DE CERTIFICACIÓN</div>
-                        <div class="sello" style="margin-bottom:0;">{{ timbre.cadena }}</div>
-                    </td>
-                </tr>
-            </table>
-        </div>
+    <div style="margin-top:22px; border-top:1px solid #cbd5e1; padding-top:10px;">
+        <table>
+            <tr>
+                <td width="20%" valign="top" align="center">
+                    {% if timbre.qr %}<img src="{{ timbre.qr }}" style="width:108px; height:108px;">{% endif %}
+                </td>
+                <td width="80%" valign="top" style="padding-left:8px;">
+                    <span class="label">SELLO DIGITAL DEL CFDI</span>
+                    <div class="sello">{{ timbre.sello_cfdi }}</div>
+                    <span class="label">SELLO DEL SAT</span>
+                    <div class="sello">{{ timbre.sello_sat }}</div>
+                    <span class="label">CADENA ORIGINAL DEL COMPLEMENTO DE CERTIFICACIÓN DEL SAT</span>
+                    <div class="sello">{{ timbre.cadena }}</div>
+                </td>
+            </tr>
+        </table>
+        <table style="margin-top:6px;">
+            <tr>
+                <td width="50%"><span class="label">FOLIO FISCAL (UUID)</span> <span class="uuid">{{ timbre.uuid }}</span></td>
+                <td width="50%"><span class="label">FECHA Y HORA DE CERTIFICACIÓN</span> <span class="val">{{ timbre.fecha_timbrado }}</span></td>
+            </tr>
+            <tr>
+                <td><span class="label">RFC PROVEEDOR DE CERTIFICACIÓN</span> <span class="val">{{ timbre.rfc_prov_certif }}</span></td>
+                <td><span class="label">NO. DE SERIE DEL CERTIFICADO SAT</span> <span class="val">{{ timbre.no_cert_sat }}</span></td>
+            </tr>
+        </table>
     </div>
-    <p style="margin-top:10px; text-align:center; font-size:9px; font-weight:bold; color:#334155;">Este documento es una representación impresa de un CFDI</p>
-
-    {% elif cfdis_lista %}
-    <!-- Varios CFDI: resumen (los XML van adjuntos en el correo) -->
-    <div class="timbre">
-        <div class="timbre-head">COMPROBANTES FISCALES (CFDI) DE ESTA CUENTA</div>
-        <div class="timbre-body">
-            <table class="items">
-                <thead><tr><th width="58%">UUID</th><th class="center" width="22%">Fecha</th><th class="right" width="20%">Total</th></tr></thead>
-                <tbody>
-                {% for c in cfdis_lista %}
-                    <tr class="{% cycle '' 'alt' %}">
-                        <td class="uuid">{{ c.uuid }}</td>
-                        <td class="center">{{ c.fecha|date:"d/m/Y"|default:"—" }}</td>
-                        <td class="right">{{ factura.moneda.simbolo }}{{ c.total|floatformat:2|intcomma }}</td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            <p class="muted" style="margin-top:6px;">Esta cuenta incluye {{ cfdis_lista|length }} comprobantes. El XML de cada uno se adjunta en el correo.</p>
-        </div>
-    </div>
-    <p style="margin-top:10px; text-align:center; font-size:9px; font-weight:bold; color:#334155;">Este documento es una representación impresa de CFDI(s)</p>
-
+    <p style="margin-top:12px; text-align:center; font-size:9px; font-weight:bold; color:#334155;">Este documento es una representación impresa de un CFDI</p>
     {% else %}
     <p class="muted" style="margin-top:34px; text-align:center;">Documento generado por iErp · Sistema de Gestión. La representación fiscal oficial es el CFDI (XML) timbrado por el SAT · {{ empresa.nombre_fiscal }}</p>
     {% endif %}
