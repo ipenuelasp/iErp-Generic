@@ -492,21 +492,38 @@ class AvisarComplementosView(LoginRequiredMixin, View):
             return redirect('admon_finanzas:historial_pagos')
 
         filas = []
+        total = decimal.Decimal('0')
         for p in pendientes:
-            cfdis = sorted({ap.cfdi.uuid for ap in p.aplicaciones.all() if ap.cfdi_id})
-            filas.append(
-                f"  Pago {p.folio}  |  Cliente: {p.cliente or '—'}  |  Fecha: {p.fecha:%d/%m/%Y}  "
-                f"|  Monto: {p.moneda.simbolo}{p.monto:,.2f} {p.moneda.codigo}  "
-                f"|  CFDI(s) PPD: {', '.join(cfdis) or '—'}")
-        texto = (
-            f"Hola,\n\nLos siguientes cobros de {empresa.nombre_fiscal} corresponden a facturas PPD "
-            f"(pago en parcialidades/diferido) ya cobradas y todavía no tienen su complemento de pago (REP). "
-            f"¿Nos ayudas a generarlos?\n\n" + '\n'.join(filas) + "\n\nGracias."
+            # Una fila por CFDI PPD cubierto por este pago, con su monto aplicado
+            aplicaciones_ppd = [ap for ap in p.aplicaciones.all()
+                                if ap.cfdi_id and ap.cfdi.metodo_pago == 'PPD']
+            if not aplicaciones_ppd:
+                continue
+            for ap in aplicaciones_ppd:
+                total += ap.monto_aplicado
+                filas.append({
+                    'folio': p.folio, 'cliente': str(p.cliente or '—'),
+                    'fecha': p.fecha.strftime('%d/%m/%Y'), 'uuid': ap.cfdi.uuid,
+                    'monto': f"{p.moneda.simbolo}{ap.monto_aplicado:,.2f} {p.moneda.codigo}",
+                })
+        if not filas:
+            messages.info(request, "No hay complementos de pago pendientes por avisar en lo seleccionado.")
+            return redirect('admon_finanzas:historial_pagos')
+
+        moneda_sim = pendientes[0].moneda.simbolo
+        moneda_cod = pendientes[0].moneda.codigo
+        from admon_empresas.emails import send_html
+        ok = send_html(
+            subject=f"[iErp] Complementos de pago pendientes — {empresa.nombre_fiscal}",
+            template='admon_finanzas/emails/aviso_complementos.html',
+            context={
+                'empresa': empresa.nombre_fiscal, 'filas': filas,
+                'total': f"{moneda_sim}{total:,.2f} {moneda_cod}",
+            },
+            to=destino,
         )
-        from admon_empresas.emails import send_plain
-        ok = send_plain(f"[iErp] Complementos de pago pendientes — {empresa.nombre_fiscal}", texto, destino)
         if ok:
-            messages.success(request, f"Aviso enviado a {destino} ({len(pendientes)} pago(s) pendientes).")
+            messages.success(request, f"Aviso enviado a {destino} ({len(filas)} factura(s) pendientes).")
         else:
             messages.error(request, "No se pudo enviar el correo. Intenta de nuevo.")
         return redirect('admon_finanzas:historial_pagos')

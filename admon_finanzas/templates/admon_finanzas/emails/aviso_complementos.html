@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#334155;">
+  <div style="max-width:640px;margin:0 auto;padding:32px 20px;">
+    <div style="background:#fff;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0;">
+      <div style="background:#1f2d4f;padding:24px 28px;">
+        <p style="margin:0;color:#cbd5e1;font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;">{{ empresa }}</p>
+        <p style="margin:6px 0 0;color:#fff;font-size:20px;font-weight:800;">Complementos de pago pendientes</p>
+      </div>
+      <div style="padding:28px;">
+        <p style="margin:0 0 14px;font-size:15px;">Hola,</p>
+        <p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:#475569;">
+          Los siguientes cobros de <strong>{{ empresa }}</strong> corresponden a facturas
+          <strong>PPD</strong> (pago en parcialidades/diferido) ya cobradas y todavía no
+          tienen su complemento de pago (REP). ¿Nos ayudas a generarlos?
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+          <thead>
+            <tr style="background:#f8fafc;">
+              <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Pago</th>
+              <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Cliente</th>
+              <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Fecha</th>
+              <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;">UUID CFDI</th>
+              <th style="text-align:right;padding:8px 10px;border-bottom:2px solid #e2e8f0;color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in filas %}
+            <tr>
+              <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;font-weight:700;color:#1e293b;">{{ f.folio }}</td>
+              <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#475569;">{{ f.cliente }}</td>
+              <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#475569;white-space:nowrap;">{{ f.fecha }}</td>
+              <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#94a3b8;font-family:monospace;font-size:10.5px;">{{ f.uuid }}</td>
+              <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:700;color:#0f766e;white-space:nowrap;">{{ f.monto }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" style="padding:12px 10px;text-align:right;font-weight:800;color:#1e293b;text-transform:uppercase;font-size:11px;letter-spacing:.06em;">Total</td>
+              <td style="padding:12px 10px;text-align:right;font-weight:800;color:#0f766e;font-size:14px;white-space:nowrap;">{{ total }}</td>
+            </tr>
+          </tfoot>
+        </table>
+        <p style="margin:20px 0 0;font-size:13px;color:#94a3b8;">Gracias.</p>
+      </div>
+    </div>
+    <p style="text-align:center;color:#94a3b8;font-size:11px;margin-top:18px;">Enviado por iErp · Sistema de Gestión</p>
+  </div>
+</body>
+</html>
