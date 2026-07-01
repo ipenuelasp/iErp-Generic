@@ -25,18 +25,28 @@
     <div id="modalAvisoContador" class="fixed inset-0 z-[100] hidden overflow-y-auto">
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalAvisoContador').classList.add('hidden')"></div>
         <div class="relative min-h-screen flex items-center justify-center p-4">
-            <form method="POST" action="{% url 'admon_finanzas:avisar_complementos' %}" class="relative bg-white rounded-[2rem] shadow-2xl p-8 w-full max-w-md">
-                {% csrf_token %}
-                <div id="aviso_ids_container"></div>
-                <h3 class="text-lg font-black text-slate-800 uppercase italic mb-2">Avisar a contador</h3>
-                <p class="text-[11px] text-slate-500 font-medium mb-4">Se enviará el detalle de <span id="aviso_count" class="font-black text-slate-700">0</span> cobro(s) PPD sin complemento de pago (los que marcaste en la tabla).</p>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Correo del contador</label>
-                <input type="email" name="email_destino" value="{{ empresa_email_contador|default:'' }}" required class="w-full mt-1 mb-4 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold">
-                <div class="flex justify-end gap-3">
-                    <button type="button" onclick="document.getElementById('modalAvisoContador').classList.add('hidden')" class="px-5 py-3 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:text-slate-600">Cancelar</button>
-                    <button type="submit" class="bg-amber-500 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Enviar aviso</button>
+            <div class="relative bg-white rounded-[2rem] shadow-2xl p-8 w-full max-w-md">
+                <div id="aviso_sin_seleccion" class="hidden">
+                    <h3 class="text-lg font-black text-slate-800 uppercase italic mb-2">Nada seleccionado</h3>
+                    <p class="text-[12px] text-slate-500 font-medium mb-6">Marca al menos un cobro pendiente de complemento en la columna izquierda de la tabla, o marca todos los de esta página de una vez.</p>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="document.getElementById('modalAvisoContador').classList.add('hidden')" class="px-5 py-3 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:text-slate-600">Cerrar</button>
+                        <button type="button" onclick="marcarTodosDesdeModal()" class="bg-amber-500 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Marcar todos los pendientes</button>
+                    </div>
                 </div>
-            </form>
+                <form id="aviso_cuerpo" method="POST" action="{% url 'admon_finanzas:avisar_complementos' %}" class="hidden">
+                    {% csrf_token %}
+                    <div id="aviso_ids_container"></div>
+                    <h3 class="text-lg font-black text-slate-800 uppercase italic mb-2">Avisar a contador</h3>
+                    <p class="text-[11px] text-slate-500 font-medium mb-4">Se enviará el detalle de <span id="aviso_count" class="font-black text-slate-700">0</span> cobro(s) PPD sin complemento de pago (los que marcaste en la tabla).</p>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Correo del contador</label>
+                    <input type="email" name="email_destino" value="{{ empresa_email_contador|default:'' }}" required class="w-full mt-1 mb-4 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold">
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="document.getElementById('modalAvisoContador').classList.add('hidden')" class="px-5 py-3 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:text-slate-600">Cancelar</button>
+                        <button type="submit" class="bg-amber-500 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Enviar aviso</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -170,8 +180,17 @@ function marcarTodosAviso(master) {
     document.querySelectorAll('.chk-aviso').forEach(chk => { chk.checked = master.checked; });
 }
 function abrirAvisoContador() {
-    const ids = Array.from(document.querySelectorAll('.chk-aviso:checked')).map(c => c.value);
-    if (ids.length === 0) { alert('Marca al menos un cobro pendiente de complemento (columna izquierda de la tabla).'); return; }
+    let ids = Array.from(document.querySelectorAll('.chk-aviso:checked')).map(c => c.value);
+    const aviso = document.getElementById('aviso_sin_seleccion');
+    const cuerpo = document.getElementById('aviso_cuerpo');
+    if (ids.length === 0) {
+        aviso.classList.remove('hidden');
+        cuerpo.classList.add('hidden');
+        document.getElementById('modalAvisoContador').classList.remove('hidden');
+        return;
+    }
+    aviso.classList.add('hidden');
+    cuerpo.classList.remove('hidden');
     const cont = document.getElementById('aviso_ids_container');
     cont.innerHTML = '';
     ids.forEach(id => {
@@ -181,6 +200,10 @@ function abrirAvisoContador() {
     });
     document.getElementById('aviso_count').innerText = ids.length;
     document.getElementById('modalAvisoContador').classList.remove('hidden');
+}
+function marcarTodosDesdeModal() {
+    document.querySelectorAll('.chk-aviso').forEach(chk => { chk.checked = true; });
+    abrirAvisoContador();
 }
 function abrirComplemento(pagoId, folio) {
     document.getElementById('comp_folio').innerText = 'Pago ' + folio;
