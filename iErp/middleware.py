@@ -34,6 +34,10 @@ class ErrorNotifyMiddleware:
                 url = request.build_absolute_uri()
             except Exception:
                 url = request.path
+            try:
+                host = request.get_host()
+            except Exception:
+                host = request.META.get('HTTP_HOST', '—')
 
             # Datos enviados (sin csrf ni contraseñas), recortados
             datos = []
@@ -51,7 +55,7 @@ class ErrorNotifyMiddleware:
                 f"Empresa:  {empresa_txt}\n"
                 f"Sede:     {request.session.get('sucursal_nombre', '—')}\n"
                 f"Usuario:  {usuario}\n"
-                f"Host:     {request.get_host()}\n"
+                f"Host:     {host}\n"
                 f"Método:   {request.method}\n"
                 f"URL:      {url}\n"
                 f"Error:    {type(exception).__name__}: {exception}\n\n"
