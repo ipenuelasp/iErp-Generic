@@ -325,6 +325,9 @@ class Pago(models.Model):
     referencia = models.CharField(max_length=100, blank=True, null=True)
     notas = models.TextField(blank=True, null=True)
 
+    # Comprobante del pago (ficha de transferencia / depósito), no fiscal
+    comprobante = models.FileField(upload_to='pagos/comprobantes/', null=True, blank=True)
+
     # Complemento de pago (REP) que emite el proveedor; suele llegar después
     uuid_complemento = models.CharField(max_length=40, blank=True, null=True)
     fecha_complemento = models.DateField(null=True, blank=True)

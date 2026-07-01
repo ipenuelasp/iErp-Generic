@@ -12,7 +12,7 @@
         <a href="{% url 'admon_finanzas:cuentas_por_cobrar' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver</a>
     </div>
 
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
         <div class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 mb-8">
             <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block ml-1">Datos del cobro</label>
@@ -31,6 +31,7 @@
                 <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Referencia</label><input type="text" name="referencia" placeholder="No. transferencia / cheque"></div>
                 <div class="space-y-1 md:col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Cuenta/banco (informativo)</label><input type="text" name="cuenta_banco"></div>
                 <div class="space-y-1 md:col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Notas</label><input type="text" name="notas"></div>
+                <div class="space-y-1 md:col-span-4"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Comprobante de pago (ficha de transferencia / depósito)</label><input type="file" name="comprobante" accept=".pdf,.jpg,.jpeg,.png"></div>
             </div>
         </div>
 

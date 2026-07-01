@@ -61,7 +61,8 @@ def registrar_pago(*, empresa, tipo, proveedor, fecha, moneda, metodo,
 
 @transaction.atomic
 def registrar_cobro(*, empresa, cliente, fecha, moneda, metodo,
-                    usuario, aplicaciones, cuenta_banco=None, referencia=None, notas=None):
+                    usuario, aplicaciones, cuenta_banco=None, referencia=None, notas=None,
+                    comprobante=None):
     """Crea un cobro (Pago tipo INGRESO) y lo aplica a una o varias facturas
     de cliente. aplicaciones: lista de dicts {factura, monto_aplicado, tipo_cambio}
     donde factura es una FacturaCliente."""
@@ -72,6 +73,7 @@ def registrar_cobro(*, empresa, cliente, fecha, moneda, metodo,
         empresa=empresa, tipo=Pago.TIPO_INGRESO, cliente=cliente, fecha=fecha,
         moneda=moneda, metodo=metodo, cuenta_banco=cuenta_banco,
         referencia=referencia, notas=notas, creado_por=usuario,
+        comprobante=comprobante,
     )
 
     total_pago = decimal.Decimal('0')

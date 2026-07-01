@@ -866,6 +866,7 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
                     empresa=empresa, cliente=factura.cliente,
                     fecha=request.POST.get('fecha') or None, moneda=moneda, metodo=metodo,
                     usuario=request.user, referencia=request.POST.get('referencia'),
+                    comprobante=request.FILES.get('comprobante'),
                     aplicaciones=[{'factura': factura, 'monto_aplicado': monto, 'tipo_cambio': '1'}])
                 messages.success(request, f"Cobro {cobro.folio} registrado a {factura.folio}.")
             except services.ErrorPago as e:
@@ -887,6 +888,7 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
                     empresa=empresa, cliente=factura.cliente,
                     fecha=request.POST.get('fecha') or None, moneda=moneda, metodo=metodo,
                     usuario=request.user, referencia=request.POST.get('referencia'),
+                    comprobante=request.FILES.get('comprobante'),
                     aplicaciones=[{'factura': factura, 'cfdi': cfdi,
                                    'monto_aplicado': monto, 'tipo_cambio': '1'}])
                 messages.success(request, f"Cobro {cobro.folio} aplicado a la factura {cfdi.serie_folio or cfdi.uuid[:8]}.")
@@ -1133,6 +1135,7 @@ class RegistrarCobroView(LoginRequiredMixin, View):
                 cuenta_banco=request.POST.get('cuenta_banco'),
                 referencia=request.POST.get('referencia'),
                 notas=request.POST.get('notas'),
+                comprobante=request.FILES.get('comprobante'),
             )
         except services.ErrorPago as e:
             messages.error(request, str(e))
