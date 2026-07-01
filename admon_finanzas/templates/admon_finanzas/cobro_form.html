@@ -60,8 +60,8 @@
                                     <td class="px-4 py-4"><div class="text-xs font-bold text-slate-600">{{ f.cliente }}</div><div class="text-[10px] font-mono text-slate-400">Factura {{ c.serie_folio|default:c.uuid|truncatechars:20 }}</div></td>
                                     <td class="px-4 py-4 text-right text-xs font-black text-emerald-600">{{ f.moneda.simbolo }}{{ c.saldo|floatformat:2|intcomma }} <span class="text-[9px] text-slate-400">{{ f.moneda.codigo }}</span></td>
                                     <td class="px-4 py-4">
-                                        <input type="hidden" name="factura_id[]" value="{{ f.id }}">
-                                        <input type="hidden" name="cfdi_id[]" value="{{ c.id }}">
+                                        <input type="hidden" name="factura_id[]" value="{{ f.id }}" disabled>
+                                        <input type="hidden" name="cfdi_id[]" value="{{ c.id }}" disabled>
                                         <input type="number" name="monto_aplicado[]" step="0.01" min="0" value="0" disabled oninput="recalc()" class="m-aplicado text-center font-black text-brand">
                                     </td>
                                     <td class="px-4 py-4"><input type="number" name="tipo_cambio[]" step="0.000001" min="0" value="1" disabled oninput="recalc()" class="tc text-center font-bold"></td>
@@ -75,8 +75,8 @@
                                     <td class="px-4 py-4"><div class="text-xs font-bold text-slate-600">{{ f.cliente }}</div><div class="text-[10px] text-slate-300 italic">sin CFDI</div></td>
                                     <td class="px-4 py-4 text-right text-xs font-black text-emerald-600">{{ f.moneda.simbolo }}{{ f.saldo|floatformat:2|intcomma }} <span class="text-[9px] text-slate-400">{{ f.moneda.codigo }}</span></td>
                                     <td class="px-4 py-4">
-                                        <input type="hidden" name="factura_id[]" value="{{ f.id }}">
-                                        <input type="hidden" name="cfdi_id[]" value="">
+                                        <input type="hidden" name="factura_id[]" value="{{ f.id }}" disabled>
+                                        <input type="hidden" name="cfdi_id[]" value="" disabled>
                                         <input type="number" name="monto_aplicado[]" step="0.01" min="0" value="0" disabled oninput="recalc()" class="m-aplicado text-center font-black text-brand">
                                     </td>
                                     <td class="px-4 py-4"><input type="number" name="tipo_cambio[]" step="0.000001" min="0" value="1" disabled oninput="recalc()" class="tc text-center font-bold"></td>
@@ -116,7 +116,10 @@ function toggleFila(chk) {
     const activo = chk.checked;
     const mApl = tr.querySelector('.m-aplicado');
     const tc = tr.querySelector('.tc');
-    mApl.disabled = !activo; tc.disabled = !activo;
+    // Habilita/deshabilita TODOS los campos de la fila (incluidos los ocultos
+    // factura_id/cfdi_id) para que las filas NO marcadas no envíen nada y los
+    // arreglos del POST queden alineados.
+    tr.querySelectorAll('input[name]').forEach(inp => { inp.disabled = !activo; });
     if (activo) {
         mApl.value = parseFloat(tr.dataset.saldo).toFixed(2);
         tc.value = (tr.dataset.moneda === monedaPago().cod) ? 1 : tc.value;

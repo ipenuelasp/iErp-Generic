@@ -1110,7 +1110,11 @@ class RegistrarCobroView(LoginRequiredMixin, View):
         aplicaciones = []
         cliente = None
         for i, fid in enumerate(factura_ids):
-            monto = decimal.Decimal(montos[i] or '0')
+            monto_raw = montos[i] if i < len(montos) else '0'
+            try:
+                monto = decimal.Decimal(monto_raw or '0')
+            except decimal.InvalidOperation:
+                monto = decimal.Decimal('0')
             if monto <= 0:
                 continue
             factura = get_object_or_404(FacturaCliente, id=fid, empresa=empresa)
