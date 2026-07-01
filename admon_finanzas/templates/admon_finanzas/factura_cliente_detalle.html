@@ -245,6 +245,19 @@
                             </form>
                         </td>
                     </tr>
+                    {% if c.esta_pagada %}
+                    <tr class="bg-slate-50/40">
+                        <td colspan="5" class="px-5 pb-3 pt-0 text-[9px] text-slate-400">
+                            <span class="font-black uppercase mr-2">Comprobante(s) de pago:</span>
+                            {% for ap in c.aplicaciones.all %}
+                                <a href="{% url 'admon_finanzas:pago_pdf' ap.pago.id %}" target="_blank" class="font-bold text-brand hover:underline mr-2"><i class="fa-solid fa-receipt mr-1"></i>{{ ap.pago.folio }} (recibo)</a>
+                                {% if ap.pago.comprobante %}<a href="{{ ap.pago.comprobante.url }}" target="_blank" class="font-bold text-emerald-600 hover:underline mr-2"><i class="fa-solid fa-paperclip mr-1"></i>ficha adjunta</a>{% endif %}
+                            {% empty %}
+                            <span class="italic">sin pagos ligados</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endif %}
                     {% endfor %}
                 </tbody>
                 <tfoot class="bg-slate-50/60">

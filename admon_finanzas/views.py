@@ -520,6 +520,23 @@ class AvisarComplementosView(LoginRequiredMixin, View):
              'subtotal': f"{moneda_sim}{g['subtotal']:,.2f} {moneda_cod}"}
             for g in por_cliente.values() if g['filas']
         ]
+        # Adjunta el recibo (PDF del pago) y el comprobante de transferencia/depósito
+        # de cada pago incluido, para que el contador tenga con qué cotejar el REP.
+        adjuntos = []
+        for p in pendientes:
+            pdf_bytes = _render_pago_pdf(p, empresa)
+            if pdf_bytes:
+                adjuntos.append({'filename': f"Recibo-{p.folio}.pdf", 'content': pdf_bytes})
+            if p.comprobante:
+                try:
+                    p.comprobante.open('rb')
+                    data = p.comprobante.read()
+                    p.comprobante.close()
+                    ext = p.comprobante.name.rsplit('.', 1)[-1]
+                    adjuntos.append({'filename': f"Comprobante-{p.folio}.{ext}", 'content': data})
+                except Exception as e:
+                    print(f'[ADJUNTO COMPROBANTE] {e}')
+
         from admon_empresas.emails import send_html
         ok = send_html(
             subject=f"[iErp] Complementos de pago pendientes — {empresa.nombre_fiscal}",
@@ -529,6 +546,7 @@ class AvisarComplementosView(LoginRequiredMixin, View):
                 'total': f"{moneda_sim}{total:,.2f} {moneda_cod}",
             },
             to=destino,
+            attachments=adjuntos,
         )
         if ok:
             messages.success(request, f"Aviso enviado a {destino} ({n_filas} factura(s) pendientes).")
@@ -608,28 +626,36 @@ class EstadosCuentaView(LoginRequiredMixin, View):
         })
 
 
+def _render_pago_pdf(pago, empresa):
+    """Recibo de cobro/pago en PDF (bytes) o None si xhtml2pdf falla."""
+    import io
+    from django.template.loader import get_template
+    from xhtml2pdf import pisa
+    html = get_template('admon_finanzas/recibo_pago.html').render({
+        'pago': pago,
+        'empresa': empresa,
+        'aplicaciones': pago.aplicaciones.select_related('factura', 'factura_cliente'),
+        'es_ingreso': pago.tipo == Pago.TIPO_INGRESO,
+    })
+    result = io.BytesIO()
+    pdf = pisa.pisaDocument(io.BytesIO(html.encode('UTF-8')), result)
+    if pdf.err:
+        return None
+    return result.getvalue()
+
+
 class PagoPDFView(LoginRequiredMixin, View):
     """Recibo de cobro (INGRESO) o comprobante de pago (EGRESO)."""
     def get(self, request, pk):
         if not request.empresa:
             return redirect('home')
-        import io
-        from django.template.loader import get_template
         pago = get_object_or_404(
             Pago.objects.select_related('proveedor', 'cliente', 'moneda', 'metodo'),
             pk=pk, empresa=request.empresa)
-        html = get_template('admon_finanzas/recibo_pago.html').render({
-            'pago': pago,
-            'empresa': request.empresa,
-            'aplicaciones': pago.aplicaciones.select_related('factura', 'factura_cliente'),
-            'es_ingreso': pago.tipo == Pago.TIPO_INGRESO,
-        })
-        from xhtml2pdf import pisa
-        result = io.BytesIO()
-        pdf = pisa.pisaDocument(io.BytesIO(html.encode('UTF-8')), result)
-        if pdf.err:
+        pdf_bytes = _render_pago_pdf(pago, request.empresa)
+        if pdf_bytes is None:
             return HttpResponse("Error al generar el PDF", status=400)
-        resp = HttpResponse(result.getvalue(), content_type='application/pdf')
+        resp = HttpResponse(pdf_bytes, content_type='application/pdf')
         resp['Content-Disposition'] = f'inline; filename="{pago.folio}.pdf"'
         return resp
 
