@@ -541,6 +541,7 @@ class AvisarComplementosView(LoginRequiredMixin, View):
             context={
                 'empresa': empresa.nombre_fiscal, 'grupos': grupos,
                 'total': f"{moneda_sim}{total:,.2f} {moneda_cod}",
+                'isotipo_uri': _img_url_abs(request, empresa.isotipo or empresa.logo),
             },
             to=destino,
             attachments=adjuntos,
