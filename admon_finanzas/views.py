@@ -644,13 +644,24 @@ class CuentasPorCobrarView(LoginRequiredMixin, View):
             'cliente', 'moneda', 'pedido').prefetch_related('aplicaciones', 'cfdis')
 
         # Filtro de facturación: "con factura" = tiene UUID/XML único o algún CFDI ligado.
-        from django.db.models import Q
+        from django.db.models import Q, Case, When, Value, IntegerField
         facturada_q = Q(uuid_cfdi__gt='') | Q(archivo_xml__gt='') | Q(cfdis__isnull=False)
         f_fact = (request.GET.get('facturacion') or '').strip()
         if f_fact == 'si':
             qs = qs.filter(facturada_q).distinct()
         elif f_fact == 'no':
             qs = qs.exclude(facturada_q)
+
+        # Por defecto ocultamos las canceladas (salvo que se filtren explícitamente)
+        if (request.GET.get('estado') or '').strip() != 'CANCELADA':
+            qs = qs.exclude(estado='CANCELADA')
+
+        # Orden: primero lo pendiente (cobro/facturación), al final lo ya pagado/cancelado
+        qs = qs.annotate(_prioridad=Case(
+            When(estado__in=['PENDIENTE', 'PARCIAL'], then=Value(0)),
+            When(estado='PAGADA', then=Value(1)),
+            default=Value(2), output_field=IntegerField(),
+        )).order_by('_prioridad', '-fecha_emision', '-id')
 
         res = listas.construir(
             request, qs,
