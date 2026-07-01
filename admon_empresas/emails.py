@@ -42,6 +42,25 @@ def enviar_invitacion_cliente(cliente):
     )
 
 
+def send_plain(subject, text, to):
+    """Correo de texto plano vía Resend (para avisos internos). Robusto: nunca lanza."""
+    try:
+        resend.api_key = settings.RESEND_API_KEY
+        html = '<pre style="font-family:monospace;font-size:12px;white-space:pre-wrap">' + \
+               (text or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;') + '</pre>'
+        resend.Emails.send({
+            'from': settings.DEFAULT_FROM_EMAIL,
+            'to': [to] if isinstance(to, str) else list(to),
+            'subject': subject,
+            'html': html,
+            'text': text,
+        })
+        return True
+    except Exception as e:
+        print(f'[EMAIL PLAIN ERROR] {e}')
+        return False
+
+
 def send_html(subject, template, context, to, request=None, attachments=None):
     """Envía un correo HTML via Resend. Retorna True si fue exitoso.
     `attachments`: lista opcional de dicts {'filename': str, 'content': bytes}."""

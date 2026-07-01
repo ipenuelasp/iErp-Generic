@@ -88,6 +88,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'admon_empresas.middleware.TenantMiddleware',
     'admon_empresas.middleware.ModuloAccessMiddleware',
+    'iErp.middleware.ErrorNotifyMiddleware',
     'iErp.middleware.TimezoneMiddleware',
 ]
 
@@ -216,3 +217,5 @@ UNFOLD = {
 # EMAIL CONFIGURATION — Resend API HTTP (no requiere puertos SMTP abiertos)
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'TI Grupo Gonza <ti@phanalytics.com.mx>')
+# Correo que recibe el aviso cuando truena una vista (error 500).
+ERROR_NOTIFY_EMAIL = os.environ.get('ERROR_NOTIFY_EMAIL', 'ipenuelas@phanalytics.com.mx')
