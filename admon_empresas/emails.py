@@ -42,19 +42,28 @@ def enviar_invitacion_cliente(cliente):
     )
 
 
-def send_plain(subject, text, to):
-    """Correo de texto plano vía Resend (para avisos internos). Robusto: nunca lanza."""
+def send_plain(subject, text, to, attachments=None):
+    """Correo de texto plano vía Resend (para avisos internos). Robusto: nunca lanza.
+    `attachments`: lista opcional de {'filename': str, 'content': bytes}."""
     try:
+        import base64
         resend.api_key = settings.RESEND_API_KEY
         html = '<pre style="font-family:monospace;font-size:12px;white-space:pre-wrap">' + \
                (text or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;') + '</pre>'
-        resend.Emails.send({
+        payload = {
             'from': settings.DEFAULT_FROM_EMAIL,
             'to': [to] if isinstance(to, str) else list(to),
             'subject': subject,
             'html': html,
             'text': text,
-        })
+        }
+        if attachments:
+            payload['attachments'] = [
+                {'filename': a['filename'],
+                 'content': base64.b64encode(a['content']).decode()}
+                for a in attachments
+            ]
+        resend.Emails.send(payload)
         return True
     except Exception as e:
         print(f'[EMAIL PLAIN ERROR] {e}')

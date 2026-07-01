@@ -49,20 +49,33 @@ class ErrorNotifyMiddleware:
                     datos.append(f"  {k} = {v[:200]}")
             datos_txt = '\n'.join(datos) or '  (sin datos POST)'
 
-            cuerpo = (
-                f"Ocurrió un error en iErp.\n\n"
-                f"Fecha:    {timezone.now():%d/%m/%Y %H:%M:%S}\n"
+            ahora = timezone.now()
+            sede = request.session.get('sucursal_nombre', '—')
+            traza = traceback.format_exc()
+
+            # Resumen (cuerpo del correo)
+            resumen = (
+                f"Ocurrió un error en iErp. El detalle completo va en el adjunto.\n\n"
+                f"Fecha:    {ahora:%d/%m/%Y %H:%M:%S}\n"
                 f"Empresa:  {empresa_txt}\n"
-                f"Sede:     {request.session.get('sucursal_nombre', '—')}\n"
+                f"Sede:     {sede}\n"
                 f"Usuario:  {usuario}\n"
                 f"Host:     {host}\n"
                 f"Método:   {request.method}\n"
                 f"URL:      {url}\n"
-                f"Error:    {type(exception).__name__}: {exception}\n\n"
-                f"--- Datos enviados ---\n{datos_txt}\n\n"
-                f"--- Traza ---\n{traceback.format_exc()}"
+                f"Error:    {type(exception).__name__}: {exception}\n"
             )
-            send_plain(f"[iErp] Error · {empresa_txt} · {request.path}", cuerpo, destino)
+            # Detalle completo (adjunto .txt)
+            detalle = (
+                f"iErp — Reporte de error\n{'='*60}\n"
+                f"{resumen}\n"
+                f"--- Datos enviados (POST) ---\n{datos_txt}\n\n"
+                f"--- Traza completa ---\n{traza}"
+            )
+            nombre = f"error_{ahora:%Y%m%d_%H%M%S}.txt"
+            send_plain(
+                f"[iErp] Error · {empresa_txt} · {request.path}", resumen, destino,
+                attachments=[{'filename': nombre, 'content': detalle.encode('utf-8')}])
         except Exception as e:
             print(f'[ERROR NOTIFY] {e}')
         return None  # deja que Django siga con su handler500 (página amigable)
