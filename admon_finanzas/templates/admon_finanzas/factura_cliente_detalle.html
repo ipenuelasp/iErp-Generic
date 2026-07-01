@@ -411,7 +411,14 @@
                 // data-saldo es la BASE por facturar (subtotal), comparamos base contra base
                 const saldoBase = parseFloat(form.dataset.saldo || '0');
                 const okRfc = rfcEsperado && rfcXml === rfcEsperado;
-                const cabe = subXml <= saldoBase + 0.01;
+                // Tolerancia: el sistema guarda precio_unitario con 4 decimales, pero el
+                // CFDI se timbra con precios de 2 decimales — cada unidad puede diferir
+                // hasta $0.005, así que toleramos esa diferencia por la cantidad facturada.
+                const conceptos = Array.from(xml.getElementsByTagNameNS('*', 'Concepto'));
+                const cantidadTotal = conceptos.reduce(
+                    (acc, c) => acc + (parseFloat(c.getAttribute('Cantidad') || '0') || 0), 0) || 1;
+                const tolerancia = Math.max(0.01, cantidadTotal * 0.005);
+                const cabe = subXml <= saldoBase + tolerancia;
                 const fmt = (n) => '$' + n.toLocaleString('es-MX', {minimumFractionDigits: 2});
 
                 let html = '';
