@@ -226,6 +226,9 @@
                         <td class="px-3 py-3 text-center">
                             {% if c.esta_pagada %}
                             <span class="text-[9px] font-black uppercase px-2 py-1 rounded bg-emerald-50 text-emerald-600">Pagada</span>
+                            {% if c.necesita_complemento %}
+                            <span title="PPD: falta el complemento de pago (REP)" class="ml-1 text-[9px] font-black uppercase px-2 py-1 rounded bg-amber-50 text-amber-600"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Sin complemento de pago</span>
+                            {% endif %}
                             {% else %}
                             <button type="button" onclick="cobrarCfdi('{{ c.id }}','{{ c.serie_folio|default:c.uuid }}','{{ c.saldo|floatformat:2 }}')" class="text-[9px] font-black uppercase px-2 py-1 rounded bg-brand/10 text-brand hover:bg-brand/20"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>Cobrar{% if c.total_pagado > 0 %} (resta ${{ c.saldo|floatformat:2|intcomma }}){% endif %}</button>
                             {% endif %}

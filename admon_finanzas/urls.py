@@ -11,6 +11,7 @@ urlpatterns = [
     path('pagos/nuevo/', views.RegistrarPagoView.as_view(), name='registrar_pago'),
     path('pagos/<int:pk>/complemento/', views.AdjuntarComplementoView.as_view(), name='adjuntar_complemento'),
     path('pagos/<int:pk>/pdf/', views.PagoPDFView.as_view(), name='pago_pdf'),
+    path('pagos/avisar-complementos/', views.AvisarComplementosView.as_view(), name='avisar_complementos'),
 
     # Cuentas por cobrar (clientes)
     path('por-cobrar/', views.CuentasPorCobrarView.as_view(), name='cuentas_por_cobrar'),

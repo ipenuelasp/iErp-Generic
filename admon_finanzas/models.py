@@ -259,6 +259,9 @@ class CfdiCliente(models.Model):
     uuid = models.CharField(max_length=40)
     serie_folio = models.CharField(max_length=60, blank=True, default='')
     fecha = models.DateField(null=True, blank=True)
+    metodo_pago = models.CharField(
+        max_length=3, blank=True, default='',
+        help_text="PUE (pago en una exhibición) o PPD (en parcialidades/diferido, requiere REP)")
     subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     traslados = models.DecimalField(max_digits=14, decimal_places=2, default=0,
                                     help_text="IVA trasladado de este CFDI")
@@ -294,6 +297,15 @@ class CfdiCliente(models.Model):
         if self.esta_pagada:
             return 'Pagada'
         return 'Parcial' if self.total_pagado > 0 else 'Pendiente'
+
+    @property
+    def tiene_complemento(self):
+        return any(ap.pago.tiene_complemento for ap in self.aplicaciones.all())
+
+    @property
+    def necesita_complemento(self):
+        """PPD (pago en parcialidades/diferido) exige un REP una vez cobrado."""
+        return self.metodo_pago == 'PPD' and self.esta_pagada and not self.tiene_complemento
 
     def __str__(self):
         return f"{self.uuid} — {self.factura.folio}"
@@ -340,6 +352,14 @@ class Pago(models.Model):
     @property
     def tiene_complemento(self):
         return bool(self.complemento_xml or self.uuid_complemento)
+
+    @property
+    def necesita_complemento(self):
+        """Un cobro (ingreso) necesita REP si aplica a algún CFDI facturado en
+        modalidad PPD y todavía no se le ha adjuntado el complemento."""
+        if self.tipo != self.TIPO_INGRESO or self.tiene_complemento:
+            return False
+        return any(ap.cfdi_id and ap.cfdi.metodo_pago == 'PPD' for ap in self.aplicaciones.all())
 
     class Meta:
         ordering = ['-fecha', '-id']

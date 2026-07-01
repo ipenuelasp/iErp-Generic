@@ -35,6 +35,7 @@ def _leer_cfdi(xml_file):
             'uuid': '', 'rfc_receptor': '', 'nombre_receptor': '',
             'serie': root.get('Serie') or '', 'folio': root.get('Folio') or '',
             'moneda': root.get('Moneda') or '', 'fecha': root.get('Fecha') or '',
+            'metodo_pago': (root.get('MetodoPago') or '').upper(),
             'conceptos': [],
             # Timbre fiscal (para la representación impresa)
             'sello_cfdi': root.get('Sello') or '', 'rfc_emisor': '', 'nombre_emisor': '',
@@ -466,6 +467,49 @@ class AdjuntarComplementoView(LoginRequiredMixin, View):
         return redirect('admon_finanzas:historial_pagos')
 
 
+class AvisarComplementosView(LoginRequiredMixin, View):
+    """Avisa por correo al contador qué cobros (PPD ya pagados) siguen sin su
+    complemento de pago (REP), para que los genere."""
+    def post(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+
+        destino = (request.POST.get('email_destino') or empresa.email_contador or '').strip()
+        if not destino:
+            messages.error(request, "Captura el correo del contador (o guárdalo en Ajustes de empresa).")
+            return redirect('admon_finanzas:historial_pagos')
+
+        pendientes = [p for p in Pago.objects.filter(empresa=empresa, tipo='INGRESO')
+                      .select_related('cliente', 'moneda')
+                      .prefetch_related('aplicaciones__cfdi', 'aplicaciones__factura_cliente')
+                      if p.necesita_complemento]
+        if not pendientes:
+            messages.info(request, "No hay complementos de pago pendientes por avisar.")
+            return redirect('admon_finanzas:historial_pagos')
+
+        filas = []
+        for p in pendientes:
+            cfdis = sorted({ap.cfdi.uuid for ap in p.aplicaciones.all() if ap.cfdi_id})
+            filas.append(
+                f"  Pago {p.folio}  |  Cliente: {p.cliente or '—'}  |  Fecha: {p.fecha:%d/%m/%Y}  "
+                f"|  Monto: {p.moneda.simbolo}{p.monto:,.2f} {p.moneda.codigo}  "
+                f"|  CFDI(s) PPD: {', '.join(cfdis) or '—'}")
+        texto = (
+            f"Hola,\n\nLos siguientes cobros de {empresa.nombre_fiscal} corresponden a facturas PPD "
+            f"(pago en parcialidades/diferido) ya cobradas y todavía no tienen su complemento de pago (REP). "
+            f"¿Nos ayudas a generarlos?\n\n" + '\n'.join(filas) + "\n\nGracias."
+        )
+        from admon_empresas.emails import send_plain
+        ok = send_plain(f"[iErp] Complementos de pago pendientes — {empresa.nombre_fiscal}", texto, destino)
+        if ok:
+            messages.success(request, f"Aviso enviado a {destino} ({len(pendientes)} pago(s) pendientes).")
+        else:
+            messages.error(request, "No se pudo enviar el correo. Intenta de nuevo.")
+        return redirect('admon_finanzas:historial_pagos')
+
+
 class EstadoCuentaClientePDFView(LoginRequiredMixin, View):
     """Estado de cuenta: CxC de un cliente con saldos pendientes."""
     def get(self, request, cliente_id):
@@ -615,10 +659,16 @@ class HistorialPagosView(LoginRequiredMixin, View):
             'ingreso': agg['ingreso'] or Z,
             'neto': (agg['ingreso'] or Z) - (agg['egreso'] or Z),
         }
+        pendientes_complemento = sum(
+            1 for p in Pago.objects.filter(empresa=empresa, tipo='INGRESO')
+            .prefetch_related('aplicaciones__cfdi') if p.necesita_complemento)
+
         context = {
             'pagos': res['page_obj'], 'page_obj': res['page_obj'],
             'totales': res['totales'], 'lista': res['lista'],
             'totales_tipo': totales_tipo,
+            'pendientes_complemento': pendientes_complemento,
+            'empresa_email_contador': empresa.email_contador,
             'sucursal_activa': sucursal,
             'seccion': 'finanzas',
         }
@@ -934,6 +984,7 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
             CfdiCliente.objects.create(
                 factura=factura, uuid=uuid_val, serie_folio=serie, fecha=fecha,
                 subtotal=c_sub, traslados=c_tras, retenciones=c_ret, total=total,
+                metodo_pago=(cfdi['metodo_pago'] if cfdi else ''),
                 archivo_xml=xml, archivo_pdf=pdf)
 
             _sync_factura_cfdis(factura)

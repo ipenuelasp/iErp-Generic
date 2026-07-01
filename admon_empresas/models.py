@@ -59,6 +59,10 @@ class Empresa(models.Model):
         "Tema de página de error", max_length=10, choices=TEMA_ERROR_CHOICES, default='robot',
         help_text="Estilo de la página amigable que se muestra ante errores o mantenimiento.")
 
+    email_contador = models.EmailField(
+        "Correo del contador", blank=True, null=True,
+        help_text="A dónde se avisa cuando faltan complementos de pago (REP) por generar.")
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.logo:
