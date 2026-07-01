@@ -43,7 +43,7 @@
                     <thead><tr class="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
                         <th class="px-6 py-4 w-10"></th>
                         <th class="px-4 py-4">CxC</th>
-                        <th class="px-4 py-4">Cliente</th>
+                        <th class="px-4 py-4">Factura / Cliente</th>
                         <th class="px-4 py-4 text-right">Saldo</th>
                         <th class="px-4 py-4 w-36 text-center">A cobrar</th>
                         <th class="px-4 py-4 w-32 text-center">T.C.</th>
@@ -51,18 +51,37 @@
                     </tr></thead>
                     <tbody class="divide-y divide-slate-50">
                         {% for f in facturas %}
-                        <tr class="fila-fact hover:bg-slate-50/50" data-saldo="{{ f.saldo }}" data-moneda="{{ f.moneda.codigo }}" data-sim="{{ f.moneda.simbolo }}">
-                            <td class="px-6 py-4 text-center"><input type="checkbox" class="chk no-select2 w-4 h-4" onchange="toggleFila(this)"></td>
-                            <td class="px-4 py-4"><div class="font-bold text-slate-800 text-xs">{{ f.folio }}</div><div class="text-[10px] text-slate-400">{{ f.pedido.folio }}</div></td>
-                            <td class="px-4 py-4 text-xs font-bold text-slate-600">{{ f.cliente }}</td>
-                            <td class="px-4 py-4 text-right text-xs font-black text-emerald-600">{{ f.moneda.simbolo }}{{ f.saldo|floatformat:2|intcomma }} <span class="text-[9px] text-slate-400">{{ f.moneda.codigo }}</span></td>
-                            <td class="px-4 py-4">
-                                <input type="hidden" name="factura_id[]" value="{{ f.id }}">
-                                <input type="number" name="monto_aplicado[]" step="0.01" min="0" value="0" disabled oninput="recalc()" class="m-aplicado text-center font-black text-brand">
-                            </td>
-                            <td class="px-4 py-4"><input type="number" name="tipo_cambio[]" step="0.000001" min="0" value="1" disabled oninput="recalc()" class="tc text-center font-bold"></td>
-                            <td class="px-4 py-4 text-right text-xs font-bold text-slate-500 equiv">—</td>
-                        </tr>
+                            {% for c in f.cfdis.all %}
+                                {% if not c.esta_pagada %}
+                                <tr class="fila-fact hover:bg-slate-50/50" data-saldo="{{ c.saldo }}" data-moneda="{{ f.moneda.codigo }}" data-sim="{{ f.moneda.simbolo }}">
+                                    <td class="px-6 py-4 text-center"><input type="checkbox" class="chk no-select2 w-4 h-4" onchange="toggleFila(this)"></td>
+                                    <td class="px-4 py-4"><div class="font-bold text-slate-800 text-xs">{{ f.folio }}</div><div class="text-[10px] text-slate-400">{{ f.pedido.folio }}</div></td>
+                                    <td class="px-4 py-4"><div class="text-xs font-bold text-slate-600">{{ f.cliente }}</div><div class="text-[10px] font-mono text-slate-400">Factura {{ c.serie_folio|default:c.uuid|truncatechars:20 }}</div></td>
+                                    <td class="px-4 py-4 text-right text-xs font-black text-emerald-600">{{ f.moneda.simbolo }}{{ c.saldo|floatformat:2|intcomma }} <span class="text-[9px] text-slate-400">{{ f.moneda.codigo }}</span></td>
+                                    <td class="px-4 py-4">
+                                        <input type="hidden" name="factura_id[]" value="{{ f.id }}">
+                                        <input type="hidden" name="cfdi_id[]" value="{{ c.id }}">
+                                        <input type="number" name="monto_aplicado[]" step="0.01" min="0" value="0" disabled oninput="recalc()" class="m-aplicado text-center font-black text-brand">
+                                    </td>
+                                    <td class="px-4 py-4"><input type="number" name="tipo_cambio[]" step="0.000001" min="0" value="1" disabled oninput="recalc()" class="tc text-center font-bold"></td>
+                                    <td class="px-4 py-4 text-right text-xs font-bold text-slate-500 equiv">—</td>
+                                </tr>
+                                {% endif %}
+                            {% empty %}
+                                <tr class="fila-fact hover:bg-slate-50/50" data-saldo="{{ f.saldo }}" data-moneda="{{ f.moneda.codigo }}" data-sim="{{ f.moneda.simbolo }}">
+                                    <td class="px-6 py-4 text-center"><input type="checkbox" class="chk no-select2 w-4 h-4" onchange="toggleFila(this)"></td>
+                                    <td class="px-4 py-4"><div class="font-bold text-slate-800 text-xs">{{ f.folio }}</div><div class="text-[10px] text-slate-400">{{ f.pedido.folio }}</div></td>
+                                    <td class="px-4 py-4"><div class="text-xs font-bold text-slate-600">{{ f.cliente }}</div><div class="text-[10px] text-slate-300 italic">sin CFDI</div></td>
+                                    <td class="px-4 py-4 text-right text-xs font-black text-emerald-600">{{ f.moneda.simbolo }}{{ f.saldo|floatformat:2|intcomma }} <span class="text-[9px] text-slate-400">{{ f.moneda.codigo }}</span></td>
+                                    <td class="px-4 py-4">
+                                        <input type="hidden" name="factura_id[]" value="{{ f.id }}">
+                                        <input type="hidden" name="cfdi_id[]" value="">
+                                        <input type="number" name="monto_aplicado[]" step="0.01" min="0" value="0" disabled oninput="recalc()" class="m-aplicado text-center font-black text-brand">
+                                    </td>
+                                    <td class="px-4 py-4"><input type="number" name="tipo_cambio[]" step="0.000001" min="0" value="1" disabled oninput="recalc()" class="tc text-center font-bold"></td>
+                                    <td class="px-4 py-4 text-right text-xs font-bold text-slate-500 equiv">—</td>
+                                </tr>
+                            {% endfor %}
                         {% empty %}
                         <tr><td colspan="7" class="px-8 py-14 text-center text-slate-400 italic text-sm">No hay cuentas por cobrar pendientes.</td></tr>
                         {% endfor %}

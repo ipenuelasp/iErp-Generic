@@ -1084,7 +1084,8 @@ class RegistrarCobroView(LoginRequiredMixin, View):
             return redirect('home')
         empresa, sucursal = ctx
         context = {
-            'facturas': services.facturas_por_cobrar(empresa),
+            'facturas': services.facturas_por_cobrar(empresa).prefetch_related(
+                'cfdis__aplicaciones', 'aplicaciones'),
             'metodos': MetodoPago.objects.filter(empresa=empresa, activo=True),
             'monedas': Moneda.objects.filter(empresa=empresa, activa=True),
             'moneda_base': empresa.moneda_principal,
@@ -1100,6 +1101,7 @@ class RegistrarCobroView(LoginRequiredMixin, View):
         empresa, sucursal = ctx
 
         factura_ids = request.POST.getlist('factura_id[]')
+        cfdi_ids = request.POST.getlist('cfdi_id[]')
         montos = request.POST.getlist('monto_aplicado[]')
         tipos_cambio = request.POST.getlist('tipo_cambio[]')
 
@@ -1111,8 +1113,11 @@ class RegistrarCobroView(LoginRequiredMixin, View):
                 continue
             factura = get_object_or_404(FacturaCliente, id=fid, empresa=empresa)
             cliente = factura.cliente
+            cid = cfdi_ids[i] if i < len(cfdi_ids) else ''
+            cfdi = CfdiCliente.objects.filter(id=cid, factura=factura).first() if cid else None
             aplicaciones.append({
                 'factura': factura,
+                'cfdi': cfdi,
                 'monto_aplicado': monto,
                 'tipo_cambio': tipos_cambio[i] if i < len(tipos_cambio) else '1',
             })
