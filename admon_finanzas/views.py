@@ -520,13 +520,10 @@ class AvisarComplementosView(LoginRequiredMixin, View):
              'subtotal': f"{moneda_sim}{g['subtotal']:,.2f} {moneda_cod}"}
             for g in por_cliente.values() if g['filas']
         ]
-        # Adjunta el recibo (PDF del pago) y el comprobante de transferencia/depósito
-        # de cada pago incluido, para que el contador tenga con qué cotejar el REP.
+        # Adjunta el comprobante de transferencia/depósito de cada pago incluido,
+        # para que el contador tenga con qué cotejar el REP.
         adjuntos = []
         for p in pendientes:
-            pdf_bytes = _render_pago_pdf(p, empresa)
-            if pdf_bytes:
-                adjuntos.append({'filename': f"Recibo-{p.folio}.pdf", 'content': pdf_bytes})
             if p.comprobante:
                 try:
                     p.comprobante.open('rb')
