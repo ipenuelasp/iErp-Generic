@@ -87,23 +87,23 @@
                     </td>
                     <td class="px-6 py-4 text-right text-sm font-black text-slate-800">{{ p.moneda.simbolo }}{{ p.monto|floatformat:2|intcomma }} <span class="text-[9px] text-slate-400">{{ p.moneda.codigo }}</span></td>
                     <td class="px-6 py-4 text-center">
-                        {% if p.tiene_complemento %}
-                        <span class="inline-flex items-center gap-1 text-[9px] font-black text-emerald-600">
-                            <i class="fa-solid fa-circle-check"></i>
-                            {% if p.complemento_xml %}<a href="{{ p.complemento_xml.url }}" target="_blank" class="hover:underline">XML</a>{% endif %}
-                            {% if p.complemento_pdf %}<a href="{{ p.complemento_pdf.url }}" target="_blank" class="hover:underline">PDF</a>{% endif %}
-                        </span>
-                        {% elif p.necesita_complemento %}
-                        <span class="inline-flex items-center gap-1 text-[9px] font-black text-amber-600 mb-1"><i class="fa-solid fa-triangle-exclamation"></i> Sin complemento</span><br>
-                        <button onclick='abrirComplemento({{ p.id }}, "{{ p.folio }}")' class="text-[9px] font-black text-brand uppercase tracking-widest hover:underline">
-                            <i class="fa-solid fa-upload mr-1"></i> Adjuntar
-                        </button>
-                        {% elif p.tipo == 'INGRESO' %}
-                        <span class="text-[9px] font-bold text-slate-300 uppercase">No aplica (PUE)</span>
+                        {% if p.tipo == 'INGRESO' %}
+                            {% if p.tiene_complemento %}
+                            <span class="inline-flex items-center gap-1 text-[9px] font-black text-emerald-600">
+                                <i class="fa-solid fa-circle-check"></i>
+                                {% if p.complemento_xml %}<a href="{{ p.complemento_xml.url }}" target="_blank" class="hover:underline">XML</a>{% endif %}
+                                {% if p.complemento_pdf %}<a href="{{ p.complemento_pdf.url }}" target="_blank" class="hover:underline">PDF</a>{% endif %}
+                            </span>
+                            {% elif p.necesita_complemento %}
+                            <span class="inline-flex items-center gap-1 text-[9px] font-black text-amber-600 mb-1"><i class="fa-solid fa-triangle-exclamation"></i> Sin complemento</span><br>
+                            <button onclick='abrirComplemento({{ p.id }}, "{{ p.folio }}")' class="text-[9px] font-black text-brand uppercase tracking-widest hover:underline">
+                                <i class="fa-solid fa-upload mr-1"></i> Adjuntar
+                            </button>
+                            {% else %}
+                            <span class="text-[9px] font-bold text-slate-300 uppercase">No aplica (PUE)</span>
+                            {% endif %}
                         {% else %}
-                        <button onclick='abrirComplemento({{ p.id }}, "{{ p.folio }}")' class="text-[9px] font-black text-brand uppercase tracking-widest hover:underline">
-                            <i class="fa-solid fa-upload mr-1"></i> Adjuntar
-                        </button>
+                        <span class="text-[9px] font-bold text-slate-300 uppercase">—</span>
                         {% endif %}
                     </td>
                     <td class="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{{ p.fecha|date:"d/m/Y" }}</td>
