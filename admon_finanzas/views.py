@@ -481,12 +481,14 @@ class AvisarComplementosView(LoginRequiredMixin, View):
             messages.error(request, "Captura el correo del contador (o guárdalo en Ajustes de empresa).")
             return redirect('admon_finanzas:historial_pagos')
 
-        pendientes = [p for p in Pago.objects.filter(empresa=empresa, tipo='INGRESO')
-                      .select_related('cliente', 'moneda')
-                      .prefetch_related('aplicaciones__cfdi', 'aplicaciones__factura_cliente')
-                      if p.necesita_complemento]
+        qs = Pago.objects.filter(empresa=empresa, tipo='INGRESO').select_related(
+            'cliente', 'moneda').prefetch_related('aplicaciones__cfdi', 'aplicaciones__factura_cliente')
+        ids_seleccionados = request.POST.getlist('pago_id')
+        if ids_seleccionados:
+            qs = qs.filter(id__in=ids_seleccionados)
+        pendientes = [p for p in qs if p.necesita_complemento]
         if not pendientes:
-            messages.info(request, "No hay complementos de pago pendientes por avisar.")
+            messages.info(request, "No hay complementos de pago pendientes por avisar en lo seleccionado.")
             return redirect('admon_finanzas:historial_pagos')
 
         filas = []

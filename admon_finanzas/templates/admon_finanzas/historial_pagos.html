@@ -11,8 +11,8 @@
         </div>
         <div class="flex gap-3">
             {% if pendientes_complemento %}
-            <button onclick="document.getElementById('modalAvisoContador').classList.remove('hidden')" class="bg-amber-500 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-amber-500/20 transition-all hover:-translate-y-1">
-                <i class="fa-solid fa-triangle-exclamation mr-2"></i> Avisar a contador ({{ pendientes_complemento }})
+            <button onclick="abrirAvisoContador()" class="bg-amber-500 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-amber-500/20 transition-all hover:-translate-y-1">
+                <i class="fa-solid fa-triangle-exclamation mr-2"></i> Avisar a contador
             </button>
             {% endif %}
             <a href="{% url 'admon_finanzas:registrar_pago' %}" class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
@@ -27,8 +27,9 @@
         <div class="relative min-h-screen flex items-center justify-center p-4">
             <form method="POST" action="{% url 'admon_finanzas:avisar_complementos' %}" class="relative bg-white rounded-[2rem] shadow-2xl p-8 w-full max-w-md">
                 {% csrf_token %}
+                <div id="aviso_ids_container"></div>
                 <h3 class="text-lg font-black text-slate-800 uppercase italic mb-2">Avisar a contador</h3>
-                <p class="text-[11px] text-slate-500 font-medium mb-4">Se enviará el detalle de los {{ pendientes_complemento }} cobro(s) PPD sin complemento de pago.</p>
+                <p class="text-[11px] text-slate-500 font-medium mb-4">Se enviará el detalle de <span id="aviso_count" class="font-black text-slate-700">0</span> cobro(s) PPD sin complemento de pago (los que marcaste en la tabla).</p>
                 <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Correo del contador</label>
                 <input type="email" name="email_destino" value="{{ empresa_email_contador|default:'' }}" required class="w-full mt-1 mb-4 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold">
                 <div class="flex justify-end gap-3">
@@ -63,6 +64,9 @@
         <table class="w-full text-left">
             <thead class="bg-slate-50">
                 <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-4 py-5 w-8 text-center">
+                        {% if pendientes_complemento %}<input type="checkbox" onclick="marcarTodosAviso(this)" title="Marcar todos los pendientes de complemento" class="w-3.5 h-3.5">{% endif %}
+                    </th>
                     <th class="px-8 py-5 font-black">Folio</th>
                     <th class="px-6 py-5 font-black">Proveedor / Cliente</th>
                     <th class="px-6 py-5 font-black">Método</th>
@@ -75,6 +79,9 @@
             <tbody class="divide-y divide-slate-50">
                 {% for p in pagos %}
                 <tr class="hover:bg-slate-50/80 transition">
+                    <td class="px-4 py-4 text-center">
+                        {% if p.necesita_complemento %}<input type="checkbox" class="chk-aviso w-3.5 h-3.5" value="{{ p.id }}">{% endif %}
+                    </td>
                     <td class="px-8 py-4 font-black text-brand text-xs">
                         {% if p.tipo == 'INGRESO' %}<span class="text-[8px] font-black bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded uppercase mr-1">Ingreso</span>{% else %}<span class="text-[8px] font-black bg-rose-50 text-rose-500 px-2 py-0.5 rounded uppercase mr-1">Egreso</span>{% endif %}
                         {{ p.folio }}
@@ -109,12 +116,12 @@
                     <td class="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{{ p.fecha|date:"d/m/Y" }}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="7" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin pagos que coincidan con los filtros.</td></tr>
+                <tr><td colspan="8" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin pagos que coincidan con los filtros.</td></tr>
                 {% endfor %}
             </tbody>
             <tfoot class="bg-slate-50 border-t-2 border-slate-100">
                 <tr class="text-slate-700">
-                    <td class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400" colspan="4">Totales del filtro · {{ totales.n }} pago(s)</td>
+                    <td class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400" colspan="5">Totales del filtro · {{ totales.n }} pago(s)</td>
                     <td class="px-6 py-4 text-right font-black text-slate-800 text-sm">${{ totales.monto|default:0|floatformat:2|intcomma }}</td>
                     <td class="px-6 py-4"></td>
                     <td class="px-8 py-4"></td>
@@ -159,6 +166,22 @@
 </div>
 
 <script>
+function marcarTodosAviso(master) {
+    document.querySelectorAll('.chk-aviso').forEach(chk => { chk.checked = master.checked; });
+}
+function abrirAvisoContador() {
+    const ids = Array.from(document.querySelectorAll('.chk-aviso:checked')).map(c => c.value);
+    if (ids.length === 0) { alert('Marca al menos un cobro pendiente de complemento (columna izquierda de la tabla).'); return; }
+    const cont = document.getElementById('aviso_ids_container');
+    cont.innerHTML = '';
+    ids.forEach(id => {
+        const inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = 'pago_id'; inp.value = id;
+        cont.appendChild(inp);
+    });
+    document.getElementById('aviso_count').innerText = ids.length;
+    document.getElementById('modalAvisoContador').classList.remove('hidden');
+}
 function abrirComplemento(pagoId, folio) {
     document.getElementById('comp_folio').innerText = 'Pago ' + folio;
     document.getElementById('formComplemento').action = `/finanzas/pagos/${pagoId}/complemento/`;
