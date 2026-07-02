@@ -66,6 +66,86 @@ def _grupo_codigo(titulo, categoria):
     return 'OTROS'
 
 
+def _agrupar_ordenes(archivo):
+    """Lee el CSV y devuelve {orden_id: [filas]} ya deduplicado (cancelados
+    fuera, sin ASIN fuera, líneas idénticas colapsadas). Sin tocar la BD."""
+    data = archivo.read().decode('utf-8-sig', errors='replace')
+    reader = csv.DictReader(io.StringIO(data))
+
+    ordenes = {}
+    for row in reader:
+        if (row.get('Estatus del pedido') or '').strip().lower() == 'cancelado':
+            continue
+        oid = (row.get('Identificador de pedido') or '').strip()
+        if not (row.get('ASIN') or '').strip():
+            continue
+        ordenes.setdefault(oid, []).append(row)
+
+    for oid, filas in ordenes.items():
+        vistos = set()
+        unicas = []
+        for r in filas:
+            clave = (r.get('ASIN', '').strip(),
+                     (r.get('Cantidad de producto') or '').strip(),
+                     (r.get('PPU de la compra') or '').strip(),
+                     (r.get('Título') or '').strip())
+            if clave in vistos:
+                continue
+            vistos.add(clave)
+            unicas.append(r)
+        ordenes[oid] = unicas
+    return ordenes
+
+
+def previsualizar(archivo, empresa):
+    """Analiza el CSV SIN tocar la BD: qué órdenes son nuevas (se importarán),
+    cuáles ya existen (se omitirán) y cuáles son de $0 (garantías/reposición,
+    también se omiten). Devuelve el detalle de productos de cada una."""
+    from admon_compras.models import OrdenCompra
+
+    ordenes = _agrupar_ordenes(archivo)
+
+    def _detalle(oid, filas):
+        fecha_dt = _fecha(filas[0].get('Fecha del pedido'))
+        lineas = []
+        total = D0
+        for r in filas:
+            cant = _num(r.get('Cantidad de producto')) or decimal.Decimal('1')
+            ppu = _num(r.get('PPU de la compra'))
+            importe = ppu * cant
+            total += importe
+            lineas.append({
+                'titulo': (r.get('Título') or '').strip()[:255] or r.get('ASIN', '').strip(),
+                'asin': r.get('ASIN', '').strip(),
+                'cantidad': str(cant),
+                'precio_unitario': f"{ppu:,.2f}",
+                'importe': f"{importe:,.2f}",
+            })
+        return {
+            'orden_id': oid,
+            'fecha': fecha_dt.strftime('%d/%m/%Y') if fecha_dt else '—',
+            'total': f"{total:,.2f}",
+            'n_lineas': len(lineas),
+            'lineas': lineas,
+        }
+
+    nuevas, duplicadas, sin_costo = [], [], []
+    for oid, filas in ordenes.items():
+        info = _detalle(oid, filas)
+        folio_oc = f"AMZ-OC-{oid}"
+        if OrdenCompra.objects.filter(empresa=empresa, folio=folio_oc).exists():
+            duplicadas.append(info)
+            continue
+        total_orden = sum((_num(r.get('PPU de la compra')) * (_num(r.get('Cantidad de producto')) or decimal.Decimal('1'))
+                           for r in filas), D0)
+        if total_orden <= 0:
+            sin_costo.append(info)
+            continue
+        nuevas.append(info)
+
+    return {'nuevas': nuevas, 'duplicadas': duplicadas, 'sin_costo': sin_costo}
+
+
 @transaction.atomic
 def importar(archivo, empresa, sucursal, usuario):
     """Procesa el CSV de Amazon (flujo completo de compra). Devuelve resumen."""
@@ -104,34 +184,7 @@ def importar(archivo, empresa, sucursal, usuario):
             grupos['OTROS'] = g
         return g or grupos.get('PERIF')
 
-    data = archivo.read().decode('utf-8-sig', errors='replace')
-    reader = csv.DictReader(io.StringIO(data))
-
-    ordenes = {}
-    for row in reader:
-        if (row.get('Estatus del pedido') or '').strip().lower() == 'cancelado':
-            continue
-        oid = (row.get('Identificador de pedido') or '').strip()
-        if not (row.get('ASIN') or '').strip():
-            continue
-        ordenes.setdefault(oid, []).append(row)
-
-    # El export de Amazon a veces repite la MISMA línea (mismo pedido, ASIN,
-    # cantidad y precio): es un artefacto del CSV, no una compra real. Se colapsa
-    # a una sola para no duplicar stock ni la CxP.
-    for oid, filas in ordenes.items():
-        vistos = set()
-        unicas = []
-        for r in filas:
-            clave = (r.get('ASIN', '').strip(),
-                     (r.get('Cantidad de producto') or '').strip(),
-                     (r.get('PPU de la compra') or '').strip(),
-                     (r.get('Título') or '').strip())
-            if clave in vistos:
-                continue
-            vistos.add(clave)
-            unicas.append(r)
-        ordenes[oid] = unicas
+    ordenes = _agrupar_ordenes(archivo)
 
     last = OrdenCompra.objects.filter(empresa=empresa).order_by('consecutivo').last()
     consec = last.consecutivo if last else 0

@@ -181,6 +181,28 @@ class DescargarPlantillaProveedoresView(LoginRequiredMixin, View):
         return resp
 
 
+class PrevisualizarAmazonView(LoginRequiredMixin, View):
+    """Analiza el CSV de Amazon sin importar nada: qué órdenes son nuevas,
+    cuáles ya existen y cuáles son de $0, con el detalle de productos."""
+    def post(self, request):
+        from django.http import JsonResponse
+        ctx = _contexto(request)
+        if not ctx:
+            return JsonResponse({'error': 'Sesión inválida.'}, status=400)
+        empresa, sucursal = ctx
+        if not request.user.is_superuser:
+            return JsonResponse({'error': 'Solo el administrador puede importar compras.'}, status=403)
+        archivo = request.FILES.get('archivo')
+        if not archivo or not archivo.name.lower().endswith('.csv'):
+            return JsonResponse({'error': 'Selecciona el archivo .csv exportado de Amazon.'}, status=400)
+        from . import import_amazon
+        try:
+            res = import_amazon.previsualizar(archivo, empresa)
+        except Exception as e:
+            return JsonResponse({'error': f"No se pudo leer el archivo: {e}"}, status=400)
+        return JsonResponse(res)
+
+
 class ImportarAmazonView(LoginRequiredMixin, View):
     """Importa el CSV de pedidos de Amazon Business: crea productos y registra
     cada orden como recepción (entra stock al costo)."""

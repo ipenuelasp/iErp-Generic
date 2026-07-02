@@ -24,27 +24,45 @@
     {% if user.is_superuser %}
     <!-- Modal importar Amazon -->
     <div id="modalAmazon" class="fixed inset-0 z-[100] hidden overflow-y-auto">
-        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalAmazon').classList.add('hidden')"></div>
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="cerrarModalAmazon()"></div>
         <div class="relative min-h-screen flex items-center justify-center p-4">
-            <div class="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-10">
-                <h2 class="text-xl font-bold text-slate-800 mb-1"><i class="fa-brands fa-amazon mr-2 text-amber-500"></i> Importar compras de Amazon</h2>
-                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-5">CSV de Amazon Business</p>
-                <ol class="text-[11px] font-bold text-slate-500 mb-5 space-y-1 list-decimal ml-4">
-                    <li>En Amazon Business descarga el reporte de pedidos en CSV.</li>
-                    <li>Súbelo aquí: crea los productos y registra cada orden como recepción (entra stock al costo).</li>
-                    <li>Las órdenes ya importadas se omiten (puedes subirlo cada mes).</li>
-                </ol>
-                <form method="POST" action="{% url 'admon_compras:importar_amazon' %}" enctype="multipart/form-data" class="space-y-5">
-                    {% csrf_token %}
-                    <input type="file" name="archivo" accept=".csv" required
-                        class="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-5 py-6 text-xs font-bold text-slate-600">
-                    <div class="flex flex-wrap justify-end gap-3 items-center">
-                        <button type="button" onclick="document.getElementById('modalAmazon').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 px-4">Cancelar</button>
-                        <button type="submit" name="modo" value="recalcular" class="bg-white border border-slate-200 text-slate-600 font-black py-3 px-6 rounded-2xl text-[10px] uppercase tracking-widest" title="Corrige costos de pedidos ya importados, sin crear ni borrar">Recalcular costos</button>
-                        <button type="submit" class="bg-amber-500 text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">Importar</button>
+            <div class="relative bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-10 max-h-[90vh] overflow-y-auto">
+
+                <div id="amzPaso1">
+                    <h2 class="text-xl font-bold text-slate-800 mb-1"><i class="fa-brands fa-amazon mr-2 text-amber-500"></i> Importar compras de Amazon</h2>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-5">CSV de Amazon Business</p>
+                    <ol class="text-[11px] font-bold text-slate-500 mb-5 space-y-1 list-decimal ml-4">
+                        <li>En Amazon Business descarga el reporte de pedidos en CSV.</li>
+                        <li>Súbelo aquí: primero verás cuáles son nuevas y cuáles ya están importadas.</li>
+                        <li>Confirmas y se crean los productos + recepción (entra stock al costo).</li>
+                    </ol>
+                    <form id="formAmazon" enctype="multipart/form-data" class="space-y-5">
+                        {% csrf_token %}
+                        <input type="file" name="archivo" id="amzArchivo" accept=".csv" required
+                            class="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-5 py-6 text-xs font-bold text-slate-600">
+                        <div class="flex flex-wrap justify-end gap-3 items-center">
+                            <button type="button" onclick="cerrarModalAmazon()" class="text-[10px] font-black uppercase text-slate-400 px-4">Cancelar</button>
+                            <button type="button" onclick="enviarAmazon('recalcular')" class="bg-white border border-slate-200 text-slate-600 font-black py-3 px-6 rounded-2xl text-[10px] uppercase tracking-widest" title="Corrige costos de pedidos ya importados, sin crear ni borrar">Recalcular costos</button>
+                            <button type="button" onclick="previsualizarAmazon()" class="bg-amber-500 text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">
+                                <i class="fa-solid fa-magnifying-glass mr-2"></i>Vista previa
+                            </button>
+                        </div>
+                        <p class="text-[10px] font-bold text-slate-400">"Recalcular costos" usa el mismo CSV para ajustar el costo real (con promociones) de las compras ya cargadas, sin tocar inventario ni ventas.</p>
+                    </form>
+                    <p id="amzError" class="hidden mt-3 text-[11px] font-bold text-rose-500"></p>
+                </div>
+
+                <div id="amzPaso2" class="hidden">
+                    <h2 class="text-xl font-bold text-slate-800 mb-1"><i class="fa-solid fa-list-check mr-2 text-amber-500"></i> Vista previa de la importación</h2>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-5">Revisa antes de confirmar</p>
+                    <div id="amzResumen" class="grid grid-cols-3 gap-3 mb-5"></div>
+                    <div id="amzGrupos" class="space-y-5 mb-5"></div>
+                    <div class="flex justify-end gap-3 pt-2 border-t border-slate-100">
+                        <button type="button" onclick="volverPaso1Amazon()" class="text-[10px] font-black uppercase text-slate-400 px-4"><i class="fa-solid fa-arrow-left mr-1"></i> Volver</button>
+                        <button type="button" onclick="confirmarImportarAmazon()" id="amzBtnConfirmar" class="bg-amber-500 text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">Confirmar e importar</button>
                     </div>
-                    <p class="text-[10px] font-bold text-slate-400">"Recalcular costos" usa el mismo CSV para ajustar el costo real (con promociones) de las compras ya cargadas, sin tocar inventario ni ventas.</p>
-                </form>
+                </div>
+
             </div>
         </div>
     </div>
@@ -250,5 +268,104 @@ function toggleOC(pk) {
     var oculto = row.classList.toggle('hidden');
     if (chev) chev.style.transform = oculto ? '' : 'rotate(90deg)';
 }
+
+{% if user.is_superuser %}
+function cerrarModalAmazon() {
+    document.getElementById('modalAmazon').classList.add('hidden');
+    volverPaso1Amazon();
+}
+function volverPaso1Amazon() {
+    document.getElementById('amzPaso1').classList.remove('hidden');
+    document.getElementById('amzPaso2').classList.add('hidden');
+}
+function _amzEsc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function _amzCsrf() {
+    return document.querySelector('#formAmazon [name=csrfmiddlewaretoken]').value;
+}
+function _amzMostrarError(msg) {
+    var el = document.getElementById('amzError');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+}
+function enviarAmazon(modo) {
+    var archivo = document.getElementById('amzArchivo').files[0];
+    if (!archivo) { _amzMostrarError('Selecciona el archivo CSV.'); return; }
+    var fd = new FormData();
+    fd.append('archivo', archivo);
+    if (modo) fd.append('modo', modo);
+    fd.append('csrfmiddlewaretoken', _amzCsrf());
+    fetch("{% url 'admon_compras:importar_amazon' %}", {method: 'POST', body: fd})
+        .then(function () { window.location.href = "{% url 'admon_compras:historial_ordenes' %}"; })
+        .catch(function () { _amzMostrarError('No se pudo procesar el archivo.'); });
+}
+function confirmarImportarAmazon() {
+    document.getElementById('amzBtnConfirmar').disabled = true;
+    document.getElementById('amzBtnConfirmar').textContent = 'Importando…';
+    enviarAmazon(null);
+}
+function previsualizarAmazon() {
+    document.getElementById('amzError').classList.add('hidden');
+    var archivo = document.getElementById('amzArchivo').files[0];
+    if (!archivo) { _amzMostrarError('Selecciona el archivo CSV.'); return; }
+    var fd = new FormData();
+    fd.append('archivo', archivo);
+    fd.append('csrfmiddlewaretoken', _amzCsrf());
+    fetch("{% url 'admon_compras:previsualizar_amazon' %}", {method: 'POST', body: fd})
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.error) { _amzMostrarError(data.error); return; }
+            _amzRenderPreview(data);
+            document.getElementById('amzPaso1').classList.add('hidden');
+            document.getElementById('amzPaso2').classList.remove('hidden');
+        })
+        .catch(function () { _amzMostrarError('No se pudo leer el archivo.'); });
+}
+function _amzTablaLineas(lineas) {
+    var html = '<table class="w-full text-left mt-2"><thead><tr class="text-[9px] text-slate-400 uppercase font-black">' +
+        '<th class="py-1">Producto</th><th class="py-1 text-center">Cant.</th><th class="py-1 text-right">P. Unit.</th><th class="py-1 text-right">Importe</th></tr></thead><tbody>';
+    lineas.forEach(function (l) {
+        html += '<tr class="border-t border-slate-50">' +
+            '<td class="py-1.5 pr-2 text-[11px] font-bold text-slate-600">' + _amzEsc(l.titulo) + '<div class="text-[9px] text-slate-300 font-mono">' + _amzEsc(l.asin) + '</div></td>' +
+            '<td class="py-1.5 text-center text-[11px] font-bold text-slate-500">' + _amzEsc(l.cantidad) + '</td>' +
+            '<td class="py-1.5 text-right text-[11px] font-bold text-slate-500">$' + _amzEsc(l.precio_unitario) + '</td>' +
+            '<td class="py-1.5 text-right text-[11px] font-black text-slate-700">$' + _amzEsc(l.importe) + '</td></tr>';
+    });
+    return html + '</tbody></table>';
+}
+function _amzGrupo(titulo, color, icono, ordenes, nota) {
+    if (!ordenes.length) return '';
+    var html = '<div><h3 class="text-[11px] font-black uppercase tracking-widest mb-2" style="color:' + color + '"><i class="fa-solid ' + icono + ' mr-1"></i> ' + titulo + ' (' + ordenes.length + ')</h3>';
+    ordenes.forEach(function (o) {
+        html += '<div class="border border-slate-100 rounded-2xl p-4 mb-2 bg-slate-50/40">' +
+            '<div class="flex justify-between items-center cursor-pointer" onclick="this.nextElementSibling.classList.toggle(\'hidden\')">' +
+            '<div><span class="text-[11px] font-black text-slate-700">Pedido ' + _amzEsc(o.orden_id) + '</span>' +
+            '<span class="text-[10px] text-slate-400 font-bold ml-2">' + _amzEsc(o.fecha) + ' · ' + o.n_lineas + ' producto(s)</span></div>' +
+            '<span class="text-xs font-black text-slate-700">$' + o.total + '</span></div>' +
+            '<div class="hidden">' + _amzTablaLineas(o.lineas) + '</div></div>';
+    });
+    if (nota) html += '<p class="text-[10px] text-slate-400 font-bold italic">' + nota + '</p>';
+    return html + '</div>';
+}
+function _amzRenderPreview(data) {
+    var resumen = document.getElementById('amzResumen');
+    resumen.innerHTML =
+        '<div class="bg-emerald-50 rounded-2xl p-4 text-center"><p class="text-2xl font-black text-emerald-600">' + data.nuevas.length + '</p><p class="text-[9px] font-black uppercase text-emerald-500">Nuevas</p></div>' +
+        '<div class="bg-slate-100 rounded-2xl p-4 text-center"><p class="text-2xl font-black text-slate-500">' + data.duplicadas.length + '</p><p class="text-[9px] font-black uppercase text-slate-400">Ya importadas</p></div>' +
+        '<div class="bg-amber-50 rounded-2xl p-4 text-center"><p class="text-2xl font-black text-amber-500">' + data.sin_costo.length + '</p><p class="text-[9px] font-black uppercase text-amber-500">$0 (se omiten)</p></div>';
+
+    var grupos = document.getElementById('amzGrupos');
+    grupos.innerHTML =
+        _amzGrupo('Se importarán', '#059669', 'fa-circle-check', data.nuevas, '') +
+        _amzGrupo('Ya importadas (se omitirán)', '#94a3b8', 'fa-clone', data.duplicadas, 'Ya existe una orden con este folio, no se vuelve a crear.') +
+        _amzGrupo('Sin costo (se omitirán)', '#d97706', 'fa-ban', data.sin_costo, 'Pedidos en $0 — reposición o garantía, no entran a inventario ni a CxP.');
+
+    var btn = document.getElementById('amzBtnConfirmar');
+    btn.disabled = false;
+    btn.textContent = data.nuevas.length ? 'Confirmar e importar (' + data.nuevas.length + ')' : 'Nada que importar';
+    btn.style.opacity = data.nuevas.length ? '1' : '.5';
+}
+{% endif %}
 </script>
 {% endblock %}

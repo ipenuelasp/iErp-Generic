@@ -11,6 +11,7 @@ urlpatterns = [
 
     path('ordenes/', views.HistorialOrdenesView.as_view(), name='historial_ordenes'),
     path('ordenes/importar-amazon/', views.ImportarAmazonView.as_view(), name='importar_amazon'),
+    path('ordenes/importar-amazon/previsualizar/', views.PrevisualizarAmazonView.as_view(), name='previsualizar_amazon'),
     path('ordenes/nueva/', views.NuevaOrdenView.as_view(), name='nueva_orden'),
     path('ordenes/<int:pk>/', views.OrdenDetalleView.as_view(), name='orden_detalle'),
     path('ordenes/<int:pk>/editar/', views.EditarOrdenView.as_view(), name='editar_orden'),
