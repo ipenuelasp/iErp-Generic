@@ -233,8 +233,12 @@ class ImportarAmazonView(LoginRequiredMixin, View):
                 + (f" ({r['no_encontradas']} pedidos del CSV no existían y se omitieron)"
                    if r['no_encontradas'] else ""))
             return redirect('admon_compras:historial_ordenes')
+        # 'seleccion_enviada' distingue "vino de la vista previa con checkboxes"
+        # (donde una lista vacía significa que no se marcó ninguna) de una
+        # importación directa sin pasar por la previsualización (procesa todo).
+        ordenes_incluir = set(request.POST.getlist('orden_id')) if request.POST.get('seleccion_enviada') else None
         try:
-            res = import_amazon.importar(archivo, empresa, sucursal, request.user)
+            res = import_amazon.importar(archivo, empresa, sucursal, request.user, ordenes_incluir=ordenes_incluir)
         except Exception as e:
             messages.error(request, f"No se pudo procesar el archivo: {e}")
             return redirect('admon_compras:historial_ordenes')
@@ -243,7 +247,8 @@ class ImportarAmazonView(LoginRequiredMixin, View):
             f"Amazon importado: {res['ordenes']} órdenes de compra (con recepción + CxP pagada), "
             f"{res['prod_creados']} productos nuevos, {res['prod_actualizados']} actualizados, "
             f"gasto ${res['gasto']:,.2f}."
-            + (f" ({res['omitidas']} órdenes ya estaban importadas)" if res['omitidas'] else ""))
+            + (f" ({res['omitidas']} órdenes ya estaban importadas)" if res['omitidas'] else "")
+            + (f" ({res['no_seleccionadas']} no se marcaron para importar)" if res['no_seleccionadas'] else ""))
         return redirect('admon_compras:historial_ordenes')
 
 

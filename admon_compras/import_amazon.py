@@ -147,8 +147,10 @@ def previsualizar(archivo, empresa):
 
 
 @transaction.atomic
-def importar(archivo, empresa, sucursal, usuario):
-    """Procesa el CSV de Amazon (flujo completo de compra). Devuelve resumen."""
+def importar(archivo, empresa, sucursal, usuario, ordenes_incluir=None):
+    """Procesa el CSV de Amazon (flujo completo de compra). Devuelve resumen.
+    Si `ordenes_incluir` viene (set de order_id), solo se procesan esas —
+    las demás nuevas del CSV se cuentan como 'no_seleccionadas' y se ignoran."""
     from admon_inventarios.models import (Producto, Grupo, UnidadMedida, Almacen,
                                           Ubicacion, RecepcionMaterial, DetalleRecepcion,
                                           MovimientoInventario)
@@ -190,9 +192,12 @@ def importar(archivo, empresa, sucursal, usuario):
     consec = last.consecutivo if last else 0
 
     res = dict(prod_creados=0, prod_actualizados=0, ordenes=0, recepciones=0,
-               omitidas=0, lineas=0, gasto=D0)
+               omitidas=0, no_seleccionadas=0, lineas=0, gasto=D0)
 
     for oid, filas in ordenes.items():
+        if ordenes_incluir is not None and oid not in ordenes_incluir:
+            res['no_seleccionadas'] += 1
+            continue
         folio_oc = f"AMZ-OC-{oid}"
         if OrdenCompra.objects.filter(empresa=empresa, folio=folio_oc).exists():
             res['omitidas'] += 1

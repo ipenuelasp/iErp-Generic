@@ -289,21 +289,37 @@ function _amzMostrarError(msg) {
     el.textContent = msg;
     el.classList.remove('hidden');
 }
-function enviarAmazon(modo) {
+function enviarAmazon(modo, idsSeleccionados) {
     var archivo = document.getElementById('amzArchivo').files[0];
     if (!archivo) { _amzMostrarError('Selecciona el archivo CSV.'); return; }
     var fd = new FormData();
     fd.append('archivo', archivo);
     if (modo) fd.append('modo', modo);
+    if (idsSeleccionados) {
+        fd.append('seleccion_enviada', '1');
+        idsSeleccionados.forEach(function (oid) { fd.append('orden_id', oid); });
+    }
     fd.append('csrfmiddlewaretoken', _amzCsrf());
     fetch("{% url 'admon_compras:importar_amazon' %}", {method: 'POST', body: fd})
         .then(function () { window.location.href = "{% url 'admon_compras:historial_ordenes' %}"; })
         .catch(function () { _amzMostrarError('No se pudo procesar el archivo.'); });
 }
 function confirmarImportarAmazon() {
+    var ids = Array.from(document.querySelectorAll('.amz-chk:checked')).map(function (c) { return c.value; });
+    if (!ids.length) { _amzMostrarError('Marca al menos una orden nueva para importar.'); return; }
     document.getElementById('amzBtnConfirmar').disabled = true;
     document.getElementById('amzBtnConfirmar').textContent = 'Importando…';
-    enviarAmazon(null);
+    enviarAmazon(null, ids);
+}
+function marcarTodasAmazon(master) {
+    document.querySelectorAll('.amz-chk').forEach(function (c) { c.checked = master.checked; });
+    _amzActualizarContadorConfirmar();
+}
+function _amzActualizarContadorConfirmar() {
+    var n = document.querySelectorAll('.amz-chk:checked').length;
+    var btn = document.getElementById('amzBtnConfirmar');
+    btn.textContent = n ? 'Confirmar e importar (' + n + ')' : 'Nada seleccionado';
+    btn.style.opacity = n ? '1' : '.5';
 }
 function previsualizarAmazon() {
     document.getElementById('amzError').classList.add('hidden');
@@ -334,13 +350,21 @@ function _amzTablaLineas(lineas) {
     });
     return html + '</tbody></table>';
 }
-function _amzGrupo(titulo, color, icono, ordenes, nota) {
+function _amzGrupo(titulo, color, icono, ordenes, nota, seleccionable) {
     if (!ordenes.length) return '';
-    var html = '<div><h3 class="text-[11px] font-black uppercase tracking-widest mb-2" style="color:' + color + '"><i class="fa-solid ' + icono + ' mr-1"></i> ' + titulo + ' (' + ordenes.length + ')</h3>';
+    var html = '<div><h3 class="text-[11px] font-black uppercase tracking-widest mb-2 flex items-center justify-between" style="color:' + color + '">' +
+        '<span><i class="fa-solid ' + icono + ' mr-1"></i> ' + titulo + ' (' + ordenes.length + ')</span>';
+    if (seleccionable) {
+        html += '<label class="text-[9px] font-black normal-case cursor-pointer"><input type="checkbox" checked onclick="marcarTodasAmazon(this)" class="mr-1 align-middle">Seleccionar todas</label>';
+    }
+    html += '</h3>';
     ordenes.forEach(function (o) {
+        var chk = seleccionable
+            ? '<input type="checkbox" class="amz-chk mr-2 align-middle" value="' + _amzEsc(o.orden_id) + '" checked onclick="event.stopPropagation(); _amzActualizarContadorConfirmar();">'
+            : '';
         html += '<div class="border border-slate-100 rounded-2xl p-4 mb-2 bg-slate-50/40">' +
             '<div class="flex justify-between items-center cursor-pointer" onclick="this.nextElementSibling.classList.toggle(\'hidden\')">' +
-            '<div><span class="text-[11px] font-black text-slate-700">Pedido ' + _amzEsc(o.orden_id) + '</span>' +
+            '<div>' + chk + '<span class="text-[11px] font-black text-slate-700">Pedido ' + _amzEsc(o.orden_id) + '</span>' +
             '<span class="text-[10px] text-slate-400 font-bold ml-2">' + _amzEsc(o.fecha) + ' · ' + o.n_lineas + ' producto(s)</span></div>' +
             '<span class="text-xs font-black text-slate-700">$' + o.total + '</span></div>' +
             '<div class="hidden">' + _amzTablaLineas(o.lineas) + '</div></div>';
@@ -357,14 +381,13 @@ function _amzRenderPreview(data) {
 
     var grupos = document.getElementById('amzGrupos');
     grupos.innerHTML =
-        _amzGrupo('Se importarán', '#059669', 'fa-circle-check', data.nuevas, '') +
-        _amzGrupo('Ya importadas (se omitirán)', '#94a3b8', 'fa-clone', data.duplicadas, 'Ya existe una orden con este folio, no se vuelve a crear.') +
-        _amzGrupo('Sin costo (se omitirán)', '#d97706', 'fa-ban', data.sin_costo, 'Pedidos en $0 — reposición o garantía, no entran a inventario ni a CxP.');
+        _amzGrupo('Nuevas — elige cuáles importar', '#059669', 'fa-circle-check', data.nuevas, '', true) +
+        _amzGrupo('Ya importadas (se omitirán)', '#94a3b8', 'fa-clone', data.duplicadas, 'Ya existe una orden con este folio, no se vuelve a crear.', false) +
+        _amzGrupo('Sin costo (se omitirán)', '#d97706', 'fa-ban', data.sin_costo, 'Pedidos en $0 — reposición o garantía, no entran a inventario ni a CxP.', false);
 
     var btn = document.getElementById('amzBtnConfirmar');
     btn.disabled = false;
-    btn.textContent = data.nuevas.length ? 'Confirmar e importar (' + data.nuevas.length + ')' : 'Nada que importar';
-    btn.style.opacity = data.nuevas.length ? '1' : '.5';
+    _amzActualizarContadorConfirmar();
 }
 {% endif %}
 </script>
