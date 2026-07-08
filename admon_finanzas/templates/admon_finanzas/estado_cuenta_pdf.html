@@ -21,10 +21,13 @@
     .vencido { color: #dc2626; font-weight: bold; }
     .tot .grand { font-size: 13px; font-weight: bold; color: #fff; background: #b91c1c; padding: 6px 9px; }
     .badge { font-size: 8px; font-weight: bold; padding: 2px 6px; border-radius: 8px; }
-    .sub-label { color: #64748b; font-size: 8px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; margin: 6px 0 3px 0; }
-    .sub { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-    .sub th { background: #eef2f7; color: #475569; padding: 3px 7px; text-align: left; font-size: 7.5px; border-bottom: 1px solid #dbe3ee; }
-    .sub td { padding: 3px 7px; border-bottom: 1px solid #f1f5f9; font-size: 8.5px; }
+    .det-cell { padding: 0 !important; border-bottom: none !important; background: #fff !important; }
+    .det-card { margin: 4px 0 16px 16px; padding: 12px 14px 8px 14px; background: #f8fafc; border: 1px solid #e8edf3; border-left: 3px solid #1e3a8a; border-radius: 0 6px 6px 0; }
+    .sub-label { color: #64748b; font-size: 8px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; margin: 0 0 5px 0; }
+    .sub-label.mt { margin-top: 12px; }
+    .sub { width: 100%; border-collapse: collapse; margin-bottom: 2px; background: #fff; border: 1px solid #e8edf3; }
+    .sub th { background: #eef2f7; color: #475569; padding: 5px 9px; text-align: left; font-size: 7.5px; letter-spacing: 0.3px; }
+    .sub td { padding: 6px 9px; border-top: 1px solid #eef2f7; font-size: 8.5px; line-height: 1.35; }
 </style>
 </head>
 <body>
@@ -62,7 +65,7 @@
                 <td class="right" style="font-weight:bold;">{{ f.moneda.simbolo }}{{ f.saldo|floatformat:2|intcomma }}</td>
             </tr>
             {% if detalle %}
-            <tr class="{% cycle '' 'alt' %}"><td colspan="7" style="padding:0 9px 10px 9px;">
+            <tr><td colspan="7" class="det-cell"><div class="det-card">
                 {% if f.pedido.detalles.all %}
                 <div class="sub-label">Productos del pedido</div>
                 <table class="sub">
@@ -78,7 +81,7 @@
                 </table>
                 {% endif %}
                 {% if f.cfdis.all %}
-                <div class="sub-label">Facturas (CFDI) ligadas</div>
+                <div class="sub-label mt">Facturas (CFDI) ligadas</div>
                 <table class="sub">
                     <tr><th>UUID / Serie-Folio</th><th class="center" width="14%">Fecha</th><th class="center" width="10%">Método</th><th class="right" width="16%">Total</th><th class="center" width="14%">Estado</th></tr>
                     {% for c in f.cfdis.all %}
@@ -92,9 +95,10 @@
                     {% endfor %}
                 </table>
                 {% else %}
-                <div class="muted" style="padding-top:4px;">Sin CFDI ligado — pendiente de facturar.</div>
+                <div class="sub-label mt">Facturas (CFDI) ligadas</div>
+                <div class="muted">Sin CFDI ligado — pendiente de facturar.</div>
                 {% endif %}
-            </td></tr>
+            </div></td></tr>
             {% endif %}
             {% empty %}
             <tr><td colspan="7" class="center muted">El cliente no tiene saldos pendientes.</td></tr>
