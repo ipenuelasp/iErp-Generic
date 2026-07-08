@@ -100,7 +100,7 @@
     <table style="margin-top:14px;">
         <tr>
             <td width="58%" style="vertical-align:bottom;">
-                {% if pedido.notas %}<div class="panel" style="background:#f8fafc;"><span class="label">OBSERVACIONES</span><br><span class="val">{{ pedido.notas }}</span></div>{% endif %}
+                {% if pedido.notas %}<div class="panel" style="background:#f8fafc;"><span class="label">OBSERVACIONES</span><br><span class="val">{{ pedido.notas|linebreaksbr }}</span></div>{% endif %}
             </td>
             <td width="42%">
                 <table class="tot">
