@@ -87,7 +87,7 @@
             {% for d in detalles %}
             <tr class="{% cycle '' 'alt' %}">
                 <td><b>{{ d.producto.nombre }}</b><br><span class="muted">{{ d.producto.sku }}</span></td>
-                <td class="center">{% if d.tipo_linea == 'RENTA' %}Renta{% else %}Producto{% endif %}</td>
+                <td class="center">{% if d.tipo_linea == 'RENTA' %}Renta{% elif d.producto.grupo and not d.producto.grupo.es_inventariable %}Servicio{% else %}Producto{% endif %}</td>
                 <td class="center">{{ d.cantidad|floatformat:"-2" }}</td>
                 <td class="right">{{ pedido.moneda.simbolo }}{{ d.precio_unitario|floatformat:2|intcomma }}</td>
                 <td class="right">{{ pedido.moneda.simbolo }}{{ d.importe|floatformat:2|intcomma }}</td>
