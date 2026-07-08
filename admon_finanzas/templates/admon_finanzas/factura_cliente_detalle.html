@@ -13,6 +13,7 @@
         </div>
         <div class="flex items-center gap-4">
             <a href="{% url 'admon_finanzas:estado_cuenta_cliente' factura.cliente_id %}" target="_blank" class="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all"><i class="fa-solid fa-file-pdf mr-2 text-rose-500"></i> Estado de cuenta</a>
+            <a href="{% url 'admon_finanzas:estado_cuenta_cliente' factura.cliente_id %}?detalle=1" target="_blank" class="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all"><i class="fa-solid fa-file-lines mr-2 text-rose-500"></i> Detallado</a>
             <a href="{% url 'admon_finanzas:cuentas_por_cobrar' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver</a>
         </div>
     </div>

@@ -554,22 +554,27 @@ class AvisarComplementosView(LoginRequiredMixin, View):
 
 
 class EstadoCuentaClientePDFView(LoginRequiredMixin, View):
-    """Estado de cuenta: CxC de un cliente con saldos pendientes."""
+    """Estado de cuenta: CxC de un cliente con saldos pendientes.
+    Con ?detalle=1 despliega, por cada CxC, los productos del pedido y los
+    CFDIs (facturas) ligados."""
     def get(self, request, cliente_id):
         if not request.empresa:
             return redirect('home')
         import io
         from django.template.loader import get_template
         from admon_ventas.models import Cliente
+        detalle = request.GET.get('detalle') in ('1', 'true', 'si')
         cliente = get_object_or_404(Cliente, id=cliente_id, empresa=request.empresa)
         facturas = FacturaCliente.objects.filter(
             empresa=request.empresa, cliente=cliente).exclude(estado='CANCELADA').select_related('moneda', 'pedido')
+        if detalle:
+            facturas = facturas.prefetch_related('pedido__detalles__producto', 'cfdis')
         pendientes = [f for f in facturas if f.saldo > 0]
         total_saldo = sum((f.saldo for f in pendientes), __import__('decimal').Decimal('0'))
         html = get_template('admon_finanzas/estado_cuenta_pdf.html').render({
             'empresa': request.empresa, 'cliente': cliente,
             'facturas': facturas, 'pendientes': pendientes,
-            'total_saldo': total_saldo,
+            'total_saldo': total_saldo, 'detalle': detalle,
             'hoy': __import__('django.utils.timezone', fromlist=['now']).now(),
         })
         from xhtml2pdf import pisa
@@ -578,7 +583,8 @@ class EstadoCuentaClientePDFView(LoginRequiredMixin, View):
         if pdf.err:
             return HttpResponse("Error al generar el PDF", status=400)
         resp = HttpResponse(result.getvalue(), content_type='application/pdf')
-        resp['Content-Disposition'] = f'inline; filename="EdoCuenta-{cliente.id}.pdf"'
+        suf = 'Detallado' if detalle else ''
+        resp['Content-Disposition'] = f'inline; filename="EdoCuenta{suf}-{cliente.id}.pdf"'
         return resp
 
 

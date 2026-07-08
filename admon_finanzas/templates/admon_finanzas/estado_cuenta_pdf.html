@@ -21,12 +21,16 @@
     .vencido { color: #dc2626; font-weight: bold; }
     .tot .grand { font-size: 13px; font-weight: bold; color: #fff; background: #b91c1c; padding: 6px 9px; }
     .badge { font-size: 8px; font-weight: bold; padding: 2px 6px; border-radius: 8px; }
+    .sub-label { color: #64748b; font-size: 8px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; margin: 6px 0 3px 0; }
+    .sub { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+    .sub th { background: #eef2f7; color: #475569; padding: 3px 7px; text-align: left; font-size: 7.5px; border-bottom: 1px solid #dbe3ee; }
+    .sub td { padding: 3px 7px; border-bottom: 1px solid #f1f5f9; font-size: 8.5px; }
 </style>
 </head>
 <body>
     {% include 'includes/pdf_header_open.html' %}
             <td width="42%" class="right" align="right">
-                <div class="doc-title">ESTADO DE CUENTA</div>
+                <div class="doc-title">ESTADO DE CUENTA{% if detalle %} · DETALLADO{% endif %}</div>
                 <div class="muted" style="margin-top:8px;">Al: <b style="color:#334155;">{{ hoy|date:"d/m/Y" }}</b></div>
             </td>
         </tr>
@@ -57,6 +61,41 @@
                 <td class="right">{{ f.moneda.simbolo }}{{ f.total_pagado|floatformat:2|intcomma }}</td>
                 <td class="right" style="font-weight:bold;">{{ f.moneda.simbolo }}{{ f.saldo|floatformat:2|intcomma }}</td>
             </tr>
+            {% if detalle %}
+            <tr class="{% cycle '' 'alt' %}"><td colspan="7" style="padding:0 9px 10px 9px;">
+                {% if f.pedido.detalles.all %}
+                <div class="sub-label">Productos del pedido</div>
+                <table class="sub">
+                    <tr><th>Producto</th><th class="center" width="12%">Cant.</th><th class="right" width="18%">P. Unit.</th><th class="right" width="18%">Importe</th></tr>
+                    {% for d in f.pedido.detalles.all %}
+                    <tr>
+                        <td>{{ d.producto.nombre }} <span class="muted">· {{ d.producto.sku }}</span></td>
+                        <td class="center">{{ d.cantidad|floatformat:"-2" }}</td>
+                        <td class="right">{{ f.moneda.simbolo }}{{ d.precio_unitario|floatformat:2|intcomma }}</td>
+                        <td class="right">{{ f.moneda.simbolo }}{{ d.importe|floatformat:2|intcomma }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                {% endif %}
+                {% if f.cfdis.all %}
+                <div class="sub-label">Facturas (CFDI) ligadas</div>
+                <table class="sub">
+                    <tr><th>UUID / Serie-Folio</th><th class="center" width="14%">Fecha</th><th class="center" width="10%">Método</th><th class="right" width="16%">Total</th><th class="center" width="14%">Estado</th></tr>
+                    {% for c in f.cfdis.all %}
+                    <tr>
+                        <td>{{ c.serie_folio|default:c.uuid }}{% if c.serie_folio %} <span class="muted">· {{ c.uuid }}</span>{% endif %}</td>
+                        <td class="center">{{ c.fecha|date:"d/m/Y"|default:"—" }}</td>
+                        <td class="center">{{ c.metodo_pago|default:"—" }}</td>
+                        <td class="right">{{ f.moneda.simbolo }}{{ c.total|floatformat:2|intcomma }}</td>
+                        <td class="center">{{ c.estado_cobro_display }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                {% else %}
+                <div class="muted" style="padding-top:4px;">Sin CFDI ligado — pendiente de facturar.</div>
+                {% endif %}
+            </td></tr>
+            {% endif %}
             {% empty %}
             <tr><td colspan="7" class="center muted">El cliente no tiene saldos pendientes.</td></tr>
             {% endfor %}

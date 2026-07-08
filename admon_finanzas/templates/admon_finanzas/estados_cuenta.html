@@ -58,7 +58,8 @@
                     <td class="px-6 py-4 text-right text-xs font-bold text-blue-600">${{ f.cobrado|floatformat:2|intcomma }}</td>
                     <td class="px-6 py-4 text-right text-sm font-black {% if f.saldo > 0 %}text-emerald-600{% else %}text-slate-400{% endif %}">${{ f.saldo|floatformat:2|intcomma }}</td>
                     <td class="px-8 py-4 text-center">
-                        <a href="{% url 'admon_finanzas:estado_cuenta_cliente' f.cliente.id %}" target="_blank" class="text-[10px] font-black uppercase tracking-widest text-brand hover:underline"><i class="fa-solid fa-file-pdf mr-1 text-rose-500"></i> Ver PDF</a>
+                        <a href="{% url 'admon_finanzas:estado_cuenta_cliente' f.cliente.id %}" target="_blank" class="text-[10px] font-black uppercase tracking-widest text-brand hover:underline"><i class="fa-solid fa-file-pdf mr-1 text-rose-500"></i> Simple</a>
+                        <a href="{% url 'admon_finanzas:estado_cuenta_cliente' f.cliente.id %}?detalle=1" target="_blank" class="ml-3 text-[10px] font-black uppercase tracking-widest text-brand hover:underline"><i class="fa-solid fa-file-lines mr-1 text-rose-500"></i> Detallado</a>
                     </td>
                 </tr>
                 {% empty %}
