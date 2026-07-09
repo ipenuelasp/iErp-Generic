@@ -44,10 +44,7 @@
         <div class="rounded-2xl border-2 border-amber-200 bg-amber-50/40 p-5 mb-5">
             <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
                 <span class="text-xs font-black uppercase italic text-amber-700"><i class="fa-solid fa-pen-ruler mr-2"></i>Borrador · por surtir</span>
-                <form method="POST" data-confirm="¿Confirmar y surtir el material al hospital? Esto descuenta el stock de las cajas." data-confirm-title="Confirmar surtido" data-confirm-ok="Sí, surtir">{% csrf_token %}
-                    <input type="hidden" name="accion" value="enviar_borrador">
-                    <button type="submit" class="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-truck-medical mr-1"></i> Confirmar y surtir</button>
-                </form>
+                <button type="button" onclick="document.getElementById('modalConfirmSurtir').classList.remove('hidden')" class="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-truck-medical mr-1"></i> Confirmar y surtir</button>
             </div>
             {% for s in borradores_arbol %}
             <div class="bg-white rounded-2xl border border-amber-100 p-4 mb-2">
@@ -199,6 +196,64 @@
         </div>
     </div>
 </div>
+
+{% if hay_borradores %}
+<!-- Modal confirmar surtido -->
+<div id="modalConfirmSurtir" class="hidden fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div class="flex items-start gap-4 px-8 pt-8 pb-4">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-truck-medical text-lg"></i></div>
+            <div class="min-w-0">
+                <h3 class="text-lg font-black text-slate-800 italic uppercase leading-tight">Confirmar surtido</h3>
+                <p class="text-[11px] font-bold text-slate-400 mt-1">Vas a enviar el siguiente material {% if solicitud.hospital %}a <span class="text-slate-600">{{ solicitud.hospital.nombre }}</span>{% endif %}. Revisa antes de confirmar.</p>
+            </div>
+        </div>
+        <div class="px-8 overflow-y-auto space-y-3">
+            {% for s in borradores_arbol %}
+            <div class="rounded-2xl border border-slate-100 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <p class="text-sm font-black text-slate-800">{{ s.instancia_kit.codigo_caja }} <span class="font-bold text-slate-400">· {{ s.instancia_kit.nombre_display }}</span></p>
+                    {% if not s.resumen.tiene_receta %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-400">Sin receta</span>
+                    {% elif s.resumen.completa %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-50 text-emerald-600"><i class="fa-solid fa-check mr-1"></i>Completa</span>
+                    {% else %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Faltan {{ s.resumen.falta_total }} pzs</span>{% endif %}
+                </div>
+                {% include 'admon_cirugias/_items_tabla.html' with items=s.resumen.items %}
+                {% if s.resumen.faltantes %}
+                <div class="mt-2 rounded-lg bg-amber-50 border border-amber-100 p-2">
+                    <p class="text-[9px] font-black uppercase text-amber-600 mb-1">Se surtirá incompleta — falta:</p>
+                    {% for f in s.resumen.faltantes %}<div class="flex justify-between text-[10px] text-amber-700"><span class="truncate pr-2">[{{ f.sku }}] {{ f.nombre|truncatechars:32 }}</span><span class="font-black">faltan {{ f.falta }}</span></div>{% endfor %}
+                </div>
+                {% endif %}
+                {% for h in s.hijas_salidas %}
+                <div class="mt-2 ml-4 rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-[11px] font-black text-slate-700"><i class="fa-solid fa-boxes-stacked text-indigo-400 mr-1"></i>{{ h.instancia_kit.codigo_caja }} · {{ h.instancia_kit.nombre_display }}</p>
+                        {% if h.resumen.completa %}<span class="text-[8px] font-black uppercase text-emerald-600">Completa</span>{% elif h.resumen.tiene_receta %}<span class="text-[8px] font-black uppercase text-amber-600">Faltan {{ h.resumen.falta_total }}</span>{% endif %}
+                    </div>
+                    {% include 'admon_cirugias/_items_tabla.html' with items=h.resumen.items %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+            <div class="rounded-2xl bg-blue-50 border border-blue-100 p-4">
+                <p class="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1"><i class="fa-solid fa-circle-info mr-1"></i>Qué pasará al surtir</p>
+                <ul class="text-[11px] font-bold text-blue-700 space-y-1 list-disc ml-4">
+                    <li>Se <b>descuenta el stock</b> de las cajas de tu inventario.</li>
+                    <li>Las cajas dejan de estar <b>Disponibles</b> en Kits / Cajas y pasan a <b>En hospital (en campo)</b>.</li>
+                    <li>Quedarán ligadas a esta cirugía hasta que registres su <b>regreso</b>.</li>
+                </ul>
+            </div>
+        </div>
+        <div class="flex justify-end gap-3 px-8 py-6">
+            <button type="button" onclick="document.getElementById('modalConfirmSurtir').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">No, regresar</button>
+            <form method="POST" class="inline">{% csrf_token %}
+                <input type="hidden" name="accion" value="enviar_borrador">
+                <button type="submit" class="bg-emerald-600 text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-truck-medical mr-1"></i> Sí, confirmar y surtir</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 {% if puede_editar %}
 <!-- Modal editar solicitud -->
