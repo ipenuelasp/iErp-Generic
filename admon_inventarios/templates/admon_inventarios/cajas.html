@@ -71,7 +71,11 @@
                             <form method="POST" class="inline">{% csrf_token %}
                                 <input type="hidden" name="accion" value="desanidar">
                                 <input type="hidden" name="hija_id" value="{{ h.id }}">
-                                <button type="button" onclick="const f=this.closest('form'); confirmModal('¿Sacar {{ h.codigo_caja }} de esta caja?', function(){ f.submit(); })" class="text-[9px] font-black uppercase text-rose-400 hover:text-rose-600" title="Sacar de la caja"><i class="fa-solid fa-arrow-up-from-bracket"></i></button>
+                                <button type="button" onclick="sacarCaja(this)"
+                                    data-cod="{{ h.codigo_caja }}" data-nom="{{ h.nombre_display }}"
+                                    data-prod="{{ h.num_productos }}" data-pzs="{{ h.total_piezas|floatformat:'-2' }}"
+                                    data-padre="{{ c.codigo_caja }}"
+                                    class="text-[9px] font-black uppercase text-rose-400 hover:text-rose-600" title="Sacar de la caja"><i class="fa-solid fa-arrow-up-from-bracket"></i></button>
                             </form>
                         </div>
                     </div>
@@ -207,6 +211,15 @@
 </div>
 
 <script>
+    function sacarCaja(btn) {
+        const d = btn.dataset;
+        const f = btn.closest('form');
+        const nom = d.nom && d.nom !== d.cod ? ` (${d.nom})` : '';
+        const msg = `La caja ${d.cod}${nom} contiene ${d.prod} producto(s) y ${d.pzs} pieza(s). ` +
+                    `Se sacará de ${d.padre} y quedará como caja independiente; su contenido no se pierde.`;
+        confirmModal(msg, function () { f.submit(); },
+                     { title: 'Sacar caja de su contenedora', ok: 'Sí, sacarla' });
+    }
     function abrirAnidar(padreId, padreCod) {
         document.getElementById('anPadreId').value = padreId;
         document.getElementById('anPadreCod').textContent = padreCod;
