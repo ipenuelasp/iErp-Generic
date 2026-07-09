@@ -194,7 +194,7 @@
         </div>
         <p class="text-[11px] font-bold text-slate-400 mb-5">Elige la tornillera/caja que va dentro de <span id="anPadreCod" class="text-indigo-600"></span>.</p>
         <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Caja a meter</label>
-        <select name="hija_id" id="anHijaSel" required class="no-select2 w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold">
+        <select name="hija_id" id="anHijaSel" required data-placeholder="Busca una caja…" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold">
             {% for cand in candidatas_hija %}
             <option value="{{ cand.id }}" data-padre="">{{ cand.codigo_caja }} · {{ cand.nombre_display }}</option>
             {% endfor %}
@@ -210,13 +210,16 @@
     function abrirAnidar(padreId, padreCod) {
         document.getElementById('anPadreId').value = padreId;
         document.getElementById('anPadreCod').textContent = padreCod;
-        // Oculta del selector la propia caja padre (no puede meterse en sí misma)
-        const sel = document.getElementById('anHijaSel');
-        for (const opt of sel.options) {
-            opt.hidden = (opt.value === String(padreId));
-        }
-        // Selecciona la primera opción visible
-        for (const opt of sel.options) { if (!opt.hidden) { sel.value = opt.value; break; } }
+        const $sel = $('#anHijaSel');
+        // La propia caja padre no puede meterse en sí misma: la deshabilitamos.
+        $sel.find('option').prop('disabled', false);
+        $sel.find('option[value="' + padreId + '"]').prop('disabled', true);
+        const primera = $sel.find('option:not(:disabled)').first().val() || '';
+        $sel.val(primera);
+        // Re-inicializa Select2 dentro del modal para reflejar el estado.
+        if ($sel.hasClass('select2-hidden-accessible')) { $sel.select2('destroy'); }
+        if (window.initSelect2) { window.initSelect2(document.getElementById('modalAnidar')); }
+        $sel.trigger('change');
         document.getElementById('modalAnidar').classList.remove('hidden');
     }
 </script>
