@@ -31,23 +31,82 @@
             {% endif %}
         </div>
         {% if solicitud.estado == 'SOLICITADA' or solicitud.estado == 'SURTIDA' %}
-        <p class="text-[10px] font-bold text-slate-400 -mt-2 mb-3">La caja sale con el contenido que trae cargado. Si está vacía, <b>reabastécela</b> primero en <i>Kits / Cajas</i>.</p>
+        <p class="text-[10px] font-bold text-slate-400 -mt-2 mb-3">Agrega cajas al <b>borrador</b>, revisa su contenido y luego <b>confirma para surtir</b>. Si una está incompleta, <b>reabastécela</b> en <i>Kits / Cajas</i>.</p>
         {% endif %}
-        <div class="space-y-3">
-            {% for s in salidas_arbol %}
-            <div>
-                <div class="flex flex-wrap justify-between items-center gap-2 bg-slate-50 rounded-2xl px-5 py-3">
-                    {% include 'admon_cirugias/_salida_row.html' %}
-                    {% if s.hijas_salidas %}<span class="text-[9px] font-black uppercase text-indigo-500 w-full mt-1"><i class="fa-solid fa-layer-group mr-1"></i>Contiene {{ s.hijas_salidas|length }} tornillera(s)</span>{% endif %}
+
+        {# ===== BORRADOR (por surtir) ===== #}
+        {% if hay_borradores %}
+        <div class="rounded-2xl border-2 border-amber-200 bg-amber-50/40 p-5 mb-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <span class="text-xs font-black uppercase italic text-amber-700"><i class="fa-solid fa-pen-ruler mr-2"></i>Borrador · por surtir</span>
+                <form method="POST" data-confirm="¿Confirmar y surtir el material al hospital? Esto descuenta el stock de las cajas." data-confirm-title="Confirmar surtido" data-confirm-ok="Sí, surtir">{% csrf_token %}
+                    <input type="hidden" name="accion" value="enviar_borrador">
+                    <button type="submit" class="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-truck-medical mr-1"></i> Confirmar y surtir</button>
+                </form>
+            </div>
+            {% for s in borradores_arbol %}
+            <div class="bg-white rounded-2xl border border-amber-100 p-4 mb-2">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="text-sm font-black text-slate-800">{{ s.instancia_kit.codigo_caja }} <span class="font-bold text-slate-400">· {{ s.instancia_kit.nombre_display }}</span></p>
+                        <div class="flex flex-wrap gap-2 mt-1">
+                            {% if not s.resumen.tiene_receta %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-400">Sin receta</span>
+                            {% elif s.resumen.completa %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-50 text-emerald-600"><i class="fa-solid fa-check mr-1"></i>Completa</span>
+                            {% else %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Faltan {{ s.resumen.falta_total }} pzs</span>{% endif %}
+                            {% if s.hijas_salidas %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-indigo-50 text-indigo-600"><i class="fa-solid fa-layer-group mr-1"></i>{{ s.hijas_salidas|length }} tornillera(s)</span>{% endif %}
+                        </div>
+                    </div>
+                    <form method="POST" data-confirm="¿Quitar {{ s.instancia_kit.codigo_caja }} del borrador?" data-confirm-title="Quitar del borrador" data-confirm-ok="Sí, quitar">{% csrf_token %}
+                        <input type="hidden" name="accion" value="quitar_borrador">
+                        <input type="hidden" name="salida_id" value="{{ s.id }}">
+                        <button type="submit" class="text-[9px] font-black uppercase text-rose-400 hover:text-rose-600"><i class="fa-solid fa-xmark mr-1"></i>Quitar</button>
+                    </form>
                 </div>
+                {% include 'admon_cirugias/_items_tabla.html' with items=s.resumen.items %}
+                {% if s.resumen.faltantes %}
+                <div class="mt-2 rounded-lg bg-amber-50 border border-amber-100 p-2">
+                    <p class="text-[9px] font-black uppercase text-amber-600 mb-1">Falta para completar</p>
+                    {% for f in s.resumen.faltantes %}<div class="flex justify-between text-[10px] text-amber-700"><span class="truncate pr-2">[{{ f.sku }}] {{ f.nombre|truncatechars:34 }}</span><span class="font-black">faltan {{ f.falta }}</span></div>{% endfor %}
+                </div>
+                {% endif %}
                 {% for h in s.hijas_salidas %}
-                <div class="flex flex-wrap justify-between items-center gap-2 bg-indigo-50/40 border border-indigo-100 rounded-2xl px-5 py-3 ml-6 mt-2">
-                    <span class="text-[8px] font-black uppercase text-indigo-400 w-full"><i class="fa-solid fa-turn-up fa-rotate-90 mr-1"></i>Tornillera dentro de {{ s.instancia_kit.codigo_caja }}</span>
-                    {% include 'admon_cirugias/_salida_row.html' with s=h %}
+                <div class="mt-2 ml-4 rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-[11px] font-black text-slate-700"><i class="fa-solid fa-boxes-stacked text-indigo-400 mr-1"></i>{{ h.instancia_kit.codigo_caja }} · {{ h.instancia_kit.nombre_display }}</p>
+                        {% if h.resumen.tiene_receta and not h.resumen.completa %}<span class="text-[8px] font-black uppercase text-amber-600">Faltan {{ h.resumen.falta_total }}</span>{% elif h.resumen.completa %}<span class="text-[8px] font-black uppercase text-emerald-600">Completa</span>{% endif %}
+                    </div>
+                    {% include 'admon_cirugias/_items_tabla.html' with items=h.resumen.items %}
                 </div>
                 {% endfor %}
             </div>
-            {% empty %}<p class="text-slate-400 italic text-sm">Aún no se surte material. Elige una caja para enviar a la cirugía.</p>{% endfor %}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {# ===== ENVIADO ===== #}
+        <div class="space-y-3">
+            {% for s in enviadas_arbol %}
+            <div>
+                <div class="bg-slate-50 rounded-2xl px-5 py-3">
+                    <div class="flex flex-wrap justify-between items-center gap-2">
+                        {% include 'admon_cirugias/_salida_row.html' %}
+                        {% if s.hijas_salidas %}<span class="text-[9px] font-black uppercase text-indigo-500 w-full mt-1"><i class="fa-solid fa-layer-group mr-1"></i>Contiene {{ s.hijas_salidas|length }} tornillera(s)</span>{% endif %}
+                    </div>
+                    {% include 'admon_cirugias/_items_tabla.html' with items=s.items_enviados %}
+                </div>
+                {% for h in s.hijas_salidas %}
+                <div class="bg-indigo-50/40 border border-indigo-100 rounded-2xl px-5 py-3 ml-6 mt-2">
+                    <span class="text-[8px] font-black uppercase text-indigo-400 block mb-1"><i class="fa-solid fa-turn-up fa-rotate-90 mr-1"></i>Tornillera dentro de {{ s.instancia_kit.codigo_caja }}</span>
+                    <div class="flex flex-wrap justify-between items-center gap-2">
+                        {% include 'admon_cirugias/_salida_row.html' with s=h %}
+                    </div>
+                    {% include 'admon_cirugias/_items_tabla.html' with items=h.items_enviados %}
+                </div>
+                {% endfor %}
+            </div>
+            {% empty %}
+            {% if not hay_borradores %}<p class="text-slate-400 italic text-sm">Aún no se surte material. Usa <b>Surtir caja</b> para agregar al borrador.</p>{% endif %}
+            {% endfor %}
         </div>
     </div>
 
@@ -101,15 +160,18 @@
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <p class="text-sm font-black text-slate-800">{{ c.codigo }} <span class="font-bold text-slate-400">· {{ c.nombre }}</span></p>
-                        <div class="flex flex-wrap gap-3 mt-1 text-[10px] font-black uppercase text-slate-400">
-                            <span>{{ c.num }} productos · {{ c.piezas }} pzs</span>
+                        <div class="flex flex-wrap gap-2 mt-1 text-[10px] font-black uppercase">
+                            <span class="text-slate-400">{{ c.num }} productos · {{ c.piezas }} pzs</span>
+                            {% if not c.tiene_receta %}<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-400">Sin receta</span>
+                            {% elif c.completa %}<span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-600"><i class="fa-solid fa-check mr-1"></i>Completa</span>
+                            {% else %}<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Faltan {{ c.falta_total }} pzs</span>{% endif %}
                             {% if c.tornilleras %}<span class="text-indigo-500"><i class="fa-solid fa-layer-group mr-1"></i>{{ c.tornilleras|length }} tornillera(s)</span>{% endif %}
                         </div>
                     </div>
                     <form method="POST" class="shrink-0">{% csrf_token %}
                         <input type="hidden" name="accion" value="surtir">
                         <input type="hidden" name="instancia_kit" value="{{ c.id }}">
-                        <button type="submit" class="bg-brand text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-truck-medical mr-1"></i> Surtir esta</button>
+                        <button type="submit" class="bg-brand text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Agregar al borrador</button>
                     </form>
                 </div>
 

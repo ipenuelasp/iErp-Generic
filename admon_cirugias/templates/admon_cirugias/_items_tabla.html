@@ -1,0 +1,15 @@
+{% if items %}
+<table class="w-full text-left mt-2">
+    <thead><tr class="text-[8px] text-slate-400 uppercase font-black"><th class="py-1">Producto</th><th class="py-1 text-right">Cant.</th></tr></thead>
+    <tbody>
+        {% for it in items %}
+        <tr class="border-t border-slate-50">
+            <td class="py-1 text-[11px] pr-2"><span class="font-mono text-slate-300">[{{ it.sku }}]</span> <span class="font-bold text-slate-600">{{ it.nombre|truncatechars:40 }}</span>{% if it.ret %}<span class="text-[8px] text-amber-600 font-black ml-1">RENTA</span>{% endif %}</td>
+            <td class="py-1 text-right text-[11px] font-black text-slate-700 whitespace-nowrap">{{ it.cant }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-[10px] font-bold text-slate-300 italic mt-1">Sin material suelto.</p>
+{% endif %}

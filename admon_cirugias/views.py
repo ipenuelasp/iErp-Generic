@@ -303,7 +303,7 @@ def _fmt_cant(x):
 
 
 def _resumen_caja(caja):
-    """Resumen del contenido de una caja para el selector visual de surtido."""
+    """Resumen del contenido de una caja + completitud contra su receta."""
     cont = list(caja.contenido())
     agg = {}
     for e in cont:
@@ -313,10 +313,51 @@ def _resumen_caja(caja):
     items = [{'sku': v['sku'], 'nombre': v['nombre'], 'cant': _fmt_cant(v['cant'])}
              for v in agg.values()]
     total = sum((e.cantidad for e in cont), decimal.Decimal('0'))
+
+    objetivo = caja.lineas_objetivo()  # [(producto, cantidad_objetivo, es_retornable)]
+    falta_total = decimal.Decimal('0')
+    faltantes = []
+    for prod, cant_obj, _ret in objetivo:
+        act = agg.get(prod.id, {}).get('cant', decimal.Decimal('0'))
+        falta = cant_obj - act
+        if falta > 0:
+            falta_total += falta
+            faltantes.append({'sku': prod.sku, 'nombre': prod.nombre,
+                              'falta': _fmt_cant(falta), 'objetivo': _fmt_cant(cant_obj)})
+    tiene_receta = bool(objetivo)
     return {
         'id': caja.id, 'codigo': caja.codigo_caja, 'nombre': caja.nombre_display,
         'num': len(items), 'piezas': _fmt_cant(total), 'items': items,
+        'tiene_receta': tiene_receta, 'completa': tiene_receta and falta_total == 0,
+        'falta_total': _fmt_cant(falta_total), 'faltantes': faltantes,
     }
+
+
+def _items_enviados(salida):
+    """Productos que salieron en la caja (agregado por producto), encabezado→detalle."""
+    agg = {}
+    for cs in salida.contenido.select_related('producto').all():
+        d = agg.setdefault(cs.producto_id, {'sku': cs.producto.sku, 'nombre': cs.producto.nombre,
+                                            'cant': decimal.Decimal('0'), 'ret': cs.es_retornable})
+        d['cant'] += cs.cantidad_enviada
+    return [{'sku': v['sku'], 'nombre': v['nombre'], 'cant': _fmt_cant(v['cant']), 'ret': v['ret']}
+            for v in agg.values()]
+
+
+def _arbol_salidas(salidas):
+    """Agrupa salidas en árbol padre→hijas por la caja contenedora."""
+    por_box = {s.instancia_kit_id: s for s in salidas}
+    for s in salidas:
+        s.hijas_salidas = []
+    raiz = []
+    for s in salidas:
+        pid = s.instancia_kit.caja_contenedora_id
+        padre = por_box.get(pid) if pid else None
+        if padre and padre is not s:
+            padre.hijas_salidas.append(s)
+        else:
+            raiz.append(s)
+    return raiz
 
 
 class SolicitudDetalleView(LoginRequiredMixin, View):
@@ -350,27 +391,28 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
 
         hay_retornadas = any(s.estado == 'RETORNADA' for s in salidas)
 
-        # Agrupa las salidas en árbol: la caja de cirugía (padre) con sus
-        # tornilleras (hijas) anidadas debajo.
-        salida_por_box = {s.instancia_kit_id: s for s in salidas}
-        for s in salidas:
-            s.hijas_salidas = []
-        salidas_arbol = []
-        for s in salidas:
-            pid = s.instancia_kit.caja_contenedora_id
-            padre = salida_por_box.get(pid) if pid else None
-            if padre and padre is not s:
-                padre.hijas_salidas.append(s)
-            else:
-                salidas_arbol.append(s)
+        # Separa borradores (por surtir) de las ya enviadas/en proceso.
+        borradores = [s for s in salidas if s.estado == 'PREPARANDO']
+        enviadas = [s for s in salidas if s.estado not in ('PREPARANDO', 'CANCELADA')]
 
-        # Cajas disponibles para surtir: de nivel superior (no anidadas). Se
-        # incluyen tanto las basadas en plantilla como las armadas libremente.
+        # Borrador: adjunta el resumen del contenido actual + completitud.
+        for s in borradores:
+            s.resumen = _resumen_caja(s.instancia_kit)
+        # Enviadas: adjunta el resumen de lo que salió (encabezado→detalle).
+        for s in enviadas:
+            s.items_enviados = _items_enviados(s)
+
+        borradores_arbol = _arbol_salidas(borradores)
+        enviadas_arbol = _arbol_salidas(enviadas)
+
+        # Cajas disponibles para surtir: de nivel superior (no anidadas), que no
+        # estén ya en esta cirugía. Incluye cajas con plantilla y armadas libres.
+        ya_en_sol = {s.instancia_kit_id for s in salidas if s.estado != 'CANCELADA'}
         cajas_disponibles = InstanciaKit.objects.filter(
             sucursal_actual=sucursal, estado='DISPONIBLE', caja_contenedora__isnull=True
-        ).select_related('kit').prefetch_related('cajas_hijas')
+        ).exclude(id__in=ya_en_sol).select_related('kit').prefetch_related('cajas_hijas')
 
-        # Selector visual: cada caja con su contenido y el de sus tornilleras.
+        # Selector visual: cada caja con su contenido, completitud y tornilleras.
         puede_surtir = sol.estado in ('SOLICITADA', 'SURTIDA')
         cajas_surtir = []
         if puede_surtir:
@@ -383,9 +425,10 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
         return render(request, self.template_name, {
             'solicitud': sol,
             'salidas': salidas,
-            'salidas_arbol': salidas_arbol,
+            'borradores_arbol': borradores_arbol,
+            'enviadas_arbol': enviadas_arbol,
+            'hay_borradores': bool(borradores),
             'hay_retornadas': hay_retornadas,
-            'cajas_disponibles': cajas_disponibles,
             'cajas_surtir': cajas_surtir,
             'sucursal_activa': sucursal, 'seccion': 'cirugias',
         })
@@ -418,37 +461,59 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
             # Tornilleras (cajas hijas) disponibles que van dentro de esta caja.
             hijas = list(caja.cajas_hijas.filter(estado='DISPONIBLE'))
 
-            salida = _crear_salida(caja)
-            try:
-                # La caja padre sale con su material suelto; si solo es contenedora
-                # (sin stock propio) pero trae tornilleras, se permite vacía.
-                enviar_caja_a_cirugia(salida=salida, usuario=request.user,
-                                      permitir_vacia=bool(hijas))
-            except (ValueError, StockInsuficiente) as e:
-                salida.delete()
-                messages.error(request, f"No se pudo surtir: {e}")
-                return redirect('admon_cirugias:solicitud_detalle', pk=pk)
-            sol.salidas.add(salida)
-
-            enviadas = [caja.codigo_caja]
-            fallidas = []
+            # Se agrega como BORRADOR (PREPARANDO). El stock aún no se mueve;
+            # se envía de verdad al confirmar.
+            padre = _crear_salida(caja)
+            sol.salidas.add(padre)
             for h in hijas:
-                sh = _crear_salida(h)
-                try:
-                    enviar_caja_a_cirugia(salida=sh, usuario=request.user)
-                    sol.salidas.add(sh)
-                    enviadas.append(h.codigo_caja)
-                except (ValueError, StockInsuficiente) as e:
-                    sh.delete()
-                    fallidas.append(f"{h.codigo_caja} ({e})")
+                sol.salidas.add(_crear_salida(h))
 
-            if sol.estado == 'SOLICITADA':
-                sol.estado = 'SURTIDA'
-                sol.save(update_fields=['estado'])
             messages.success(
                 request,
-                f"Enviado a la cirugía: {', '.join(enviadas)}."
-                + (f" Tornilleras vacías no enviadas: {'; '.join(fallidas)}." if fallidas else ""))
+                f"Caja {caja.codigo_caja}" + (f" + {len(hijas)} tornillera(s)" if hijas else "")
+                + " agregada al borrador. Revísala y confirma para surtir.")
+            return redirect('admon_cirugias:solicitud_detalle', pk=pk)
+
+        elif accion == 'quitar_borrador':
+            salida = get_object_or_404(sol.salidas.filter(estado='PREPARANDO'),
+                                       id=request.POST.get('salida_id'))
+            caja = salida.instancia_kit
+            # Si es la caja de cirugía (padre), quita también sus tornilleras del borrador.
+            hijas = sol.salidas.filter(estado='PREPARANDO', instancia_kit__caja_contenedora=caja)
+            for hs in list(hijas):
+                sol.salidas.remove(hs)
+                hs.delete()
+            sol.salidas.remove(salida)
+            salida.delete()
+            messages.info(request, f"Caja {caja.codigo_caja} quitada del borrador.")
+            return redirect('admon_cirugias:solicitud_detalle', pk=pk)
+
+        elif accion == 'enviar_borrador':
+            borradores = list(sol.salidas.filter(estado='PREPARANDO')
+                              .select_related('instancia_kit'))
+            if not borradores:
+                messages.error(request, "No hay cajas en borrador para surtir.")
+                return redirect('admon_cirugias:solicitud_detalle', pk=pk)
+            box_ids = {s.instancia_kit_id for s in borradores}
+            enviadas, fallidas = [], []
+            for s in borradores:
+                caja = s.instancia_kit
+                # La caja de cirugía se permite vacía si trae tornilleras en el envío.
+                tiene_hijas = any(o.instancia_kit.caja_contenedora_id == caja.id for o in borradores)
+                try:
+                    enviar_caja_a_cirugia(salida=s, usuario=request.user, permitir_vacia=tiene_hijas)
+                    enviadas.append(caja.codigo_caja)
+                except (ValueError, StockInsuficiente) as e:
+                    fallidas.append(f"{caja.codigo_caja} ({e})")
+            if enviadas and sol.estado == 'SOLICITADA':
+                sol.estado = 'SURTIDA'
+                sol.save(update_fields=['estado'])
+            if enviadas:
+                messages.success(
+                    request, f"Surtido a la cirugía: {', '.join(enviadas)}."
+                    + (f" No se pudieron enviar: {'; '.join(fallidas)}." if fallidas else ""))
+            else:
+                messages.error(request, f"No se pudo surtir. {'; '.join(fallidas)}")
             return redirect('admon_cirugias:solicitud_detalle', pk=pk)
 
         elif accion == 'cancelar' and sol.estado in ('SOLICITADA',):
