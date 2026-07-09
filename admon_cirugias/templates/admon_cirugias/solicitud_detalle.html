@@ -9,7 +9,12 @@
                 <span class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-{{ solicitud.color_estado }}-100 text-{{ solicitud.color_estado }}-700">{{ solicitud.get_estado_display }}</span>
             </p>
         </div>
-        <a href="{% url 'admon_cirugias:solicitudes' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver</a>
+        <div class="flex items-center gap-4">
+            {% if puede_editar %}
+            <button type="button" onclick="document.getElementById('modalEditar').classList.remove('hidden')" class="text-[10px] font-black uppercase text-brand hover:text-brand/70"><i class="fa-solid fa-pen mr-2"></i> Editar</button>
+            {% endif %}
+            <a href="{% url 'admon_cirugias:solicitudes' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver</a>
+        </div>
     </div>
 
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-6">
@@ -203,6 +208,61 @@
         </div>
     </div>
 </div>
+
+{% if puede_editar %}
+<!-- Modal editar solicitud -->
+<div id="modalEditar" class="hidden fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+    <form method="POST" class="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">{% csrf_token %}
+        <input type="hidden" name="accion" value="editar">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-black text-slate-800 italic uppercase">Editar cirugía</h3>
+            <button type="button" onclick="document.getElementById('modalEditar').classList.add('hidden')" class="text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+                <label class="lbl ml-1">Paciente (referencia)</label>
+                <input type="text" name="paciente" value="{{ solicitud.paciente }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold">
+            </div>
+            <div>
+                <label class="lbl ml-1">Doctor</label>
+                <select name="doctor" data-placeholder="Sin doctor" class="w-full mt-1">
+                    <option value=""></option>
+                    {% for d in doctores %}<option value="{{ d.id }}" {% if d.id == solicitud.doctor_id %}selected{% endif %}>{{ d.nombre }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="lbl ml-1">Hospital</label>
+                <select name="hospital" data-placeholder="Sin hospital" class="w-full mt-1">
+                    <option value=""></option>
+                    {% for h in hospitales %}<option value="{{ h.id }}" {% if h.id == solicitud.hospital_id %}selected{% endif %}>{{ h.nombre }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="lbl ml-1">Fecha cirugía</label>
+                <input type="date" name="fecha_cirugia" value="{{ solicitud.fecha_cirugia|date:'Y-m-d' }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold">
+            </div>
+            <div>
+                <label class="lbl ml-1">Cliente (a facturar)</label>
+                <select name="cliente" data-placeholder="Sin cliente" class="w-full mt-1">
+                    <option value=""></option>
+                    {% for c in clientes %}<option value="{{ c.id }}" {% if c.id == solicitud.cliente_id %}selected{% endif %}>{{ c }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-2">
+                <label class="lbl ml-1">Comentario</label>
+                <textarea name="comentario" rows="2" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold">{{ solicitud.comentario }}</textarea>
+            </div>
+        </div>
+        {% if solicitud.estado == 'SURTIDA' %}
+        <p class="text-[10px] font-bold text-amber-500 mt-3"><i class="fa-solid fa-circle-info mr-1"></i>La cirugía ya está surtida: el cambio también se aplica a los vales de las cajas enviadas.</p>
+        {% endif %}
+        <div class="flex justify-end gap-3 mt-6">
+            <button type="button" onclick="document.getElementById('modalEditar').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cancelar</button>
+            <button type="submit" class="bg-brand text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all">Guardar cambios</button>
+        </div>
+    </form>
+</div>
+{% endif %}
 
 <style>.lbl{font-size:10px;font-weight:900;color:#94a3b8;text-transform:uppercase}</style>
 <script>

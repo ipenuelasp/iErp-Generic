@@ -422,6 +422,16 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
                     _resumen_caja(h) for h in c.cajas_hijas.filter(estado='DISPONIBLE')]
                 cajas_surtir.append(info)
 
+        # La solicitud se puede editar mientras no esté finalizada/liquidada.
+        puede_editar = sol.estado in ('SOLICITADA', 'SURTIDA')
+        ctx_edit = {}
+        if puede_editar:
+            ctx_edit = {
+                'doctores': Doctor.objects.filter(empresa=empresa, activo=True),
+                'hospitales': Hospital.objects.filter(empresa=empresa, activo=True),
+                'clientes': Cliente.objects.filter(empresa=empresa, activo=True),
+            }
+
         return render(request, self.template_name, {
             'solicitud': sol,
             'salidas': salidas,
@@ -430,7 +440,9 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
             'hay_borradores': bool(borradores),
             'hay_retornadas': hay_retornadas,
             'cajas_surtir': cajas_surtir,
+            'puede_editar': puede_editar,
             'sucursal_activa': sucursal, 'seccion': 'cirugias',
+            **ctx_edit,
         })
 
     def post(self, request, pk):
@@ -472,6 +484,28 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
                 request,
                 f"Caja {caja.codigo_caja}" + (f" + {len(hijas)} tornillera(s)" if hijas else "")
                 + " agregada al borrador. Revísala y confirma para surtir.")
+            return redirect('admon_cirugias:solicitud_detalle', pk=pk)
+
+        elif accion == 'editar':
+            if sol.estado not in ('SOLICITADA', 'SURTIDA'):
+                messages.error(request, "Ya no se puede editar (la cirugía está finalizada o liquidada).")
+                return redirect('admon_cirugias:solicitud_detalle', pk=pk)
+            sol.paciente = request.POST.get('paciente', '').strip()
+            sol.doctor_id = request.POST.get('doctor') or None
+            sol.hospital_id = request.POST.get('hospital') or None
+            sol.fecha_cirugia = request.POST.get('fecha_cirugia') or None
+            sol.cliente_id = request.POST.get('cliente') or None
+            sol.comentario = request.POST.get('comentario', '')
+            sol.save()
+            # Sincroniza el snapshot de las salidas activas (aún no liquidadas).
+            for s in sol.salidas.exclude(estado__in=('CANCELADA', 'CERRADA')):
+                s.hospital_cliente = sol.hospital.nombre if sol.hospital else '—'
+                s.doctor_responsable = sol.doctor.nombre if sol.doctor else None
+                s.paciente_referencia = sol.paciente or None
+                s.cliente = sol.cliente
+                s.save(update_fields=['hospital_cliente', 'doctor_responsable',
+                                      'paciente_referencia', 'cliente'])
+            messages.success(request, f"Solicitud {sol.folio} actualizada.")
             return redirect('admon_cirugias:solicitud_detalle', pk=pk)
 
         elif accion == 'quitar_borrador':
