@@ -68,10 +68,10 @@
                             {% if h.lineas.all or h.kit_id %}
                             <a href="{% url 'admon_inventarios:reabastecer_caja' h.id %}" class="text-[9px] font-black uppercase {% if h.falta_total > 0 %}text-amber-600{% else %}text-slate-400{% endif %} hover:underline" title="Reabastecer tornillera"><i class="fa-solid fa-arrows-rotate"></i></a>
                             {% endif %}
-                            <form method="POST" onsubmit="return confirm('¿Sacar {{ h.codigo_caja }} de esta caja?')" class="inline">{% csrf_token %}
+                            <form method="POST" class="inline">{% csrf_token %}
                                 <input type="hidden" name="accion" value="desanidar">
                                 <input type="hidden" name="hija_id" value="{{ h.id }}">
-                                <button type="submit" class="text-[9px] font-black uppercase text-rose-400 hover:text-rose-600" title="Sacar de la caja"><i class="fa-solid fa-arrow-up-from-bracket"></i></button>
+                                <button type="button" onclick="const f=this.closest('form'); confirmModal('¿Sacar {{ h.codigo_caja }} de esta caja?', function(){ f.submit(); })" class="text-[9px] font-black uppercase text-rose-400 hover:text-rose-600" title="Sacar de la caja"><i class="fa-solid fa-arrow-up-from-bracket"></i></button>
                             </form>
                         </div>
                     </div>
