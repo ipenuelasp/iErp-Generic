@@ -154,7 +154,7 @@
                     <button type="submit" class="bg-brand text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all">Prorratear</button>
                 </form>
                 {% if hay_prorrateo %}
-                <form method="POST" data-confirm="¿Volver al precio real (deshacer el prorrateo)?" data-confirm-title="Volver al precio real" data-confirm-ok="Sí, volver">{% csrf_token %}
+                <form method="POST" data-confirm="¿Volver al precio real (deshacer el prorrateo)?" data-confirm-title="Volver al precio real" data-confirm-ok="Sí, volver" data-confirm-variant="ok">{% csrf_token %}
                     <input type="hidden" name="accion" value="precio_real">
                     <button type="submit" class="bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50"><i class="fa-solid fa-rotate-left mr-1"></i> Precio real</button>
                 </form>

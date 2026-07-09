@@ -167,7 +167,7 @@
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="__closeConfirm()"></div>
         <div class="relative min-h-screen flex items-center justify-center p-4">
             <div class="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-9">
-                <div class="w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mb-5"><i class="fa-solid fa-triangle-exclamation text-xl"></i></div>
+                <div id="__confirmIcon" class="w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mb-5"><i class="fa-solid fa-triangle-exclamation text-xl"></i></div>
                 <h2 id="__confirmTitle" class="text-xl font-black text-slate-800 mb-2">¿Confirmar?</h2>
                 <p id="__confirmMsg" class="text-slate-500 text-sm font-medium mb-6"></p>
                 <div class="flex justify-end gap-3">
@@ -201,7 +201,21 @@
             opts = opts || {};
             document.getElementById('__confirmMsg').textContent = message || '¿Confirmar esta acción?';
             document.getElementById('__confirmTitle').textContent = opts.title || '¿Confirmar?';
-            document.getElementById('__confirmOk').textContent = opts.ok || 'Sí, continuar';
+            const okBtn = document.getElementById('__confirmOk');
+            okBtn.textContent = opts.ok || 'Sí, continuar';
+            // Variante: por defecto "peligro" (rojo) para acciones destructivas;
+            // opts.danger === false = acción positiva/neutral (azul de marca).
+            const icon = document.getElementById('__confirmIcon');
+            const danger = opts.danger !== false;
+            if (danger) {
+                icon.className = 'w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mb-5';
+                icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-xl"></i>';
+                okBtn.className = 'bg-rose-500 text-white font-black py-3 px-8 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-rose-600';
+            } else {
+                icon.className = 'w-14 h-14 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mb-5';
+                icon.innerHTML = '<i class="fa-solid fa-circle-question text-xl"></i>';
+                okBtn.className = 'bg-brand text-white font-black py-3 px-8 rounded-2xl text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-transform';
+            }
             __confirmCb = onOk;
             document.getElementById('__confirmModal').classList.remove('hidden');
         }
@@ -260,7 +274,9 @@
                 form.dataset.confirmed = '1';
                 form.submit();
             }, { title: form.getAttribute('data-confirm-title') || '¿Confirmar?',
-                 ok: form.getAttribute('data-confirm-ok') || 'Sí, continuar' });
+                 ok: form.getAttribute('data-confirm-ok') || 'Sí, continuar',
+                 // data-confirm-variant="ok" = acción positiva (azul); por defecto rojo.
+                 danger: form.getAttribute('data-confirm-variant') !== 'ok' });
         }, true);
     </script>
 
