@@ -132,6 +132,9 @@ class DetallePedido(models.Model):
     cantidad = models.DecimalField(max_digits=12, decimal_places=4)
     cantidad_entregada = models.DecimalField(max_digits=12, decimal_places=4, default=0)
     precio_unitario = models.DecimalField(max_digits=14, decimal_places=4)
+    # Precio real antes de un prorrateo a monto objetivo (para poder revertir).
+    # Nulo = no hay prorrateo activo en esta partida.
+    precio_original = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
     # Margen financiero usado en esta partida (% sobre venta). Solo informativo:
     # el precio_unitario es el que manda. Nulo en partidas sin margen (renta/kit).
     margen = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)

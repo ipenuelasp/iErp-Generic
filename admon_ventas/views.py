@@ -457,6 +457,9 @@ class PedidoDetalleView(LoginRequiredMixin, View):
             'puede_editar_extras': pedido.estado != 'CANCELADO' and not cxc_cobrada,
             # Corrección de partidas (cantidad/precio/IVA) con CxC sin facturar: solo admin
             'puede_corregir_cxc': _puede_ver_costos(request) and _cxc_corregible(pedido) is not None,
+            # Prorrateo del monto de venta (mismo candado que corregir): solo dueño
+            'puede_prorratear': _puede_ver_costos(request) and _cxc_corregible(pedido) is not None,
+            'hay_prorrateo': any(d.precio_original is not None for d in detalles),
             'cambios': pedido.cambios.select_related('usuario') if hasattr(pedido, 'cambios') else [],
             'sucursal_activa': sucursal,
             'seccion': 'ventas',
@@ -526,6 +529,76 @@ class PedidoDetalleView(LoginRequiredMixin, View):
                 pedido=pedido, usuario=request.user, motivo=motivo,
                 resumen=" · ".join(cambios))
             messages.success(request, f"Pedido corregido y CxC {fac.folio} actualizada.")
+            return redirect('admon_ventas:pedido_detalle', pk=pk)
+
+        if accion == 'prorratear':
+            # El dueño fija un SUBTOTAL objetivo y se reparte entre las partidas
+            # proporcional a su costo de compra (margen uniforme: precio = k·costo).
+            if not _puede_ver_costos(request):
+                messages.error(request, "Solo el dueño o un superadmin puede ajustar el monto de venta.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
+            fac = _cxc_corregible(pedido)
+            if not fac:
+                messages.error(request, "No se puede ajustar: la CxC ya fue facturada o tiene cobros.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
+            try:
+                objetivo = decimal.Decimal(request.POST.get('subtotal_objetivo') or '0')
+            except decimal.InvalidOperation:
+                objetivo = decimal.Decimal('0')
+            if objetivo <= 0:
+                messages.error(request, "Captura un subtotal objetivo válido (mayor a 0).")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
+
+            lineas = list(pedido.detalles.select_related('producto').all())
+            costo_total = sum((d.producto.costo_unitario * d.cantidad for d in lineas),
+                              decimal.Decimal('0'))
+            if costo_total <= 0:
+                messages.error(request, "No hay costos de compra en las partidas para prorratear.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
+            k = objetivo / costo_total
+            for d in lineas:
+                if d.producto.costo_unitario <= 0:
+                    continue  # las partidas sin costo (p.ej. rentas $0) se quedan igual
+                if d.precio_original is None:
+                    d.precio_original = d.precio_unitario  # snapshot del precio real
+                d.precio_unitario = (k * d.producto.costo_unitario).quantize(decimal.Decimal('0.0001'))
+                d.save(update_fields=['precio_unitario', 'precio_original'])
+            services.recalcular_pedido(pedido)
+            pedido.refresh_from_db()
+            from .models import CambioPedido
+            CambioPedido.objects.create(
+                pedido=pedido, usuario=request.user,
+                motivo=f"Prorrateo a subtotal objetivo {pedido.moneda.simbolo}{objetivo:,.2f}",
+                resumen=f"Subtotal resultante {pedido.moneda.simbolo}{pedido.subtotal:,.2f} · total {pedido.moneda.simbolo}{pedido.total:,.2f}")
+            messages.success(request, f"Monto ajustado. Subtotal {pedido.moneda.simbolo}{pedido.subtotal:,.2f}, total {pedido.moneda.simbolo}{pedido.total:,.2f}. Puedes volver al precio real cuando quieras.")
+            return redirect('admon_ventas:pedido_detalle', pk=pk)
+
+        if accion == 'precio_real':
+            # Regresa al precio real (el que había antes del prorrateo).
+            if not _puede_ver_costos(request):
+                messages.error(request, "Solo el dueño o un superadmin puede ajustar el monto de venta.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
+            fac = _cxc_corregible(pedido)
+            if not fac:
+                messages.error(request, "No se puede ajustar: la CxC ya fue facturada o tiene cobros.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
+            n = 0
+            for d in pedido.detalles.all():
+                if d.precio_original is not None:
+                    d.precio_unitario = d.precio_original
+                    d.precio_original = None
+                    d.save(update_fields=['precio_unitario', 'precio_original'])
+                    n += 1
+            if not n:
+                messages.info(request, "El pedido ya está en su precio real.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
+            services.recalcular_pedido(pedido)
+            pedido.refresh_from_db()
+            from .models import CambioPedido
+            CambioPedido.objects.create(
+                pedido=pedido, usuario=request.user, motivo="Regreso al precio real",
+                resumen=f"Subtotal {pedido.moneda.simbolo}{pedido.subtotal:,.2f} · total {pedido.moneda.simbolo}{pedido.total:,.2f}")
+            messages.success(request, f"Precio real restaurado. Subtotal {pedido.moneda.simbolo}{pedido.subtotal:,.2f}, total {pedido.moneda.simbolo}{pedido.total:,.2f}.")
             return redirect('admon_ventas:pedido_detalle', pk=pk)
 
         if accion == 'add_extra':

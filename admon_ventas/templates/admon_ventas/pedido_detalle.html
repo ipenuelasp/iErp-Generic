@@ -137,6 +137,34 @@
     </div>
     {% endif %}
 
+    {% if puede_prorratear %}
+    <!-- Ajustar monto de venta (prorrateo por costo) -->
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 mb-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="min-w-0">
+                <h3 class="text-sm font-black text-slate-800 uppercase italic"><i class="fa-solid fa-sliders mr-2 text-brand"></i> Ajustar monto de venta <span class="text-slate-400 normal-case">(solo dueño)</span></h3>
+                <p class="text-[11px] font-bold text-slate-400 mt-1">Fija el <b>subtotal</b> que quieres cobrar y se reparte entre las partidas según su costo de compra. {% if hay_prorrateo %}<span class="text-amber-600"><i class="fa-solid fa-circle-dot mr-1"></i>Prorrateo activo — el precio no es el real.</span>{% endif %}</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <form method="POST" class="flex items-center gap-2">{% csrf_token %}
+                    <input type="hidden" name="accion" value="prorratear">
+                    <span class="text-slate-400 font-black">{{ pedido.moneda.simbolo }}</span>
+                    <input type="number" name="subtotal_objetivo" step="0.01" min="0" required placeholder="Subtotal objetivo"
+                        class="w-40 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black text-slate-700">
+                    <button type="submit" class="bg-brand text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all">Prorratear</button>
+                </form>
+                {% if hay_prorrateo %}
+                <form method="POST" data-confirm="¿Volver al precio real (deshacer el prorrateo)?" data-confirm-title="Volver al precio real" data-confirm-ok="Sí, volver">{% csrf_token %}
+                    <input type="hidden" name="accion" value="precio_real">
+                    <button type="submit" class="bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50"><i class="fa-solid fa-rotate-left mr-1"></i> Precio real</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        <p class="text-[10px] font-bold text-slate-400 mt-3">Subtotal actual: <b class="text-slate-600">{{ pedido.moneda.simbolo }}{{ pedido.subtotal|floatformat:2|intcomma }}</b> · Las partidas sin costo (ej. rentas) no cambian.</p>
+    </div>
+    {% endif %}
+
     {% if puede_editar_extras and 'cirugias' in modulos_visibles %}
     <!-- Agregar producto extra ("gol") -->
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-6">
