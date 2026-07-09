@@ -57,19 +57,44 @@
             <div class="mb-3 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3 space-y-2">
                 <p class="text-[9px] font-black uppercase tracking-widest text-indigo-400"><i class="fa-solid fa-boxes-stacked mr-1"></i>Cajas dentro (tornilleras)</p>
                 {% for h in c.hijas %}
-                <div class="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-indigo-50">
-                    <div class="min-w-0">
-                        <p class="text-[11px] font-black text-slate-700 truncate">{{ h.codigo_caja }} <span class="font-bold text-slate-400">· {{ h.nombre_display }}</span></p>
-                        <p class="text-[9px] font-bold text-slate-400">{{ h.num_productos }} productos · {{ h.total_piezas|floatformat:"-2" }} pzs · {{ h.get_estado_display }}</p>
+                <div class="bg-white rounded-xl px-3 py-2 border border-indigo-50">
+                    <div class="flex items-center justify-between">
+                        <div class="min-w-0">
+                            <p class="text-[11px] font-black text-slate-700 truncate">{{ h.codigo_caja }} <span class="font-bold text-slate-400">· {{ h.nombre_display }}</span></p>
+                            <p class="text-[9px] font-bold text-slate-400">{{ h.num_productos }} productos · {{ h.total_piezas|floatformat:"-2" }} pzs · {{ h.get_estado_display }}{% if h.tiene_receta and h.falta_total > 0 %} · <span class="text-amber-600">faltan {{ h.falta_total|floatformat:"-2" }}</span>{% endif %}</p>
+                        </div>
+                        <div class="flex items-center gap-3 shrink-0">
+                            <a href="{% url 'admon_inventarios:armar_caja' h.id %}" class="text-[9px] font-black uppercase text-brand hover:underline" title="Armar tornillera"><i class="fa-solid fa-box-open mr-1"></i>Armar</a>
+                            {% if h.lineas.all or h.kit_id %}
+                            <a href="{% url 'admon_inventarios:reabastecer_caja' h.id %}" class="text-[9px] font-black uppercase {% if h.falta_total > 0 %}text-amber-600{% else %}text-slate-400{% endif %} hover:underline" title="Reabastecer tornillera"><i class="fa-solid fa-arrows-rotate"></i></a>
+                            {% endif %}
+                            <form method="POST" onsubmit="return confirm('¿Sacar {{ h.codigo_caja }} de esta caja?')" class="inline">{% csrf_token %}
+                                <input type="hidden" name="accion" value="desanidar">
+                                <input type="hidden" name="hija_id" value="{{ h.id }}">
+                                <button type="submit" class="text-[9px] font-black uppercase text-rose-400 hover:text-rose-600" title="Sacar de la caja"><i class="fa-solid fa-arrow-up-from-bracket"></i></button>
+                            </form>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                        <a href="{% url 'admon_inventarios:armar_caja' h.id %}" class="text-[9px] font-black uppercase text-brand hover:underline" title="Armar tornillera"><i class="fa-solid fa-box-open"></i></a>
-                        <form method="POST" onsubmit="return confirm('¿Sacar {{ h.codigo_caja }} de esta caja?')" class="inline">{% csrf_token %}
-                            <input type="hidden" name="accion" value="desanidar">
-                            <input type="hidden" name="hija_id" value="{{ h.id }}">
-                            <button type="submit" class="text-[9px] font-black uppercase text-rose-400 hover:text-rose-600" title="Sacar de la caja"><i class="fa-solid fa-arrow-up-from-bracket"></i></button>
-                        </form>
+                    {% if h.items %}
+                    <button type="button" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('i').classList.toggle('rotate-180')"
+                            class="mt-1 text-[9px] font-black uppercase text-indigo-400 hover:text-indigo-600 flex items-center gap-1">
+                        Ver contenido <i class="fa-solid fa-chevron-down text-[7px] transition-transform"></i>
+                    </button>
+                    <div class="hidden mt-1 space-y-1 max-h-40 overflow-y-auto pr-1">
+                        {% for it in h.items %}
+                        <div class="flex items-center justify-between text-[10px] border-b border-slate-50 pb-1">
+                            <span class="font-bold text-slate-600 truncate pr-2" title="[{{ it.producto.sku }}] {{ it.producto.nombre }}">
+                                [{{ it.producto.sku }}] {{ it.producto.nombre|truncatechars:22 }}
+                                {% if it.es_retornable %}<span class="text-[8px] text-amber-600 font-black">RENTA</span>{% endif %}
+                                {% if it.extra %}<span class="text-[8px] text-slate-300 font-black">EXTRA</span>{% endif %}
+                            </span>
+                            <span class="font-black whitespace-nowrap {% if it.falta > 0 %}text-amber-600{% else %}text-slate-500{% endif %}">
+                                {{ it.actual|floatformat:"-2" }}{% if it.objetivo > 0 %}/{{ it.objetivo|floatformat:"-2" }}{% endif %}
+                            </span>
+                        </div>
+                        {% endfor %}
                     </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
