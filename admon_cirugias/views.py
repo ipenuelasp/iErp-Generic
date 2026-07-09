@@ -494,14 +494,19 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
             if not borradores:
                 messages.error(request, "No hay cajas en borrador para surtir.")
                 return redirect('admon_cirugias:solicitud_detalle', pk=pk)
-            box_ids = {s.instancia_kit_id for s in borradores}
             enviadas, fallidas = [], []
             for s in borradores:
                 caja = s.instancia_kit
-                # La caja de cirugía se permite vacía si trae tornilleras en el envío.
-                tiene_hijas = any(o.instancia_kit.caja_contenedora_id == caja.id for o in borradores)
+                # La caja de cirugía se permite vacía SOLO si alguna de sus
+                # tornilleras del envío sí trae contenido; si todo está vacío,
+                # se bloquea para no mandar una caja de cirugía en cero.
+                hijas_borrador = [o for o in borradores
+                                  if o.instancia_kit.caja_contenedora_id == caja.id]
+                hijas_con_stock = any(h.instancia_kit.contenido().exists()
+                                      for h in hijas_borrador)
                 try:
-                    enviar_caja_a_cirugia(salida=s, usuario=request.user, permitir_vacia=tiene_hijas)
+                    enviar_caja_a_cirugia(salida=s, usuario=request.user,
+                                          permitir_vacia=hijas_con_stock)
                     enviadas.append(caja.codigo_caja)
                 except (ValueError, StockInsuficiente) as e:
                     fallidas.append(f"{caja.codigo_caja} ({e})")
