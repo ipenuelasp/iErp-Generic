@@ -6,6 +6,7 @@ herramientas de renta. La primera carga es ágil: buscador + checkbox +
 cantidad inline navegable con Tab/Enter.
 """
 import decimal
+import json
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
@@ -76,6 +77,17 @@ class CajasView(LoginRequiredMixin, View):
             c.items = items
             c.falta_total = falta_total
             c.completa = c.tiene_receta and falta_total == 0
+
+            def _fmt(x):
+                return f"{x:.2f}".rstrip('0').rstrip('.')
+            c.items_json = json.dumps([{
+                'sku': it['producto'].sku,
+                'nombre': it['producto'].nombre,
+                'actual': _fmt(it['actual']),
+                'objetivo': _fmt(it['objetivo']) if it['objetivo'] else '',
+                'ret': it['es_retornable'],
+                'extra': it['extra'],
+            } for it in items], ensure_ascii=False)
 
         # Árbol: cajas de nivel superior (no anidadas) con sus tornilleras hijas.
         por_id = {c.id: c for c in cajas}

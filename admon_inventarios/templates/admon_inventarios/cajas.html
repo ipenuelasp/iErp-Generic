@@ -68,15 +68,11 @@
                             {% if h.lineas.all or h.kit_id %}
                             <a href="{% url 'admon_inventarios:reabastecer_caja' h.id %}" class="text-[9px] font-black uppercase {% if h.falta_total > 0 %}text-amber-600{% else %}text-slate-400{% endif %} hover:underline" title="Reabastecer tornillera"><i class="fa-solid fa-arrows-rotate"></i></a>
                             {% endif %}
-                            <form method="POST" class="inline">{% csrf_token %}
-                                <input type="hidden" name="accion" value="desanidar">
-                                <input type="hidden" name="hija_id" value="{{ h.id }}">
-                                <button type="button" onclick="sacarCaja(this)"
-                                    data-cod="{{ h.codigo_caja }}" data-nom="{{ h.nombre_display }}"
-                                    data-prod="{{ h.num_productos }}" data-pzs="{{ h.total_piezas|floatformat:'-2' }}"
-                                    data-padre="{{ c.codigo_caja }}"
-                                    class="text-[9px] font-black uppercase text-rose-400 hover:text-rose-600" title="Sacar de la caja"><i class="fa-solid fa-arrow-up-from-bracket"></i></button>
-                            </form>
+                            <button type="button" onclick="sacarCaja(this)"
+                                data-hija="{{ h.id }}" data-cod="{{ h.codigo_caja }}" data-nom="{{ h.nombre_display }}"
+                                data-prod="{{ h.num_productos }}" data-pzs="{{ h.total_piezas|floatformat:'-2' }}"
+                                data-padre="{{ c.codigo_caja }}" data-items="{{ h.items_json }}"
+                                class="text-[9px] font-black uppercase text-rose-400 hover:text-rose-600" title="Sacar de la caja"><i class="fa-solid fa-arrow-up-from-bracket"></i></button>
                         </div>
                     </div>
                     {% if h.items %}
@@ -186,6 +182,38 @@
     </form>
 </div>
 
+<!-- Modal sacar (quitar una tornillera de su contenedora) -->
+<div id="modalSacar" class="hidden fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg p-8">
+        <div class="flex items-start gap-4 mb-5">
+            <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-box-open text-lg"></i></div>
+            <div class="min-w-0">
+                <h3 class="text-lg font-black text-slate-800 italic uppercase leading-tight">¿Sacar esta caja?</h3>
+                <p class="text-[11px] font-bold text-slate-400 mt-1">Sacarás <span id="scCod" class="text-slate-600"></span> de <span id="scPadre" class="text-indigo-600"></span>. Quedará como caja independiente; <b>su contenido no se pierde</b>.</p>
+            </div>
+        </div>
+        <div class="rounded-2xl border border-slate-100 overflow-hidden mb-5">
+            <div class="bg-slate-50 px-4 py-2 flex items-center justify-between">
+                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Contenido de la caja</span>
+                <span id="scResumen" class="text-[9px] font-black uppercase text-slate-400"></span>
+            </div>
+            <div class="max-h-64 overflow-y-auto">
+                <table class="w-full text-left">
+                    <tbody id="scTbody" class="divide-y divide-slate-50"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="flex justify-end gap-3">
+            <button type="button" onclick="document.getElementById('modalSacar').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">No, regresar</button>
+            <form method="POST" class="inline">{% csrf_token %}
+                <input type="hidden" name="accion" value="desanidar">
+                <input type="hidden" name="hija_id" id="scHijaId" value="">
+                <button type="submit" class="bg-rose-500 text-white font-black py-3 px-8 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-rose-600 transition-colors">Sí, sacarla</button>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal anidar (meter una tornillera dentro de una caja) -->
 <div id="modalAnidar" class="hidden fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
     <form method="POST" class="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-8">
@@ -211,14 +239,34 @@
 </div>
 
 <script>
+    function _esc(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
     function sacarCaja(btn) {
         const d = btn.dataset;
-        const f = btn.closest('form');
-        const nom = d.nom && d.nom !== d.cod ? ` (${d.nom})` : '';
-        const msg = `La caja ${d.cod}${nom} contiene ${d.prod} producto(s) y ${d.pzs} pieza(s). ` +
-                    `Se sacará de ${d.padre} y quedará como caja independiente; su contenido no se pierde.`;
-        confirmModal(msg, function () { f.submit(); },
-                     { title: 'Sacar caja de su contenedora', ok: 'Sí, sacarla' });
+        const nom = d.nom && d.nom !== d.cod ? ` · ${d.nom}` : '';
+        document.getElementById('scCod').textContent = d.cod + (d.nom && d.nom !== d.cod ? ` (${d.nom})` : '');
+        document.getElementById('scPadre').textContent = d.padre;
+        document.getElementById('scHijaId').value = d.hija;
+        document.getElementById('scResumen').textContent = `${d.prod} producto(s) · ${d.pzs} pzs`;
+        let items = [];
+        try { items = JSON.parse(d.items || '[]'); } catch (e) { items = []; }
+        const tb = document.getElementById('scTbody');
+        if (!items.length) {
+            tb.innerHTML = '<tr><td class="px-4 py-6 text-center text-[11px] font-bold text-slate-300 italic">La caja está vacía.</td></tr>';
+        } else {
+            tb.innerHTML = items.map(function (it) {
+                const tags = (it.ret ? '<span class="text-[8px] text-amber-600 font-black ml-1">RENTA</span>' : '') +
+                             (it.extra ? '<span class="text-[8px] text-slate-300 font-black ml-1">EXTRA</span>' : '');
+                const cant = it.actual + (it.objetivo ? '<span class="text-slate-300">/' + _esc(it.objetivo) + '</span>' : '');
+                return '<tr>' +
+                    '<td class="px-4 py-2 text-[11px]"><span class="font-mono text-slate-400">[' + _esc(it.sku) + ']</span> ' +
+                    '<span class="font-bold text-slate-600">' + _esc(it.nombre) + '</span>' + tags + '</td>' +
+                    '<td class="px-4 py-2 text-right text-[11px] font-black text-slate-700 whitespace-nowrap">' + cant + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+        document.getElementById('modalSacar').classList.remove('hidden');
     }
     function abrirAnidar(padreId, padreCod) {
         document.getElementById('anPadreId').value = padreId;
