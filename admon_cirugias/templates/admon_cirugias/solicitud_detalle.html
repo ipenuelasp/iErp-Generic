@@ -31,11 +31,11 @@
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-6">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-sm font-black text-slate-800 uppercase italic"><i class="fa-solid fa-box mr-2 text-brand"></i> Material surtido</h3>
-            {% if solicitud.estado == 'SOLICITADA' or solicitud.estado == 'SURTIDA' %}
+            {% if puede_surtir %}
             <button type="button" onclick="document.getElementById('modalSurtir').classList.remove('hidden')" class="bg-brand text-white px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest"><i class="fa-solid fa-truck-medical mr-1"></i> Surtir caja</button>
             {% endif %}
         </div>
-        {% if solicitud.estado == 'SOLICITADA' or solicitud.estado == 'SURTIDA' %}
+        {% if puede_surtir %}
         <p class="text-[10px] font-bold text-slate-400 -mt-2 mb-3">Agrega cajas al <b>borrador</b>, revisa su contenido y luego <b>confirma para surtir</b>. Si una está incompleta, <b>reabastécela</b> en <i>Kits / Cajas</i>.</p>
         {% endif %}
 

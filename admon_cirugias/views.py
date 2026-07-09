@@ -425,7 +425,11 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
         ).exclude(id__in=ya_en_sol).select_related('kit').prefetch_related('cajas_hijas')
 
         # Selector visual: cada caja con su contenido, completitud y tornilleras.
+        # Ya no se puede surtir cuando todo lo enviado ya regresó y no quedan
+        # borradores pendientes (la cirugía está lista para finalizar).
         puede_surtir = sol.estado in ('SOLICITADA', 'SURTIDA')
+        if enviadas and all(s.estado == 'RETORNADA' for s in enviadas) and not borradores:
+            puede_surtir = False
         cajas_surtir = []
         if puede_surtir:
             for c in cajas_disponibles:
@@ -452,6 +456,7 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
             'hay_borradores': bool(borradores),
             'hay_retornadas': hay_retornadas,
             'cajas_surtir': cajas_surtir,
+            'puede_surtir': puede_surtir,
             'puede_editar': puede_editar,
             'sucursal_activa': sucursal, 'seccion': 'cirugias',
             **ctx_edit,
