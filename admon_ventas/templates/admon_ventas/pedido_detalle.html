@@ -146,10 +146,10 @@
                 <p class="text-[11px] font-bold text-slate-400 mt-1">Fija el <b>subtotal</b> que quieres cobrar y se reparte entre las partidas según su costo de compra. {% if hay_prorrateo %}<span class="text-amber-600"><i class="fa-solid fa-circle-dot mr-1"></i>Prorrateo activo — el precio no es el real.</span>{% endif %}</p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-                <form method="POST" class="flex items-center gap-2">{% csrf_token %}
+                <form method="POST" class="flex items-center gap-2" onsubmit="var o=document.getElementById('objInput'); o.value=o.value.replace(/,/g,'');">{% csrf_token %}
                     <input type="hidden" name="accion" value="prorratear">
                     <span class="text-slate-400 font-black">{{ pedido.moneda.simbolo }}</span>
-                    <input type="number" name="subtotal_objetivo" step="0.01" min="0" required placeholder="Subtotal objetivo"
+                    <input type="text" inputmode="decimal" id="objInput" name="subtotal_objetivo" required placeholder="Subtotal objetivo" oninput="fmtMilesInput(this)"
                         class="w-40 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black text-slate-700">
                     <button type="submit" class="bg-brand text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all">Prorratear</button>
                 </form>
@@ -302,6 +302,13 @@ function ppExtra(sel){
     const o=sel.options[sel.selectedIndex];
     const inp=document.getElementById('extra_precio');
     if(o && o.dataset.precio && !parseFloat(inp.value)) inp.value=parseFloat(o.dataset.precio).toFixed(2);
+}
+function fmtMilesInput(el){
+    let v = el.value.replace(/[^0-9.]/g, '');          // solo dígitos y punto
+    const parts = v.split('.');
+    let ent = (parts[0] || '').replace(/^0+(?=\d)/, ''); // sin ceros a la izquierda
+    ent = ent.replace(/\B(?=(\d{3})+(?!\d))/g, ',');     // separador de miles
+    el.value = parts.length > 1 ? ent + '.' + parts[1].slice(0, 2) : ent;
 }
 </script>
 <style>
