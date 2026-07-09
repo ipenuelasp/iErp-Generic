@@ -29,9 +29,9 @@
             {% if solicitud.estado == 'SOLICITADA' or solicitud.estado == 'SURTIDA' %}
             <form method="POST" class="flex gap-2 items-center">{% csrf_token %}
                 <input type="hidden" name="accion" value="surtir">
-                <select name="instancia_kit" required class="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold no-select2">
-                    <option value="">Elegir caja…</option>
-                    {% for c in cajas_disponibles %}<option value="{{ c.id }}">{{ c.codigo_caja }} · {{ c.kit.nombre }} ({{ c.contenido.count }} prod.)</option>{% endfor %}
+                <select name="instancia_kit" required data-placeholder="Elegir caja…" class="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold" style="min-width:320px">
+                    <option value=""></option>
+                    {% for c in cajas_disponibles %}<option value="{{ c.id }}">{{ c.codigo_caja }} · {{ c.nombre_display }} ({{ c.contenido.count }} prod.{% if c.cajas_hijas.all %} + {{ c.cajas_hijas.all|length }} tornillera(s){% endif %})</option>{% endfor %}
                 </select>
                 <button type="submit" class="bg-brand text-white px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest"><i class="fa-solid fa-truck-medical mr-1"></i> Surtir caja</button>
             </form>
@@ -40,23 +40,19 @@
         {% if solicitud.estado == 'SOLICITADA' or solicitud.estado == 'SURTIDA' %}
         <p class="text-[10px] font-bold text-slate-400 -mt-2 mb-3">La caja sale con el contenido que trae cargado. Si está vacía, <b>reabastécela</b> primero en <i>Kits / Cajas</i>.</p>
         {% endif %}
-        <div class="space-y-2">
-            {% for s in salidas %}
-            <div class="flex justify-between items-center bg-slate-50 rounded-2xl px-5 py-3">
-                <a href="{% url 'admon_inventarios:salida_kit_detalle' s.pk %}" class="text-xs font-black text-brand hover:underline">{{ s.folio }}</a>
-                <span class="text-[10px] font-bold text-slate-500">{{ s.instancia_kit.codigo_caja }} · {{ s.instancia_kit.kit.nombre }}</span>
-                <span class="inline-flex px-2 py-1 rounded-lg text-[9px] font-black uppercase bg-slate-200 text-slate-600">{{ s.get_estado_display }}</span>
-                <span class="flex gap-2 text-rose-500">
-                    <a href="{% url 'admon_inventarios:vale_salida_pdf' s.pk %}" target="_blank" title="Vale de salida"><i class="fa-solid fa-file-pdf"></i></a>
-                    <a href="{% url 'admon_inventarios:hoja_consumo_pdf' s.pk %}" target="_blank" title="Hoja de consumo"><i class="fa-solid fa-file-medical"></i></a>
-                </span>
-                {% if s.estado == 'PREPARANDO' %}
-                <a href="{% url 'admon_inventarios:salida_kit_detalle' s.pk %}" class="text-[10px] font-black uppercase text-brand">Armar y enviar →</a>
-                {% elif s.estado == 'ENVIADA' or s.estado == 'EN_USO' %}
-                <a href="{% url 'admon_cirugias:regreso_salida' solicitud.pk s.pk %}" class="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest"><i class="fa-solid fa-rotate-left mr-1"></i> Registrar regreso</a>
-                {% else %}
-                <span class="text-[10px] font-black uppercase text-emerald-600"><i class="fa-solid fa-check mr-1"></i> Regreso listo</span>
-                {% endif %}
+        <div class="space-y-3">
+            {% for s in salidas_arbol %}
+            <div>
+                <div class="flex flex-wrap justify-between items-center gap-2 bg-slate-50 rounded-2xl px-5 py-3">
+                    {% include 'admon_cirugias/_salida_row.html' %}
+                    {% if s.hijas_salidas %}<span class="text-[9px] font-black uppercase text-indigo-500 w-full mt-1"><i class="fa-solid fa-layer-group mr-1"></i>Contiene {{ s.hijas_salidas|length }} tornillera(s)</span>{% endif %}
+                </div>
+                {% for h in s.hijas_salidas %}
+                <div class="flex flex-wrap justify-between items-center gap-2 bg-indigo-50/40 border border-indigo-100 rounded-2xl px-5 py-3 ml-6 mt-2">
+                    <span class="text-[8px] font-black uppercase text-indigo-400 w-full"><i class="fa-solid fa-turn-up fa-rotate-90 mr-1"></i>Tornillera dentro de {{ s.instancia_kit.codigo_caja }}</span>
+                    {% include 'admon_cirugias/_salida_row.html' with s=h %}
+                </div>
+                {% endfor %}
             </div>
             {% empty %}<p class="text-slate-400 italic text-sm">Aún no se surte material. Elige una caja para enviar a la cirugía.</p>{% endfor %}
         </div>

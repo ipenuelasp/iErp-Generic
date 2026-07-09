@@ -1,0 +1,14 @@
+<a href="{% url 'admon_inventarios:salida_kit_detalle' s.pk %}" class="text-xs font-black text-brand hover:underline">{{ s.folio }}</a>
+<span class="text-[10px] font-bold text-slate-500">{{ s.instancia_kit.codigo_caja }} · {{ s.instancia_kit.nombre_display }}</span>
+<span class="inline-flex px-2 py-1 rounded-lg text-[9px] font-black uppercase bg-slate-200 text-slate-600">{{ s.get_estado_display }}</span>
+<span class="flex gap-2 text-rose-500">
+    <a href="{% url 'admon_inventarios:vale_salida_pdf' s.pk %}" target="_blank" title="Vale de salida"><i class="fa-solid fa-file-pdf"></i></a>
+    <a href="{% url 'admon_inventarios:hoja_consumo_pdf' s.pk %}" target="_blank" title="Hoja de consumo"><i class="fa-solid fa-file-medical"></i></a>
+</span>
+{% if s.estado == 'PREPARANDO' %}
+<a href="{% url 'admon_inventarios:salida_kit_detalle' s.pk %}" class="text-[10px] font-black uppercase text-brand">Armar y enviar →</a>
+{% elif s.estado == 'ENVIADA' or s.estado == 'EN_USO' %}
+<a href="{% url 'admon_cirugias:regreso_salida' solicitud.pk s.pk %}" class="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest"><i class="fa-solid fa-rotate-left mr-1"></i> Registrar regreso</a>
+{% else %}
+<span class="text-[10px] font-black uppercase text-emerald-600"><i class="fa-solid fa-check mr-1"></i> Regreso listo</span>
+{% endif %}

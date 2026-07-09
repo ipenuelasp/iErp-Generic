@@ -375,9 +375,11 @@ def armar_caja(*, caja, lineas, origen_ubicacion, usuario, mover_stock=True):
 
 
 @transaction.atomic
-def enviar_caja_a_cirugia(*, salida, usuario):
+def enviar_caja_a_cirugia(*, salida, usuario, permitir_vacia=False):
     """La caja sale a la cirugía con TODO su contenido actual (lo que trae).
     Baja ese stock de la ubicación de la caja y lo registra como contenido del viaje.
+    `permitir_vacia`: no falla si la caja no trae stock suelto (p.ej. una caja de
+    cirugía que solo sirve de contenedora de tornilleras).
     """
     from django.utils import timezone
     from .models import ContenidoSalidaKit, Existencia
@@ -401,7 +403,7 @@ def enviar_caja_a_cirugia(*, salida, usuario):
             propiedad=ex.propiedad, consignante=ex.consignante, cantidad_enviada=ex.cantidad)
         hubo = True
 
-    if not hubo:
+    if not hubo and not permitir_vacia:
         raise ValueError("La caja está vacía. Reabastécela antes de surtir.")
 
     salida.estado = 'ENVIADA'

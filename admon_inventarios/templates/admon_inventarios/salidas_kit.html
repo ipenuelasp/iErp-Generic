@@ -33,7 +33,7 @@
                 {% for s in salidas %}
                 <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="window.location='{% url 'admon_inventarios:salida_kit_detalle' s.pk %}'">
                     <td class="px-8 py-4 font-black text-brand text-xs">{{ s.folio }}</td>
-                    <td class="px-6 py-4 text-xs font-bold text-slate-700">{{ s.instancia_kit.codigo_caja }} <span class="text-slate-400">({{ s.instancia_kit.kit.codigo }})</span></td>
+                    <td class="px-6 py-4 text-xs font-bold text-slate-700">{{ s.instancia_kit.codigo_caja }} <span class="text-slate-400">({{ s.instancia_kit.nombre_display }})</span></td>
                     <td class="px-6 py-4 text-xs font-bold text-slate-700">{{ s.hospital_cliente }}</td>
                     <td class="px-6 py-4 text-[10px] font-bold text-slate-500">{{ s.doctor_responsable|default:"—" }}</td>
                     <td class="px-6 py-4 text-center">
@@ -74,7 +74,7 @@
                     <select name="instancia_kit" required>
                         <option value="">-- Seleccionar --</option>
                         {% for caja in cajas_disponibles %}
-                        <option value="{{ caja.id }}">{{ caja.codigo_caja }} · {{ caja.kit.nombre }}</option>
+                        <option value="{{ caja.id }}">{{ caja.codigo_caja }} · {{ caja.nombre_display }}</option>
                         {% endfor %}
                     </select>
                 </div>

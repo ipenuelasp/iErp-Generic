@@ -27,7 +27,7 @@
                 <div class="doc-title">VALE DE SALIDA DE CAJA</div>
                 <div class="doc-folio">{{ salida.folio }}</div>
                 <div class="muted" style="margin-top:8px;">Caja: <b style="color:#334155;">{{ salida.instancia_kit.codigo_caja }}</b></div>
-                <div class="muted">Kit: {{ salida.instancia_kit.kit.nombre }}</div>
+                <div class="muted">Nombre: {{ salida.instancia_kit.nombre_display }}</div>
                 <div class="muted">Salida: {{ salida.fecha_salida|date:"d/m/Y H:i"|default:"—" }}</div>
             </td>
         </tr>

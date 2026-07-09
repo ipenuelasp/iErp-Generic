@@ -8,7 +8,7 @@
         <div>
             <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Salida {{ salida.folio }}</h1>
             <p class="text-slate-500 mt-2 font-medium">
-                Caja <span class="text-brand">{{ salida.instancia_kit.codigo_caja }}</span> ({{ salida.instancia_kit.kit.nombre }})
+                Caja <span class="text-brand">{{ salida.instancia_kit.codigo_caja }}</span> ({{ salida.instancia_kit.nombre_display }})
                 → <span class="text-brand">{{ salida.hospital_cliente }}</span>
                 {% if salida.doctor_responsable %}· Dr. {{ salida.doctor_responsable }}{% endif %}
             </p>

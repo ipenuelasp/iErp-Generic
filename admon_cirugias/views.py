@@ -310,7 +310,8 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
             pk=pk, empresa=empresa)
 
         # Detecta liquidación: si alguna salida ligada ya generó pedido
-        salidas = sol.salidas.select_related('instancia_kit__kit', 'pedido_generado').all()
+        salidas = list(sol.salidas.select_related(
+            'instancia_kit__kit', 'instancia_kit__caja_contenedora', 'pedido_generado').all())
         pedido = next((s.pedido_generado for s in salidas if s.pedido_generado_id), None)
         if pedido and sol.estado != 'LIQUIDADA':
             sol.estado = 'LIQUIDADA'
@@ -326,12 +327,33 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
                 sol.save(update_fields=['estado'])
 
         hay_retornadas = any(s.estado == 'RETORNADA' for s in salidas)
+
+        # Agrupa las salidas en árbol: la caja de cirugía (padre) con sus
+        # tornilleras (hijas) anidadas debajo.
+        salida_por_box = {s.instancia_kit_id: s for s in salidas}
+        for s in salidas:
+            s.hijas_salidas = []
+        salidas_arbol = []
+        for s in salidas:
+            pid = s.instancia_kit.caja_contenedora_id
+            padre = salida_por_box.get(pid) if pid else None
+            if padre and padre is not s:
+                padre.hijas_salidas.append(s)
+            else:
+                salidas_arbol.append(s)
+
+        # Cajas disponibles para surtir: de nivel superior (no anidadas). Se
+        # incluyen tanto las basadas en plantilla como las armadas libremente.
+        cajas_disponibles = InstanciaKit.objects.filter(
+            sucursal_actual=sucursal, estado='DISPONIBLE', caja_contenedora__isnull=True
+        ).select_related('kit').prefetch_related('cajas_hijas')
+
         return render(request, self.template_name, {
             'solicitud': sol,
             'salidas': salidas,
+            'salidas_arbol': salidas_arbol,
             'hay_retornadas': hay_retornadas,
-            'cajas_disponibles': InstanciaKit.objects.filter(
-                sucursal_actual=sucursal, estado='DISPONIBLE', kit__activo=True).select_related('kit'),
+            'cajas_disponibles': cajas_disponibles,
             'sucursal_activa': sucursal, 'seccion': 'cirugias',
         })
 
@@ -347,28 +369,53 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
             caja = get_object_or_404(
                 InstanciaKit, id=request.POST.get('instancia_kit'),
                 sucursal_actual=sucursal, estado='DISPONIBLE')
-            salida = SalidaKit.objects.create(
-                empresa=empresa, instancia_kit=caja, sucursal_origen=sucursal,
-                hospital_cliente=sol.hospital.nombre if sol.hospital else '—',
-                doctor_responsable=sol.doctor.nombre if sol.doctor else None,
-                numero_cirugia=sol.folio,
-                paciente_referencia=sol.paciente or None,
-                cliente=sol.cliente,
-                creado_por=request.user,
-                notas=f"Cirugía {sol.folio}",
-            )
+
+            def _crear_salida(cja):
+                return SalidaKit.objects.create(
+                    empresa=empresa, instancia_kit=cja, sucursal_origen=sucursal,
+                    hospital_cliente=sol.hospital.nombre if sol.hospital else '—',
+                    doctor_responsable=sol.doctor.nombre if sol.doctor else None,
+                    numero_cirugia=sol.folio,
+                    paciente_referencia=sol.paciente or None,
+                    cliente=sol.cliente,
+                    creado_por=request.user,
+                    notas=f"Cirugía {sol.folio}",
+                )
+
+            # Tornilleras (cajas hijas) disponibles que van dentro de esta caja.
+            hijas = list(caja.cajas_hijas.filter(estado='DISPONIBLE'))
+
+            salida = _crear_salida(caja)
             try:
-                # La caja sale con TODO su contenido actual (lo que trae cargado)
-                enviar_caja_a_cirugia(salida=salida, usuario=request.user)
+                # La caja padre sale con su material suelto; si solo es contenedora
+                # (sin stock propio) pero trae tornilleras, se permite vacía.
+                enviar_caja_a_cirugia(salida=salida, usuario=request.user,
+                                      permitir_vacia=bool(hijas))
             except (ValueError, StockInsuficiente) as e:
                 salida.delete()
                 messages.error(request, f"No se pudo surtir: {e}")
                 return redirect('admon_cirugias:solicitud_detalle', pk=pk)
             sol.salidas.add(salida)
+
+            enviadas = [caja.codigo_caja]
+            fallidas = []
+            for h in hijas:
+                sh = _crear_salida(h)
+                try:
+                    enviar_caja_a_cirugia(salida=sh, usuario=request.user)
+                    sol.salidas.add(sh)
+                    enviadas.append(h.codigo_caja)
+                except (ValueError, StockInsuficiente) as e:
+                    sh.delete()
+                    fallidas.append(f"{h.codigo_caja} ({e})")
+
             if sol.estado == 'SOLICITADA':
                 sol.estado = 'SURTIDA'
                 sol.save(update_fields=['estado'])
-            messages.success(request, f"Caja {caja.codigo_caja} enviada a la cirugía con su contenido.")
+            messages.success(
+                request,
+                f"Enviado a la cirugía: {', '.join(enviadas)}."
+                + (f" Tornilleras vacías no enviadas: {'; '.join(fallidas)}." if fallidas else ""))
             return redirect('admon_cirugias:solicitud_detalle', pk=pk)
 
         elif accion == 'cancelar' and sol.estado in ('SOLICITADA',):
