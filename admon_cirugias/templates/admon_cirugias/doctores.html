@@ -76,12 +76,23 @@
     <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalImport').classList.add('hidden')"></div>
     <div class="relative min-h-screen flex items-center justify-center p-4">
         <div class="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-10">
-            <h2 class="text-xl font-bold text-slate-800 mb-4">Carga masiva de doctores</h2>
-            <form method="POST" action="{% url 'admon_cirugias:importar_doctores' %}" enctype="multipart/form-data" class="space-y-5">{% csrf_token %}
-                <input type="file" name="archivo" accept=".xlsx" required class="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-5 py-6 text-xs font-bold text-slate-600">
-                <div class="flex justify-between items-center">
-                    <a href="{% url 'admon_cirugias:plantilla_doctores' %}" class="text-[10px] font-black uppercase text-brand hover:underline">Descargar plantilla</a>
-                    <button type="submit" class="bg-emerald-600 text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">Cargar</button>
+            <h2 class="text-xl font-bold text-slate-800 mb-1">Carga masiva de doctores</h2>
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-5">Archivo Excel (.xlsx)</p>
+            <form method="POST" action="{% url 'admon_cirugias:importar_doctores' %}" enctype="multipart/form-data" class="space-y-6">{% csrf_token %}
+                <div class="relative h-[72px]">
+                    <input type="file" name="archivo" id="imp_archivo" accept=".xlsx" required onchange="impNombre(this)"
+                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                    <div class="absolute inset-0 flex items-center w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-5 hover:border-emerald-500 transition-all z-10">
+                        <i class="fa-solid fa-cloud-arrow-up text-slate-400 text-lg mr-3"></i>
+                        <span id="imp_nombre" class="text-sm text-slate-500 font-medium truncate">Selecciona o arrastra tu archivo .xlsx</span>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center gap-3">
+                    <a href="{% url 'admon_cirugias:plantilla_doctores' %}" class="text-[10px] font-black uppercase text-brand hover:underline"><i class="fa-solid fa-download mr-1"></i> Descargar plantilla</a>
+                    <div class="flex items-center gap-3">
+                        <button type="button" onclick="document.getElementById('modalImport').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-3">Cancelar</button>
+                        <button type="submit" class="bg-emerald-600 text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest hover:-translate-y-0.5 transition-all">Cargar</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -94,6 +105,7 @@ function abrir(){document.querySelector('#modal form').reset();document.getEleme
 function cerrar(){document.getElementById('modal').classList.add('hidden');}
 function editar(b){const d=JSON.parse(b.dataset.d);abrir();document.getElementById('mtitulo').innerText='Editar Doctor';for(const k of ['id','nombre','rfc','email','telefono','celular','direccion','cedula'])document.getElementById('f_'+k).value=d[k]||'';}
 function eliminar(id){confirmModal('¿Eliminar doctor?', function(){document.getElementById('del_id').value=id;document.getElementById('formDel').submit();});}
+function impNombre(inp){const el=document.getElementById('imp_nombre');if(inp.files&&inp.files.length){el.textContent=inp.files[0].name;el.classList.remove('text-slate-500');el.classList.add('text-slate-800','font-bold');}else{el.textContent='Selecciona o arrastra tu archivo .xlsx';el.classList.add('text-slate-500');el.classList.remove('text-slate-800','font-bold');}}
 </script>
 <style>.lbl{font-size:10px;font-weight:900;color:#94a3b8;text-transform:uppercase;margin-left:4px}
 #modal input{width:100%;padding:0.7rem 0.9rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.9rem;outline:none;font-weight:600;color:#334155;font-size:0.8rem}</style>
