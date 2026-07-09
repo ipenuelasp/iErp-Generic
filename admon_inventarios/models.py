@@ -551,6 +551,11 @@ class InstanciaKit(models.Model):
     # La caja es un contenedor de stock: su contenido vive en esta ubicación.
     ubicacion = models.OneToOneField(
         'Ubicacion', on_delete=models.SET_NULL, null=True, blank=True, related_name='caja')
+    # Anidamiento (2 niveles): una caja "hija" (p.ej. una tornillera) puede ir
+    # DENTRO de una caja "contenedora" (p.ej. la caja de cirugía).
+    caja_contenedora = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='cajas_hijas',
+        help_text="Si esta caja va dentro de otra (ej. una tornillera dentro de la caja de cirugía).")
     notas = models.TextField(blank=True, null=True)
 
     class Meta:
@@ -581,6 +586,16 @@ class InstanciaKit(models.Model):
             return Existencia.objects.none()
         return Existencia.objects.filter(ubicacion=self.ubicacion, cantidad__gt=0).select_related(
             'producto', 'lote', 'serie')
+
+    @property
+    def es_hija(self):
+        """Va dentro de otra caja (p.ej. una tornillera dentro de la de cirugía)."""
+        return self.caja_contenedora_id is not None
+
+    @property
+    def es_contenedora(self):
+        """Tiene al menos una caja anidada dentro."""
+        return self.cajas_hijas.exists()
 
     def __str__(self):
         return f"{self.codigo_caja} ({self.nombre_display}) [{self.estado}]"

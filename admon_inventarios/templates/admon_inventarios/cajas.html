@@ -48,7 +48,32 @@
                 {% else %}
                 <span class="text-[9px] font-black uppercase px-2 py-1 rounded bg-amber-50 text-amber-600"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Faltan {{ c.falta_total|floatformat:"-2" }} pzs</span>
                 {% endif %}
+                {% if c.hijas %}
+                <span class="text-[9px] font-black uppercase px-2 py-1 rounded bg-indigo-50 text-indigo-600"><i class="fa-solid fa-layer-group mr-1"></i>{{ c.hijas|length }} caja(s) dentro</span>
+                {% endif %}
             </div>
+
+            {% if c.hijas %}
+            <div class="mb-3 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3 space-y-2">
+                <p class="text-[9px] font-black uppercase tracking-widest text-indigo-400"><i class="fa-solid fa-boxes-stacked mr-1"></i>Cajas dentro (tornilleras)</p>
+                {% for h in c.hijas %}
+                <div class="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-indigo-50">
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-black text-slate-700 truncate">{{ h.codigo_caja }} <span class="font-bold text-slate-400">· {{ h.nombre_display }}</span></p>
+                        <p class="text-[9px] font-bold text-slate-400">{{ h.num_productos }} productos · {{ h.total_piezas|floatformat:"-2" }} pzs · {{ h.get_estado_display }}</p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <a href="{% url 'admon_inventarios:armar_caja' h.id %}" class="text-[9px] font-black uppercase text-brand hover:underline" title="Armar tornillera"><i class="fa-solid fa-box-open"></i></a>
+                        <form method="POST" onsubmit="return confirm('¿Sacar {{ h.codigo_caja }} de esta caja?')" class="inline">{% csrf_token %}
+                            <input type="hidden" name="accion" value="desanidar">
+                            <input type="hidden" name="hija_id" value="{{ h.id }}">
+                            <button type="submit" class="text-[9px] font-black uppercase text-rose-400 hover:text-rose-600" title="Sacar de la caja"><i class="fa-solid fa-arrow-up-from-bracket"></i></button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
             <div class="flex gap-4 text-[10px] font-black uppercase text-slate-400 mb-3">
                 <span>{{ c.num_productos }} productos</span>
                 <span>{{ c.total_piezas|floatformat:"-2" }} piezas</span>
@@ -76,7 +101,8 @@
             </div>
             {% endif %}
 
-            <div class="mt-auto flex items-center justify-end pt-2 border-t border-slate-50">
+            <div class="mt-auto flex items-center justify-between pt-2 border-t border-slate-50">
+                <button type="button" onclick="abrirAnidar('{{ c.id }}','{{ c.codigo_caja }}')" class="text-[10px] font-black uppercase text-indigo-500 hover:text-indigo-700"><i class="fa-solid fa-down-left-and-up-right-to-center mr-1"></i>Meter caja</button>
                 <div class="flex gap-3">
                     <a href="{% url 'admon_inventarios:armar_caja' c.id %}" class="text-[10px] font-black uppercase text-brand hover:underline"><i class="fa-solid fa-box-open mr-1"></i>Armar</a>
                     {% if c.lineas.all or c.kit_id %}
@@ -131,6 +157,44 @@
     </form>
 </div>
 
+<!-- Modal anidar (meter una tornillera dentro de una caja) -->
+<div id="modalAnidar" class="hidden fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
+    <form method="POST" class="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-8">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="anidar">
+        <input type="hidden" name="padre_id" id="anPadreId" value="">
+        <div class="flex justify-between items-center mb-2">
+            <h3 class="text-lg font-black text-slate-800 italic uppercase">Meter caja dentro</h3>
+            <button type="button" onclick="document.getElementById('modalAnidar').classList.add('hidden')" class="text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <p class="text-[11px] font-bold text-slate-400 mb-5">Elige la tornillera/caja que va dentro de <span id="anPadreCod" class="text-indigo-600"></span>.</p>
+        <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Caja a meter</label>
+        <select name="hija_id" id="anHijaSel" required class="no-select2 w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold">
+            {% for cand in candidatas_hija %}
+            <option value="{{ cand.id }}" data-padre="">{{ cand.codigo_caja }} · {{ cand.nombre_display }}</option>
+            {% endfor %}
+        </select>
+        {% if not candidatas_hija %}
+        <p class="text-[11px] font-bold text-amber-500 mt-3">No hay cajas libres para meter. Crea una caja (tornillera) o saca alguna de otra contenedora.</p>
+        {% endif %}
+        <button type="submit" class="w-full mt-6 bg-indigo-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/20 hover:-translate-y-0.5 transition-all">Meter caja</button>
+    </form>
+</div>
+
+<script>
+    function abrirAnidar(padreId, padreCod) {
+        document.getElementById('anPadreId').value = padreId;
+        document.getElementById('anPadreCod').textContent = padreCod;
+        // Oculta del selector la propia caja padre (no puede meterse en sí misma)
+        const sel = document.getElementById('anHijaSel');
+        for (const opt of sel.options) {
+            opt.hidden = (opt.value === String(padreId));
+        }
+        // Selecciona la primera opción visible
+        for (const opt of sel.options) { if (!opt.hidden) { sel.value = opt.value; break; } }
+        document.getElementById('modalAnidar').classList.remove('hidden');
+    }
+</script>
 <script>
     function _setConsig(v) {
         document.getElementById('rowConsig').style.display = v === 'CONSIGNA' ? 'block' : 'none';

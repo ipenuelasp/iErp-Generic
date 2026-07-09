@@ -29,9 +29,10 @@ class CajasView(LoginRequiredMixin, View):
             return redirect('home')
         empresa, sucursal = ctx
 
-        cajas = InstanciaKit.objects.filter(
+        cajas = list(InstanciaKit.objects.filter(
             empresa=empresa, sucursal_actual=sucursal
-        ).exclude(estado='BAJA').select_related('kit', 'consignante').prefetch_related('lineas')
+        ).exclude(estado='BAJA').select_related('kit', 'consignante', 'caja_contenedora')
+            .prefetch_related('lineas', 'cajas_hijas'))
 
         # Resumen de contenido físico actual + comparación contra la receta objetivo.
         for c in cajas:
@@ -76,8 +77,26 @@ class CajasView(LoginRequiredMixin, View):
             c.falta_total = falta_total
             c.completa = c.tiene_receta and falta_total == 0
 
+        # Árbol: cajas de nivel superior (no anidadas) con sus tornilleras hijas.
+        por_id = {c.id: c for c in cajas}
+        for c in cajas:
+            c.hijas = []
+        raiz = []
+        for c in cajas:
+            padre = por_id.get(c.caja_contenedora_id)
+            if padre:
+                padre.hijas.append(c)
+            else:
+                raiz.append(c)
+        # Candidatas a ser "caja hija" (para el selector): cajas libres que no
+        # son contenedoras y que no están ya dentro de otra.
+        candidatas_hija = [c for c in cajas
+                           if not c.cajas_hijas.exists() and not c.caja_contenedora_id]
+
         return render(request, self.template_name, {
-            'cajas': cajas,
+            'cajas': raiz,
+            'todas_cajas': cajas,
+            'candidatas_hija': candidatas_hija,
             'consignantes': Consignante.objects.filter(empresa=empresa, activo=True),
             'sucursal_activa': sucursal,
             'seccion': 'inventarios',
@@ -89,6 +108,29 @@ class CajasView(LoginRequiredMixin, View):
             return redirect('home')
         empresa, sucursal = ctx
         accion = request.POST.get('accion') or 'crear'
+
+        # --- Anidar una caja (tornillera) dentro de otra (caja de cirugía) ---
+        if accion == 'anidar':
+            hija = get_object_or_404(InstanciaKit, id=request.POST.get('hija_id'), empresa=empresa)
+            padre = get_object_or_404(InstanciaKit, id=request.POST.get('padre_id'), empresa=empresa)
+            if hija.id == padre.id:
+                messages.error(request, "Una caja no puede contenerse a sí misma.")
+            elif padre.caja_contenedora_id:
+                messages.error(request, f"La caja {padre.codigo_caja} ya está dentro de otra; solo se permiten dos niveles.")
+            elif hija.cajas_hijas.exists():
+                messages.error(request, f"La caja {hija.codigo_caja} ya contiene otras cajas; no puede anidarse (solo dos niveles).")
+            else:
+                hija.caja_contenedora = padre
+                hija.save(update_fields=['caja_contenedora'])
+                messages.success(request, f"Caja {hija.codigo_caja} metida dentro de {padre.codigo_caja}.")
+            return redirect('admon_inventarios:cajas')
+
+        if accion == 'desanidar':
+            hija = get_object_or_404(InstanciaKit, id=request.POST.get('hija_id'), empresa=empresa)
+            hija.caja_contenedora = None
+            hija.save(update_fields=['caja_contenedora'])
+            messages.success(request, f"Caja {hija.codigo_caja} sacada de su contenedora.")
+            return redirect('admon_inventarios:cajas')
 
         propiedad = request.POST.get('propiedad') or 'PROPIO'
         consignante = None
