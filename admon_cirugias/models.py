@@ -52,6 +52,7 @@ class SolicitudCirugia(models.Model):
     ESTADO_CHOICES = [
         ('SOLICITADA', 'Solicitada'),
         ('SURTIDA', 'Surtida (material enviado)'),
+        ('RETORNADA', 'Regresada (pendiente de finalizar)'),
         ('POR_FACTURAR', 'Por facturar (finalizada, pendiente de pedido)'),
         ('LIQUIDADA', 'Liquidada (pedido generado)'),
         ('CANCELADA', 'Cancelada'),
@@ -91,8 +92,9 @@ class SolicitudCirugia(models.Model):
         verbose_name_plural = "Solicitudes de cirugía"
 
     def color_estado(self):
-        return {'SOLICITADA': 'amber', 'SURTIDA': 'blue', 'POR_FACTURAR': 'fuchsia',
-                'LIQUIDADA': 'emerald', 'CANCELADA': 'slate'}.get(self.estado, 'slate')
+        return {'SOLICITADA': 'amber', 'SURTIDA': 'blue', 'RETORNADA': 'purple',
+                'POR_FACTURAR': 'fuchsia', 'LIQUIDADA': 'emerald',
+                'CANCELADA': 'slate'}.get(self.estado, 'slate')
 
     def __str__(self):
         return f"{self.folio} — {self.paciente or 's/paciente'}"

@@ -393,12 +393,21 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
             sol.pedido = pedido
             sol.save(update_fields=['estado', 'pedido'])
 
-        # Auto-corrige el estado: "Surtida" solo si hay salidas activas (no canceladas).
-        # Si cancelaste/eliminaste la salida, vuelve a "Solicitada".
-        if sol.estado in ('SURTIDA', 'ENVIADA'):
+        # Auto-corrige el estado según las salidas activas.
+        if sol.estado in ('SURTIDA', 'ENVIADA', 'RETORNADA'):
             activas = [s for s in salidas if s.estado != 'CANCELADA']
             if not activas:
-                sol.estado = 'SOLICITADA'
+                # Se quitó/canceló toda salida: vuelve a "Solicitada".
+                if sol.estado != 'SOLICITADA':
+                    sol.estado = 'SOLICITADA'
+                    sol.save(update_fields=['estado'])
+            elif all(s.estado == 'RETORNADA' for s in activas) and sol.estado == 'SURTIDA':
+                # Todo regresó: pasa a "Regresada (pendiente de finalizar)".
+                sol.estado = 'RETORNADA'
+                sol.save(update_fields=['estado'])
+            elif any(s.estado in ('ENVIADA', 'EN_USO') for s in activas) and sol.estado == 'RETORNADA':
+                # Se surtió una caja nueva después: regresa a "Surtida".
+                sol.estado = 'SURTIDA'
                 sol.save(update_fields=['estado'])
 
         hay_retornadas = any(s.estado == 'RETORNADA' for s in salidas)
@@ -439,7 +448,7 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
                 cajas_surtir.append(info)
 
         # La solicitud se puede editar mientras no esté finalizada/liquidada.
-        puede_editar = sol.estado in ('SOLICITADA', 'SURTIDA')
+        puede_editar = sol.estado in ('SOLICITADA', 'SURTIDA', 'RETORNADA')
         ctx_edit = {}
         if puede_editar:
             ctx_edit = {
@@ -619,6 +628,12 @@ class RegresoSalidaView(LoginRequiredMixin, View):
         except (ValueError, StockInsuficiente) as e:
             messages.error(request, f"Error: {e}")
             return redirect('admon_cirugias:regreso_salida', pk=pk, salida_id=salida_id)
+        # Si ya regresó TODO el material enviado, la cirugía pasa a "Regresada
+        # (pendiente de finalizar)" para avisar que está lista para cerrarse.
+        activas = [s for s in sol.salidas.exclude(estado='CANCELADA')]
+        if activas and all(s.estado == 'RETORNADA' for s in activas) and sol.estado == 'SURTIDA':
+            sol.estado = 'RETORNADA'
+            sol.save(update_fields=['estado'])
         messages.success(request, f"Regreso de {salida.folio} registrado. El consumo quedó listo para liquidar.")
         return redirect('admon_cirugias:solicitud_detalle', pk=pk)
 
