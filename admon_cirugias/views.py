@@ -1,3 +1,4 @@
+import decimal
 from datetime import datetime
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -297,6 +298,27 @@ class NuevaSolicitudView(LoginRequiredMixin, View):
         return redirect('admon_cirugias:solicitud_detalle', pk=sol.pk)
 
 
+def _fmt_cant(x):
+    return f"{x:.2f}".rstrip('0').rstrip('.')
+
+
+def _resumen_caja(caja):
+    """Resumen del contenido de una caja para el selector visual de surtido."""
+    cont = list(caja.contenido())
+    agg = {}
+    for e in cont:
+        d = agg.setdefault(e.producto_id, {'sku': e.producto.sku, 'nombre': e.producto.nombre,
+                                           'cant': decimal.Decimal('0')})
+        d['cant'] += e.cantidad
+    items = [{'sku': v['sku'], 'nombre': v['nombre'], 'cant': _fmt_cant(v['cant'])}
+             for v in agg.values()]
+    total = sum((e.cantidad for e in cont), decimal.Decimal('0'))
+    return {
+        'id': caja.id, 'codigo': caja.codigo_caja, 'nombre': caja.nombre_display,
+        'num': len(items), 'piezas': _fmt_cant(total), 'items': items,
+    }
+
+
 class SolicitudDetalleView(LoginRequiredMixin, View):
     template_name = 'admon_cirugias/solicitud_detalle.html'
 
@@ -348,12 +370,23 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
             sucursal_actual=sucursal, estado='DISPONIBLE', caja_contenedora__isnull=True
         ).select_related('kit').prefetch_related('cajas_hijas')
 
+        # Selector visual: cada caja con su contenido y el de sus tornilleras.
+        puede_surtir = sol.estado in ('SOLICITADA', 'SURTIDA')
+        cajas_surtir = []
+        if puede_surtir:
+            for c in cajas_disponibles:
+                info = _resumen_caja(c)
+                info['tornilleras'] = [
+                    _resumen_caja(h) for h in c.cajas_hijas.filter(estado='DISPONIBLE')]
+                cajas_surtir.append(info)
+
         return render(request, self.template_name, {
             'solicitud': sol,
             'salidas': salidas,
             'salidas_arbol': salidas_arbol,
             'hay_retornadas': hay_retornadas,
             'cajas_disponibles': cajas_disponibles,
+            'cajas_surtir': cajas_surtir,
             'sucursal_activa': sucursal, 'seccion': 'cirugias',
         })
 
