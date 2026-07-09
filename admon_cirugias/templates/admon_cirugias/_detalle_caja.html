@@ -1,0 +1,15 @@
+{% if detalle %}
+<button type="button" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('i').classList.toggle('rotate-180')" class="mt-2 text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 flex items-center gap-1">
+    Ver contenido <i class="fa-solid fa-chevron-down text-[8px] transition-transform"></i>
+</button>
+<div class="hidden mt-2 rounded-xl bg-slate-50 p-3 space-y-1 max-h-52 overflow-y-auto">
+    {% for it in detalle %}
+    <div class="flex items-center justify-between text-[11px] border-b border-slate-100 pb-1">
+        <span class="font-bold text-slate-600 truncate pr-2"><span class="font-mono text-slate-400">[{{ it.sku }}]</span> {{ it.nombre|truncatechars:34 }}{% if it.ret %}<span class="text-[8px] text-amber-600 font-black ml-1">RENTA</span>{% endif %}{% if it.extra %}<span class="text-[8px] text-slate-300 font-black ml-1">EXTRA</span>{% endif %}</span>
+        <span class="font-black whitespace-nowrap {% if it.incompleto %}text-amber-600{% else %}text-slate-500{% endif %}">{{ it.actual }}{% if it.objetivo %}/{{ it.objetivo }}{% endif %}{% if it.incompleto %} <span class="text-[8px]">(faltan {{ it.falta }})</span>{% endif %}</span>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="mt-2 text-[10px] font-bold text-slate-300 italic">Sin receta ni contenido.</p>
+{% endif %}

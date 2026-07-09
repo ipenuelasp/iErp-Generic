@@ -317,17 +317,29 @@ def _resumen_caja(caja):
     objetivo = caja.lineas_objetivo()  # [(producto, cantidad_objetivo, es_retornable)]
     falta_total = decimal.Decimal('0')
     faltantes = []
-    for prod, cant_obj, _ret in objetivo:
+    detalle = []          # receta completa (actual vs objetivo) + extras, como en Armar cajas
+    ids_receta = set()
+    for prod, cant_obj, ret in objetivo:
+        ids_receta.add(prod.id)
         act = agg.get(prod.id, {}).get('cant', decimal.Decimal('0'))
         falta = cant_obj - act
+        if falta < 0:
+            falta = decimal.Decimal('0')
+        falta_total += falta
+        detalle.append({'sku': prod.sku, 'nombre': prod.nombre, 'actual': _fmt_cant(act),
+                        'objetivo': _fmt_cant(cant_obj), 'falta': _fmt_cant(falta),
+                        'ret': ret, 'extra': False, 'incompleto': falta > 0})
         if falta > 0:
-            falta_total += falta
             faltantes.append({'sku': prod.sku, 'nombre': prod.nombre,
                               'falta': _fmt_cant(falta), 'objetivo': _fmt_cant(cant_obj)})
+    for pid, v in agg.items():
+        if pid not in ids_receta:
+            detalle.append({'sku': v['sku'], 'nombre': v['nombre'], 'actual': _fmt_cant(v['cant']),
+                            'objetivo': '', 'falta': '', 'ret': False, 'extra': True, 'incompleto': False})
     tiene_receta = bool(objetivo)
     return {
         'id': caja.id, 'codigo': caja.codigo_caja, 'nombre': caja.nombre_display,
-        'num': len(items), 'piezas': _fmt_cant(total), 'items': items,
+        'num': len(items), 'piezas': _fmt_cant(total), 'items': items, 'detalle': detalle,
         'tiene_receta': tiene_receta, 'completa': tiene_receta and falta_total == 0,
         'falta_total': _fmt_cant(falta_total), 'faltantes': faltantes,
     }

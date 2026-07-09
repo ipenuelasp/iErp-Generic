@@ -180,24 +180,15 @@
                     </form>
                 </div>
 
-                {% if c.items %}
-                <div class="mt-3 rounded-xl bg-slate-50 p-3">
-                    <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Material suelto</p>
-                    {% for it in c.items %}
-                    <div class="flex justify-between text-[11px] py-0.5"><span class="text-slate-600 truncate pr-2"><span class="font-mono text-slate-400">[{{ it.sku }}]</span> {{ it.nombre|truncatechars:38 }}</span><span class="font-black text-slate-700 whitespace-nowrap">{{ it.cant }}</span></div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <p class="mt-3 text-[10px] font-bold text-slate-300 italic">Sin material suelto{% if c.tornilleras %} (solo lleva tornilleras).{% endif %}</p>
-                {% endif %}
+                {% include 'admon_cirugias/_detalle_caja.html' with detalle=c.detalle %}
 
                 {% for t in c.tornilleras %}
                 <div class="mt-2 ml-4 rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
-                    <p class="text-[10px] font-black text-slate-700"><i class="fa-solid fa-boxes-stacked text-indigo-400 mr-1"></i>{{ t.codigo }} · {{ t.nombre }} <span class="font-bold text-slate-400">({{ t.num }} prod · {{ t.piezas }} pzs)</span></p>
-                    {% for it in t.items %}
-                    <div class="flex justify-between text-[10px] py-0.5"><span class="text-slate-500 truncate pr-2"><span class="font-mono text-slate-300">[{{ it.sku }}]</span> {{ it.nombre|truncatechars:34 }}</span><span class="font-black text-slate-600 whitespace-nowrap">{{ it.cant }}</span></div>
-                    {% endfor %}
-                    {% if not t.items %}<p class="text-[9px] font-bold text-amber-500 italic">Vacía — reabastécela antes de surtir.</p>{% endif %}
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-[11px] font-black text-slate-700"><i class="fa-solid fa-boxes-stacked text-indigo-400 mr-1"></i>{{ t.codigo }} · {{ t.nombre }} <span class="font-bold text-slate-400">({{ t.num }} prod · {{ t.piezas }} pzs)</span></p>
+                        {% if not t.tiene_receta %}<span class="text-[8px] font-black uppercase text-slate-400">Sin receta</span>{% elif t.completa %}<span class="text-[8px] font-black uppercase text-emerald-600">Completa</span>{% else %}<span class="text-[8px] font-black uppercase text-amber-600">Faltan {{ t.falta_total }}</span>{% endif %}
+                    </div>
+                    {% include 'admon_cirugias/_detalle_caja.html' with detalle=t.detalle %}
                 </div>
                 {% endfor %}
             </div>
