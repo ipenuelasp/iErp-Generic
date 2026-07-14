@@ -74,6 +74,49 @@ def _leer_cfdi(xml_file):
     return info
 
 
+def _parsear_zip_cfdis(zip_file, factura):
+    """Lee un ZIP y devuelve la lista de CFDIs encontrados (sin guardar nada):
+    [{uuid, serie_folio, fecha(date|None), total, tiene_pdf, duplicado, xml_name, pdf_name, error}]."""
+    import io
+    import zipfile
+    zf = zipfile.ZipFile(zip_file)
+    pdfs = {}
+    for n in zf.namelist():
+        if n.lower().endswith('.pdf'):
+            stem = n.rsplit('/', 1)[-1].rsplit('.', 1)[0].upper()
+            pdfs[stem] = n
+    existentes = set(u.upper() for u in factura.cfdis.values_list('uuid', flat=True) if u)
+    items = []
+    for n in zf.namelist():
+        if not n.lower().endswith('.xml'):
+            continue
+        nombre = n.rsplit('/', 1)[-1]
+        try:
+            info = _leer_cfdi(io.BytesIO(zf.read(n)))
+        except Exception:
+            info = None
+        if not info or not info.get('uuid'):
+            items.append({'error': True, 'xml_name': nombre})
+            continue
+        uuid_val = info['uuid'].upper()
+        base = nombre.rsplit('.', 1)[0].upper()
+        pdf_name = pdfs.get(base) or pdfs.get(uuid_val)
+        if not pdf_name:
+            for stem, pn in pdfs.items():
+                if uuid_val in stem:
+                    pdf_name = pn
+                    break
+        c_sub = info['subtotal'] if info['subtotal'] is not None else decimal.Decimal('0')
+        total = info['total'] or (c_sub + info['traslados'] - info['retenidos'])
+        sf, fecha = _serie_folio_fecha(info)
+        items.append({
+            'error': False, 'uuid': uuid_val, 'serie_folio': sf, 'fecha': fecha,
+            'total': total, 'tiene_pdf': bool(pdf_name), 'duplicado': uuid_val in existentes,
+            'xml_name': n, 'pdf_name': pdf_name, 'info': info, 'c_sub': c_sub,
+        })
+    return zf, items
+
+
 def _serie_folio_fecha(cfdi):
     """De un CFDI parseado devuelve (serie_folio, fecha date) para prellenar."""
     from datetime import datetime
@@ -974,6 +1017,30 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
         empresa, sucursal = ctx
         factura = get_object_or_404(FacturaCliente, pk=pk, empresa=empresa)
         accion = request.POST.get('accion')
+        if accion == 'preview_zip':
+            from django.http import JsonResponse
+            import zipfile
+            z = request.FILES.get('archivo_zip')
+            if not z:
+                return JsonResponse({'error': 'Selecciona un archivo .zip.'}, status=400)
+            try:
+                _zf, items = _parsear_zip_cfdis(z, factura)
+            except zipfile.BadZipFile:
+                return JsonResponse({'error': 'El archivo no es un ZIP válido.'}, status=400)
+            sim = factura.moneda.simbolo
+            out = []
+            for it in items:
+                if it.get('error'):
+                    out.append({'error': True, 'xml_name': it['xml_name']})
+                    continue
+                out.append({
+                    'uuid': it['uuid'], 'serie_folio': it['serie_folio'] or '—',
+                    'fecha': it['fecha'].strftime('%d/%m/%Y') if it['fecha'] else '—',
+                    'total': f"{sim}{it['total']:,.2f}", 'tiene_pdf': it['tiene_pdf'],
+                    'duplicado': it['duplicado'],
+                })
+            return JsonResponse({'items': out})
+
         if accion == 'cobrar_cxc':
             try:
                 monto = decimal.Decimal(request.POST.get('monto') or '0')
@@ -1083,72 +1150,44 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
             else:
                 messages.success(request, "CFDI agregado. La CxC quedó totalmente facturada.")
         elif accion == 'subir_cfdi_zip':
-            # Sube un ZIP con varios CFDI: crea uno por cada XML, le pega su PDF
-            # (por nombre igual o por UUID) y toma serie/folio/fecha del XML.
-            import io, zipfile
+            # Agrega los CFDIs del ZIP que el usuario confirmó en la vista previa.
+            import zipfile
             from django.core.files.base import ContentFile
             z = request.FILES.get('archivo_zip')
             if not z:
                 messages.error(request, "Selecciona un archivo .zip.")
                 return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
             try:
-                zf = zipfile.ZipFile(z)
+                zf, items = _parsear_zip_cfdis(z, factura)
             except zipfile.BadZipFile:
                 messages.error(request, "El archivo no es un ZIP válido.")
                 return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
 
-            pdfs = {}  # stem (mayúsculas) -> nombre del pdf dentro del zip
-            for n in zf.namelist():
-                if n.lower().endswith('.pdf'):
-                    stem = n.rsplit('/', 1)[-1].rsplit('.', 1)[0].upper()
-                    pdfs[stem] = n
-
-            creados = omitidos = errores = 0
-            for n in zf.namelist():
-                if not n.lower().endswith('.xml'):
+            # UUIDs marcados en la vista previa (si no vino ninguno, no agrega nada)
+            seleccion = set(u.upper() for u in request.POST.getlist('cfdi_uuids'))
+            creados = omitidos = 0
+            for it in items:
+                if it.get('error') or it['duplicado']:
                     continue
-                try:
-                    xml_bytes = zf.read(n)
-                    info = _leer_cfdi(io.BytesIO(xml_bytes))
-                except Exception:
-                    errores += 1
+                if it['uuid'] not in seleccion:
                     continue
-                if not info or not info.get('uuid'):
-                    errores += 1
-                    continue
-                uuid_val = info['uuid'].upper()
-                if factura.cfdis.filter(uuid=uuid_val).exists():
-                    omitidos += 1
-                    continue
-                base = n.rsplit('/', 1)[-1].rsplit('.', 1)[0].upper()
-                pdf_name = pdfs.get(base) or pdfs.get(uuid_val)
-                if not pdf_name:
-                    for stem, pn in pdfs.items():
-                        if uuid_val in stem:
-                            pdf_name = pn
-                            break
-                c_sub = info['subtotal'] if info['subtotal'] is not None else decimal.Decimal('0')
-                total = info['total'] or (c_sub + info['traslados'] - info['retenidos'])
-                sf, fecha = _serie_folio_fecha(info)
                 c = CfdiCliente(
-                    factura=factura, uuid=uuid_val, serie_folio=sf, fecha=fecha,
-                    subtotal=c_sub, traslados=info['traslados'], retenciones=info['retenidos'],
-                    total=total, metodo_pago=info.get('metodo_pago', ''))
-                c.archivo_xml.save(f"{uuid_val}.xml", ContentFile(xml_bytes), save=False)
-                if pdf_name:
-                    c.archivo_pdf.save(f"{uuid_val}.pdf", ContentFile(zf.read(pdf_name)), save=False)
+                    factura=factura, uuid=it['uuid'], serie_folio=it['serie_folio'], fecha=it['fecha'],
+                    subtotal=it['c_sub'], traslados=it['info']['traslados'],
+                    retenciones=it['info']['retenidos'], total=it['total'],
+                    metodo_pago=it['info'].get('metodo_pago', ''))
+                c.archivo_xml.save(f"{it['uuid']}.xml", ContentFile(zf.read(it['xml_name'])), save=False)
+                if it['pdf_name']:
+                    c.archivo_pdf.save(f"{it['uuid']}.pdf", ContentFile(zf.read(it['pdf_name'])), save=False)
                 c.save()
                 creados += 1
 
-            if creados:
-                _sync_factura_cfdis(factura)
-                factura.refresh_from_db()
-            partes = [f"{creados} CFDI agregado(s)"]
-            if omitidos:
-                partes.append(f"{omitidos} ya estaban")
-            if errores:
-                partes.append(f"{errores} sin leer")
-            (messages.success if creados else messages.info)(request, "ZIP procesado: " + ", ".join(partes) + ".")
+            if not creados:
+                messages.info(request, "No se agregó ningún CFDI (nada seleccionado).")
+                return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
+            _sync_factura_cfdis(factura)
+            factura.refresh_from_db()
+            messages.success(request, f"{creados} CFDI agregado(s) desde el ZIP.")
             return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
         elif accion == 'enviar_cfdi':
             from admon_empresas.emails import send_html

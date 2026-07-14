@@ -327,26 +327,55 @@
         </script>
 
         {% if factura.saldo_por_facturar > 0 %}
-        <!-- Subir varias por ZIP -->
-        <form method="POST" enctype="multipart/form-data" class="mb-5 rounded-2xl border border-dashed border-brand/30 bg-brand/5 p-4">
+        <!-- Subir varias por ZIP (con vista previa) -->
+        <form id="formZip" method="POST" enctype="multipart/form-data" class="mb-5 rounded-2xl border border-dashed border-brand/30 bg-brand/5 p-4">
             {% csrf_token %}
             <input type="hidden" name="accion" value="subir_cfdi_zip">
+            <div id="zipUuids"></div>
             <div class="flex flex-col md:flex-row md:items-center gap-3">
                 <div class="min-w-0 flex-1">
                     <p class="text-[11px] font-black text-slate-700 uppercase"><i class="fa-solid fa-file-zipper mr-1 text-brand"></i> Subir varias por ZIP</p>
-                    <p class="text-[10px] font-bold text-slate-400">Crea un CFDI por cada XML del ZIP, le pega su PDF (por nombre o UUID) y toma serie, folio y fecha del XML.</p>
+                    <p class="text-[10px] font-bold text-slate-400">Lee cada XML del ZIP (serie, folio, fecha, monto) y su PDF. Verás una <b>vista previa</b> para elegir cuáles agregar.</p>
                 </div>
                 <div class="relative h-[48px] flex-1">
-                    <input type="file" name="archivo_zip" accept=".zip" required onchange="document.getElementById('zipName').textContent=this.files[0]?this.files[0].name:'Selecciona un .zip'"
+                    <input type="file" name="archivo_zip" id="zipFile" accept=".zip" onchange="document.getElementById('zipName').textContent=this.files[0]?this.files[0].name:'Selecciona un .zip'"
                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
                     <div class="absolute inset-0 flex items-center bg-white border-2 border-dashed border-slate-200 rounded-xl px-3 hover:border-brand transition-all z-10">
                         <i class="fa-solid fa-file-zipper text-slate-400 mr-2"></i>
                         <span id="zipName" class="text-xs text-slate-500 font-bold truncate">Selecciona un .zip</span>
                     </div>
                 </div>
-                <button type="submit" class="bg-brand text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all shrink-0">Subir ZIP</button>
+                <button type="button" onclick="previewZip()" class="bg-brand text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all shrink-0"><i class="fa-solid fa-magnifying-glass mr-1"></i> Vista previa</button>
             </div>
+            <p id="zipError" class="hidden mt-2 text-[11px] font-bold text-rose-500"></p>
         </form>
+
+        <!-- Modal vista previa del ZIP -->
+        <div id="modalZip" class="hidden fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[88vh] flex flex-col">
+                <div class="flex items-center justify-between px-8 pt-8 pb-3">
+                    <div>
+                        <h3 class="text-lg font-black text-slate-800 italic uppercase">CFDIs en el ZIP</h3>
+                        <p class="text-[11px] font-bold text-slate-400 mt-1">Revisa los datos leídos y elige cuáles agregar.</p>
+                    </div>
+                    <button type="button" onclick="document.getElementById('modalZip').classList.add('hidden')" class="text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+                </div>
+                <div class="px-8 overflow-y-auto">
+                    <table class="w-full text-left">
+                        <thead><tr class="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                            <th class="py-2 w-8"><input type="checkbox" id="zipAll" onclick="zipToggleAll(this)"></th>
+                            <th class="py-2">Serie/Folio · UUID</th><th class="py-2">Fecha</th>
+                            <th class="py-2 text-right">Monto</th><th class="py-2 text-center">PDF</th><th class="py-2 text-center">Estado</th>
+                        </tr></thead>
+                        <tbody id="zipBody" class="divide-y divide-slate-50"></tbody>
+                    </table>
+                </div>
+                <div class="flex justify-end gap-3 px-8 py-6">
+                    <button type="button" onclick="document.getElementById('modalZip').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cancelar</button>
+                    <button type="button" id="zipConfirmBtn" onclick="confirmZip()" class="bg-brand text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all">Agregar seleccionados</button>
+                </div>
+            </div>
+        </div>
 
         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 text-center">— o agrega una por una —</p>
 
@@ -411,6 +440,68 @@
                 <button type="submit" class="bg-brand text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-paperclip mr-2"></i> Agregar CFDI</button>
             </div>
         </form>
+
+        <script>
+        function _zesc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function _zerr(m){ var e=document.getElementById('zipError'); e.textContent=m; e.classList.remove('hidden'); }
+        function previewZip(){
+            document.getElementById('zipError').classList.add('hidden');
+            var f=document.getElementById('zipFile');
+            if(!f.files.length){ _zerr('Selecciona un archivo .zip primero.'); return; }
+            var fd=new FormData();
+            fd.append('accion','preview_zip');
+            fd.append('archivo_zip', f.files[0]);
+            fd.append('csrfmiddlewaretoken', document.querySelector('#formZip [name=csrfmiddlewaretoken]').value);
+            fetch(window.location.pathname, {method:'POST', body:fd})
+                .then(function(r){ return r.json(); })
+                .then(function(data){
+                    if(data.error){ _zerr(data.error); return; }
+                    _zipRender(data.items);
+                    document.getElementById('modalZip').classList.remove('hidden');
+                })
+                .catch(function(){ _zerr('No se pudo leer el ZIP.'); });
+        }
+        function _zipRender(items){
+            var body=document.getElementById('zipBody'); body.innerHTML='';
+            if(!items.length){ body.innerHTML='<tr><td colspan="6" class="py-6 text-center text-slate-400 italic text-sm">El ZIP no trae XML de CFDI.</td></tr>'; }
+            items.forEach(function(it){
+                if(it.error){
+                    body.innerHTML+='<tr><td></td><td colspan="5" class="py-2 text-[11px] text-rose-500 font-bold">No se pudo leer: '+_zesc(it.xml_name)+'</td></tr>';
+                    return;
+                }
+                var chk = it.duplicado ? '' : '<input type="checkbox" class="zip-chk" value="'+_zesc(it.uuid)+'" checked onchange="zipCount()">';
+                var estado = it.duplicado
+                    ? '<span class="text-[9px] font-black uppercase text-slate-400">Ya existe</span>'
+                    : '<span class="text-[9px] font-black uppercase text-emerald-600">Nuevo</span>';
+                var pdf = it.tiene_pdf
+                    ? '<i class="fa-solid fa-check text-emerald-500"></i>'
+                    : '<span class="text-[9px] font-bold text-amber-500">sin PDF</span>';
+                body.innerHTML+='<tr class="'+(it.duplicado?'opacity-50':'')+'">'+
+                    '<td class="py-2">'+chk+'</td>'+
+                    '<td class="py-2 text-[11px]"><span class="font-black text-slate-700">'+_zesc(it.serie_folio)+'</span><div class="font-mono text-[9px] text-slate-400">'+_zesc(it.uuid)+'</div></td>'+
+                    '<td class="py-2 text-[11px] font-bold text-slate-500 whitespace-nowrap">'+_zesc(it.fecha)+'</td>'+
+                    '<td class="py-2 text-right text-[11px] font-black text-slate-700 whitespace-nowrap">'+_zesc(it.total)+'</td>'+
+                    '<td class="py-2 text-center">'+pdf+'</td>'+
+                    '<td class="py-2 text-center">'+estado+'</td></tr>';
+            });
+            zipCount();
+        }
+        function zipToggleAll(master){ document.querySelectorAll('.zip-chk').forEach(function(c){ c.checked=master.checked; }); zipCount(); }
+        function zipCount(){
+            var n=document.querySelectorAll('.zip-chk:checked').length;
+            var btn=document.getElementById('zipConfirmBtn');
+            btn.textContent = n ? 'Agregar seleccionados ('+n+')' : 'Nada seleccionado';
+            btn.style.opacity = n ? '1' : '.5';
+        }
+        function confirmZip(){
+            var ids=Array.from(document.querySelectorAll('.zip-chk:checked')).map(function(c){ return c.value; });
+            if(!ids.length){ return; }
+            var cont=document.getElementById('zipUuids'); cont.innerHTML='';
+            ids.forEach(function(u){ var i=document.createElement('input'); i.type='hidden'; i.name='cfdi_uuids'; i.value=u; cont.appendChild(i); });
+            document.getElementById('zipConfirmBtn').disabled=true;
+            document.getElementById('formZip').submit();
+        }
+        </script>
         {% else %}
         <p class="text-center text-[11px] font-bold text-emerald-600 py-2"><i class="fa-solid fa-circle-check mr-1"></i> Esta cuenta por cobrar ya está totalmente facturada.</p>
         {% endif %}
