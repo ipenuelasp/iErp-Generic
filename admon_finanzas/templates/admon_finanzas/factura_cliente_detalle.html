@@ -327,6 +327,29 @@
         </script>
 
         {% if factura.saldo_por_facturar > 0 %}
+        <!-- Subir varias por ZIP -->
+        <form method="POST" enctype="multipart/form-data" class="mb-5 rounded-2xl border border-dashed border-brand/30 bg-brand/5 p-4">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="subir_cfdi_zip">
+            <div class="flex flex-col md:flex-row md:items-center gap-3">
+                <div class="min-w-0 flex-1">
+                    <p class="text-[11px] font-black text-slate-700 uppercase"><i class="fa-solid fa-file-zipper mr-1 text-brand"></i> Subir varias por ZIP</p>
+                    <p class="text-[10px] font-bold text-slate-400">Crea un CFDI por cada XML del ZIP, le pega su PDF (por nombre o UUID) y toma serie, folio y fecha del XML.</p>
+                </div>
+                <div class="relative h-[48px] flex-1">
+                    <input type="file" name="archivo_zip" accept=".zip" required onchange="document.getElementById('zipName').textContent=this.files[0]?this.files[0].name:'Selecciona un .zip'"
+                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                    <div class="absolute inset-0 flex items-center bg-white border-2 border-dashed border-slate-200 rounded-xl px-3 hover:border-brand transition-all z-10">
+                        <i class="fa-solid fa-file-zipper text-slate-400 mr-2"></i>
+                        <span id="zipName" class="text-xs text-slate-500 font-bold truncate">Selecciona un .zip</span>
+                    </div>
+                </div>
+                <button type="submit" class="bg-brand text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all shrink-0">Subir ZIP</button>
+            </div>
+        </form>
+
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 text-center">— o agrega una por una —</p>
+
         <form method="POST" enctype="multipart/form-data"
               data-rfc="{{ factura.cliente.rfc|default:''|upper }}" data-saldo="{{ factura.saldo_por_facturar|floatformat:2 }}">
             {% csrf_token %}
@@ -371,11 +394,11 @@
                 </div>
                 <div>
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Fecha</label>
-                    <input type="date" name="cfdi_fecha" class="w-full mt-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold">
+                    <input type="date" name="cfdi_fecha" id="cfdiFecha" class="w-full mt-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold">
                 </div>
                 <div>
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Serie / Folio</label>
-                    <input type="text" name="cfdi_serie" placeholder="A-123" class="w-full mt-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold">
+                    <input type="text" name="cfdi_serie" id="cfdiSerie" placeholder="Se autocompleta del XML" class="w-full mt-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold">
                 </div>
             </div>
 
@@ -420,6 +443,15 @@
                 // El monto a registrar es el total neto del CFDI (con IVA y retenciones)
                 const inpTotal = document.getElementById('cfdiTotal');
                 if (inpTotal && totalXml > 0) inpTotal.value = totalXml.toFixed(2);
+                // Fecha y serie/folio del XML
+                const fechaXml = (comp.getAttribute('Fecha') || '').substring(0, 10);
+                const fFecha = document.getElementById('cfdiFecha');
+                if (fFecha && fechaXml) fFecha.value = fechaXml;
+                const serie = comp.getAttribute('Serie') || '';
+                const folio = comp.getAttribute('Folio') || '';
+                const sf = (serie && folio) ? (serie + '-' + folio) : (folio || serie);
+                const fSerie = document.getElementById('cfdiSerie');
+                if (fSerie && sf) fSerie.value = sf;
 
                 const rfcEsperado = (form.dataset.rfc || '').toUpperCase();
                 // data-saldo es la BASE por facturar (subtotal), comparamos base contra base
