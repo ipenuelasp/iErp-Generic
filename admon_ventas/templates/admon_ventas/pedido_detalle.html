@@ -62,6 +62,13 @@
         </table>
     </div>
 
+    {% if pedido.notas %}
+    <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 mb-6">
+        <h3 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2"><i class="fa-solid fa-note-sticky mr-2 text-brand"></i> Observaciones</h3>
+        <p class="text-sm text-slate-600 font-medium whitespace-pre-line">{{ pedido.notas }}</p>
+    </div>
+    {% endif %}
+
     {% if cambios %}
     <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 mb-6">
         <h3 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3"><i class="fa-solid fa-clock-rotate-left mr-2 text-amber-500"></i> Bitácora de correcciones</h3>
