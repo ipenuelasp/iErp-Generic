@@ -59,6 +59,14 @@ def _puede_ver_costos(request):
     return bool(perfil and perfil.tipo_usuario == 'OWNER')
 
 
+def _tiene_ajuste_precio(request):
+    """La empresa tiene contratado el módulo de ajuste/prorrateo de precio."""
+    from admon_empresas.models import EmpresaModulo
+    emp = getattr(request, 'empresa', None)
+    return bool(emp and EmpresaModulo.objects.filter(
+        empresa=emp, modulo='ajuste_precio', activo=True).exists())
+
+
 def _cxc_corregible(pedido):
     """Devuelve la CxC del pedido si se puede corregir el pedido: una sola
     factura vigente, sin cobros y sin CFDI (no facturada). None si no aplica."""
@@ -457,8 +465,9 @@ class PedidoDetalleView(LoginRequiredMixin, View):
             'puede_editar_extras': pedido.estado != 'CANCELADO' and not cxc_cobrada,
             # Corrección de partidas (cantidad/precio/IVA) con CxC sin facturar: solo admin
             'puede_corregir_cxc': _puede_ver_costos(request) and _cxc_corregible(pedido) is not None,
-            # Prorrateo del monto de venta (mismo candado que corregir): solo dueño
-            'puede_prorratear': _puede_ver_costos(request) and _cxc_corregible(pedido) is not None,
+            # Prorrateo del monto de venta: requiere el módulo activo + dueño + CxC corregible
+            'puede_prorratear': (_tiene_ajuste_precio(request) and _puede_ver_costos(request)
+                                 and _cxc_corregible(pedido) is not None),
             'hay_prorrateo': any(d.precio_original is not None for d in detalles),
             'cambios': pedido.cambios.select_related('usuario') if hasattr(pedido, 'cambios') else [],
             'sucursal_activa': sucursal,
@@ -534,6 +543,9 @@ class PedidoDetalleView(LoginRequiredMixin, View):
         if accion == 'prorratear':
             # El dueño fija un SUBTOTAL objetivo y se reparte entre las partidas
             # proporcional a su costo de compra (margen uniforme: precio = k·costo).
+            if not _tiene_ajuste_precio(request):
+                messages.error(request, "El módulo de ajuste de precio no está activo para esta empresa.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
             if not _puede_ver_costos(request):
                 messages.error(request, "Solo el dueño o un superadmin puede ajustar el monto de venta.")
                 return redirect('admon_ventas:pedido_detalle', pk=pk)
@@ -575,6 +587,9 @@ class PedidoDetalleView(LoginRequiredMixin, View):
 
         if accion == 'precio_real':
             # Regresa al precio real (el que había antes del prorrateo).
+            if not _tiene_ajuste_precio(request):
+                messages.error(request, "El módulo de ajuste de precio no está activo para esta empresa.")
+                return redirect('admon_ventas:pedido_detalle', pk=pk)
             if not _puede_ver_costos(request):
                 messages.error(request, "Solo el dueño o un superadmin puede ajustar el monto de venta.")
                 return redirect('admon_ventas:pedido_detalle', pk=pk)

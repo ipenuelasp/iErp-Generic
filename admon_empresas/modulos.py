@@ -14,6 +14,10 @@ MODULOS = [
     {'clave': 'ventas', 'nombre': 'Ventas', 'icono': 'fa-cash-register', 'disponible': True},
     {'clave': 'cirugias', 'nombre': 'Cirugías', 'icono': 'fa-syringe', 'disponible': True},
     {'clave': 'rrhh', 'nombre': 'Recursos Humanos', 'icono': 'fa-users', 'disponible': False},
+    # Capacidad (no navegable): habilita el ajuste/prorrateo del monto de venta
+    # en los pedidos. No tiene pantalla propia; solo enciende la herramienta.
+    {'clave': 'ajuste_precio', 'nombre': 'Ajuste de precio de venta', 'icono': 'fa-sliders',
+     'disponible': True, 'navegable': False},
 ]
 
 MODULO_CHOICES = [(m['clave'], m['nombre']) for m in MODULOS]
