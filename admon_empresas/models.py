@@ -107,6 +107,8 @@ class PerfilUsuario(models.Model):
     
     nombre = models.CharField(max_length=100, blank=True)
     apellido = models.CharField(max_length=100, blank=True)
+    foto = models.ImageField(upload_to='usuarios/fotos/', null=True, blank=True,
+                             help_text="Foto de perfil del usuario.")
     # Relación con su "casa matriz" o empresa asignada
     empresas = models.ManyToManyField(Empresa, related_name='empleados')
     # Podemos dejar una "empresa_principal" para el login inicial

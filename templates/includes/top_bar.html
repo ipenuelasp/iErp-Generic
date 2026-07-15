@@ -69,17 +69,41 @@
         </div>
     </div>
 
-    <div class="flex items-center space-x-3 ml-4">
-        <div class="text-right">
-            <div class="text-sm font-bold text-slate-800">
-                {{ user.first_name }} {{ user.last_name|default:"" }}
+    <div class="relative ml-4">
+        <button type="button" onclick="document.getElementById('userMenu').classList.toggle('hidden')" class="flex items-center space-x-3 group">
+            <div class="text-right">
+                <div class="text-sm font-bold text-slate-800">
+                    {{ user.first_name }} {{ user.last_name|default:"" }}
+                </div>
+                <div class="text-[10px] font-black text-brand uppercase tracking-widest">
+                    {{ empresa.nombre_fiscal }}
+                </div>
             </div>
-            <div class="text-[10px] font-black text-brand uppercase tracking-widest">
-                {{ empresa.nombre_fiscal }}
+            <div class="w-10 h-10 bg-brand text-white rounded-full flex items-center justify-center font-black italic shadow-lg shadow-brand/20 overflow-hidden">
+                {% if user.perfil.foto %}<img src="{{ user.perfil.foto.url }}" class="w-full h-full object-cover">
+                {% else %}{{ user.first_name|first|upper|default:user.username|slice:":1"|upper }}{% endif %}
             </div>
-        </div>
-        <div class="w-10 h-10 bg-brand text-white rounded-full flex items-center justify-center font-black italic shadow-lg shadow-brand/20">
-            {{ user.first_name|first|upper|default:user.username|slice:":1"|upper }}
+        </button>
+        <div id="userMenu" class="hidden absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50">
+            <a href="{% url 'mi_perfil' %}" class="flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50">
+                <i class="fa-solid fa-user text-brand w-4"></i> Mi perfil
+            </a>
+            <div class="border-t border-slate-50 my-1"></div>
+            <form action="{% url 'logout' %}" method="post" class="px-2">
+                {% csrf_token %}
+                <button type="submit" class="w-full flex items-center gap-3 px-2 py-2.5 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded-xl">
+                    <i class="fa-solid fa-power-off w-4"></i> Cerrar sesión
+                </button>
+            </form>
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('click', function(e){
+    const menu = document.getElementById('userMenu');
+    if(!menu) return;
+    if(!menu.classList.contains('hidden') && !e.target.closest('#userMenu') && !e.target.closest('button[onclick*="userMenu"]')){
+        menu.classList.add('hidden');
+    }
+});
+</script>

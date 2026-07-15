@@ -1,0 +1,91 @@
+{% extends "admon_empresas/dashboard.html" %}
+
+{% block main_content %}
+<div class="max-w-3xl mx-auto p-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Mi perfil</h1>
+        <p class="text-slate-500 mt-2 font-medium">Actualiza tus datos, tu foto y tu contraseña.</p>
+    </div>
+
+    <!-- Datos + foto -->
+    <form method="POST" enctype="multipart/form-data" class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-6">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="perfil">
+        <div class="flex flex-col sm:flex-row items-center gap-6 mb-8">
+            <div class="relative">
+                <div class="w-24 h-24 rounded-full overflow-hidden bg-brand text-white flex items-center justify-center text-3xl font-black italic shadow-lg shadow-brand/20 border-4 border-white">
+                    {% if perfil.foto %}<img id="fotoPreview" src="{{ perfil.foto.url }}" class="w-full h-full object-cover">
+                    {% else %}<img id="fotoPreview" src="" class="w-full h-full object-cover hidden"><span id="fotoInicial">{{ user.first_name|first|upper|default:user.username|slice:":1"|upper }}</span>{% endif %}
+                </div>
+            </div>
+            <div class="text-center sm:text-left">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block mb-2">Foto de perfil</label>
+                <label class="inline-flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-black text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors">
+                    <i class="fa-solid fa-camera text-brand"></i> Subir foto
+                    <input type="file" name="foto" accept="image/*" class="hidden" onchange="previewFoto(this)">
+                </label>
+                <p class="text-[10px] font-bold text-slate-400 mt-2">JPG o PNG, se recorta en círculo.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Nombre</label>
+                <input type="text" name="first_name" value="{{ user.first_name }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold">
+            </div>
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Apellido</label>
+                <input type="text" name="last_name" value="{{ user.last_name }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold">
+            </div>
+            <div class="md:col-span-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Correo</label>
+                <input type="email" name="email" value="{{ user.email }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold">
+            </div>
+            <div class="md:col-span-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Usuario</label>
+                <input type="text" value="{{ user.username }}" disabled class="w-full mt-1 bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-400">
+                <p class="text-[10px] font-bold text-slate-400 mt-1 ml-1">El nombre de usuario no se puede cambiar.</p>
+            </div>
+        </div>
+        <div class="flex justify-end mt-6">
+            <button type="submit" class="bg-brand text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 hover:-translate-y-0.5 transition-all">Guardar cambios</button>
+        </div>
+    </form>
+
+    <!-- Cambiar contraseña -->
+    <form method="POST" class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="password">
+        <h3 class="text-sm font-black text-slate-800 uppercase italic mb-1"><i class="fa-solid fa-key mr-2 text-brand"></i> Cambiar contraseña</h3>
+        <p class="text-[11px] font-bold text-slate-400 mb-5">Necesitas tu contraseña actual para cambiarla.</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {% for field in password_form %}
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">
+                    {% if 'old' in field.name %}Contraseña actual{% elif 'new_password1' == field.name %}Nueva contraseña{% else %}Confirmar nueva{% endif %}
+                </label>
+                {{ field }}
+                {% if field.errors %}<p class="text-[10px] font-bold text-rose-500 mt-1">{{ field.errors.0 }}</p>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <div class="flex justify-end mt-6">
+            <button type="submit" class="bg-slate-800 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all">Cambiar contraseña</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function previewFoto(input){
+    const f = input.files[0]; if(!f) return;
+    const url = URL.createObjectURL(f);
+    const img = document.getElementById('fotoPreview');
+    img.src = url; img.classList.remove('hidden');
+    const ini = document.getElementById('fotoInicial'); if(ini) ini.classList.add('hidden');
+}
+</script>
+<style>
+    form input[type=password]{ width:100%; margin-top:0.25rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:0.7rem 1rem; font-weight:700; color:#334155; font-size:0.8rem; outline:none; }
+    form input[type=password]:focus{ border-color:var(--brand-color); background:#fff; box-shadow:0 0 0 3px rgba(0,171,241,0.1); }
+</style>
+{% endblock %}

@@ -309,6 +309,41 @@ def resetear_password_usuario(request, usuario_id):
 
 
 @login_required
+def mi_perfil(request):
+    """Cada usuario edita su propio perfil: nombre, apellido, correo, foto y
+    (opcional) su contraseña."""
+    perfil = getattr(request.user, 'perfil', None)
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        if accion == 'perfil':
+            request.user.first_name = (request.POST.get('first_name') or '').strip()
+            request.user.last_name = (request.POST.get('last_name') or '').strip()
+            request.user.email = (request.POST.get('email') or '').strip()
+            request.user.save(update_fields=['first_name', 'last_name', 'email'])
+            if perfil:
+                perfil.nombre = request.user.first_name
+                perfil.apellido = request.user.last_name
+                if request.FILES.get('foto'):
+                    perfil.foto = request.FILES['foto']
+                perfil.save()
+            messages.success(request, "Tu perfil fue actualizado.")
+            return redirect('mi_perfil')
+        elif accion == 'password':
+            form = PasswordChangeForm(request.user, request.POST)
+            if form.is_valid():
+                user = form.save()
+                update_session_auth_hash(request, user)  # no cerrar sesión
+                messages.success(request, "Tu contraseña fue cambiada.")
+                return redirect('mi_perfil')
+            else:
+                return render(request, 'admon_usuarios/mi_perfil.html', {
+                    'perfil': perfil, 'password_form': form, 'seccion': None})
+
+    return render(request, 'admon_usuarios/mi_perfil.html', {
+        'perfil': perfil, 'password_form': PasswordChangeForm(request.user), 'seccion': None})
+
+
+@login_required
 def cambiar_password_obligatorio(request):
     # Usamos request.empresa (que viene del middleware) para el texto del template
     if request.method == 'POST':
