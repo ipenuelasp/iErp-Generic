@@ -143,6 +143,25 @@ def crear_usuario(request):
 
         perfil.save()
 
+        # 3b. Módulos y secciones visibles (Capa 2 y 3) — igual que en editar.
+        # Sin esto el usuario nace sin accesos y ve el menú vacío.
+        from admon_empresas.models import AccesoModuloUsuario, SeccionOcultaUsuario
+        from admon_empresas.modulos import secciones_de_modulo
+        gestor = request.user.perfil
+        empresa_gestor = gestor.empresa_default
+        if empresa_gestor and (request.user.is_superuser or gestor.tipo_usuario == 'OWNER'):
+            modulos_ids = request.POST.getlist('modulos')
+            AccesoModuloUsuario.objects.filter(usuario=nuevo_user, empresa=empresa_gestor).delete()
+            for clave in modulos_ids:
+                AccesoModuloUsuario.objects.create(usuario=nuevo_user, empresa=empresa_gestor, modulo=clave)
+            SeccionOcultaUsuario.objects.filter(usuario=nuevo_user, empresa=empresa_gestor).delete()
+            visibles = set(request.POST.getlist('seccion_visible'))
+            for clave_mod in modulos_ids:
+                for s in secciones_de_modulo(clave_mod):
+                    if s['clave'] not in visibles:
+                        SeccionOcultaUsuario.objects.create(
+                            usuario=nuevo_user, empresa=empresa_gestor, seccion=s['clave'])
+
         # 4. Enviar Invitación
         if enviar_correo_bienvenida(nuevo_user, request):
             messages.success(request, f"Usuario {username} creado exitosamente. Se ha enviado la invitación a {email}.")
