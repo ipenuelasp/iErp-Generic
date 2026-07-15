@@ -52,7 +52,7 @@ class PendientesRecepcionView(LoginRequiredMixin, View):
             'ordenes': data,
             'total_ordenes': len(data),
             'sucursal_activa': sucursal,
-            'seccion': 'compras',
+            'seccion': 'inventarios',
         })
 
 
@@ -93,7 +93,7 @@ class RecepcionOCView(LoginRequiredMixin, View):
             'partidas': partidas,
             'ubicaciones': ubicaciones,
             'sucursal_activa': sucursal,
-            'seccion': 'compras',
+            'seccion': 'inventarios',
         }
         return render(request, self.template_name, context)
 

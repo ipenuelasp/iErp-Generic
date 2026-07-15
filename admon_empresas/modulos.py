@@ -47,8 +47,6 @@ SECCIONES = [
     # Compras
     {'clave': 'compras.ordenes', 'nombre': 'Órdenes de Compra', 'modulo': 'compras',
      'urls': ['historial_ordenes', 'nueva_orden', 'orden_form', 'orden_detalle', 'importar_amazon', 'orden_pdf']},
-    {'clave': 'compras.recepciones', 'nombre': 'Pendientes de Recepción', 'modulo': 'compras',
-     'urls': ['pendientes_recepcion', 'recepcion_oc']},
     {'clave': 'compras.proveedores', 'nombre': 'Proveedores', 'modulo': 'compras', 'urls': ['proveedores']},
     {'clave': 'compras.autorizadores', 'nombre': 'Cadena de Autorización', 'modulo': 'compras', 'urls': ['autorizadores']},
     # Finanzas
@@ -68,6 +66,8 @@ SECCIONES = [
     {'clave': 'inventarios.catalogos', 'nombre': 'Catálogos', 'modulo': 'inventarios', 'urls': ['catalogos_productos']},
     {'clave': 'inventarios.recepciones', 'nombre': 'Recepciones', 'modulo': 'inventarios',
      'urls': ['recepciones', 'nueva_recepcion', 'recepcion_directa']},
+    {'clave': 'inventarios.pendientes_oc', 'nombre': 'Pendientes de Recepción', 'modulo': 'inventarios',
+     'urls': ['pendientes_recepcion', 'recepcion_oc']},
     {'clave': 'inventarios.existencias', 'nombre': 'Existencias', 'modulo': 'inventarios', 'urls': ['existencias']},
     {'clave': 'inventarios.kardex', 'nombre': 'Kardex', 'modulo': 'inventarios', 'urls': ['kardex']},
     {'clave': 'inventarios.traspasos', 'nombre': 'Traspasos', 'modulo': 'inventarios', 'urls': ['traspasos', 'traspaso_detalle']},
@@ -119,6 +119,10 @@ def modulo_de_resolver(resolver_match):
         return None
     ns = resolver_match.namespace
     name = resolver_match.url_name or ''
+    # La recepción de material la hace el almacén: pertenece a Inventarios aunque
+    # las vistas vivan en la app de compras (la OC solo es su origen de datos).
+    if ns == 'admon_compras' and name in ('pendientes_recepcion', 'recepcion_oc'):
+        return 'inventarios'
     if ns == 'admon_inventarios':
         if name in ('kits', 'salidas_kit', 'salida_kit_detalle',
                     'cajas', 'armar_caja', 'reabastecer_caja'):
