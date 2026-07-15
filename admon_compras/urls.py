@@ -9,6 +9,7 @@ urlpatterns = [
     path('proveedores/importar/', views.ImportarProveedoresView.as_view(), name='importar_proveedores'),
     path('autorizadores/', views.AutorizadoresView.as_view(), name='autorizadores'),
 
+    path('pendientes-recepcion/', views_recepcion.PendientesRecepcionView.as_view(), name='pendientes_recepcion'),
     path('ordenes/', views.HistorialOrdenesView.as_view(), name='historial_ordenes'),
     path('ordenes/importar-amazon/', views.ImportarAmazonView.as_view(), name='importar_amazon'),
     path('ordenes/importar-amazon/previsualizar/', views.PrevisualizarAmazonView.as_view(), name='previsualizar_amazon'),

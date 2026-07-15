@@ -9,7 +9,7 @@
             <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Recibir {{ orden.folio }}</h1>
             <p class="text-slate-500 mt-2 font-medium">Proveedor <span class="text-brand">{{ orden.proveedor }}</span> · Sede <span class="text-brand">{{ sucursal_activa.nombre }}</span></p>
         </div>
-        <a href="{% url 'admon_compras:orden_detalle' orden.pk %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver a la OC</a>
+        <a href="{% url 'admon_compras:pendientes_recepcion' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver a pendientes</a>
     </div>
 
     <form method="POST" id="formRec">

@@ -46,7 +46,9 @@ SECCIONES = [
     {'clave': 'ventas.clientes', 'nombre': 'Clientes', 'modulo': 'ventas', 'urls': ['clientes']},
     # Compras
     {'clave': 'compras.ordenes', 'nombre': 'Órdenes de Compra', 'modulo': 'compras',
-     'urls': ['historial_ordenes', 'nueva_orden', 'orden_form', 'orden_detalle', 'recepcion_oc', 'importar_amazon', 'orden_pdf']},
+     'urls': ['historial_ordenes', 'nueva_orden', 'orden_form', 'orden_detalle', 'importar_amazon', 'orden_pdf']},
+    {'clave': 'compras.recepciones', 'nombre': 'Pendientes de Recepción', 'modulo': 'compras',
+     'urls': ['pendientes_recepcion', 'recepcion_oc']},
     {'clave': 'compras.proveedores', 'nombre': 'Proveedores', 'modulo': 'compras', 'urls': ['proveedores']},
     {'clave': 'compras.autorizadores', 'nombre': 'Cadena de Autorización', 'modulo': 'compras', 'urls': ['autorizadores']},
     # Finanzas

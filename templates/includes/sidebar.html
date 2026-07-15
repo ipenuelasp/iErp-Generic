@@ -83,6 +83,12 @@
             <i class="fa-solid fa-file-invoice-dollar mr-3"></i> Órdenes de Compra
         </a>
         {% endif %}
+        {% if 'compras.recepciones' not in secciones_ocultas %}
+        <a href="{% url 'admon_compras:pendientes_recepcion' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'pendientes_recepcion' or request.resolver_match.url_name == 'recepcion_oc' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-truck-ramp-box mr-3"></i> Pendientes de Recepción
+        </a>
+        {% endif %}
         {% if 'compras.proveedores' not in secciones_ocultas %}
         <a href="{% url 'admon_compras:proveedores' %}"
            class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'proveedores' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">

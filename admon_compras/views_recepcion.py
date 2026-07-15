@@ -15,6 +15,47 @@ from .models import OrdenCompra, DetalleOrdenCompra
 from .views import _contexto
 
 
+class PendientesRecepcionView(LoginRequiredMixin, View):
+    """Reporte para el almacén: órdenes de compra con material por llegar a su
+    sucursal. NO muestra precios (solo cantidades). Soporta recepción parcial."""
+    template_name = 'admon_compras/pendientes_recepcion.html'
+
+    def get(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        ordenes = OrdenCompra.objects.filter(
+            empresa=empresa, sucursal_destino=sucursal, estado__in=['AUTORIZADO', 'RECIBIDO']
+        ).select_related('proveedor').prefetch_related('detalles__producto').order_by(
+            'fecha_entrega_estimada', 'fecha_emision')
+
+        data = []
+        total_lineas = decimal.Decimal('0')
+        for o in ordenes:
+            pendientes = []
+            for d in o.detalles.all():
+                if getattr(d.producto, 'es_servicio', False):
+                    continue
+                restante = d.cantidad_pedida - d.cantidad_recibida
+                if restante > 0:
+                    pendientes.append({
+                        'producto': d.producto, 'pedida': d.cantidad_pedida,
+                        'recibida': d.cantidad_recibida, 'restante': restante,
+                    })
+            if pendientes:
+                total_lineas += len(pendientes)
+                data.append({'orden': o, 'pendientes': pendientes,
+                             'n_lineas': len(pendientes)})
+
+        return render(request, self.template_name, {
+            'ordenes': data,
+            'total_ordenes': len(data),
+            'sucursal_activa': sucursal,
+            'seccion': 'compras',
+        })
+
+
 class RecepcionOCView(LoginRequiredMixin, View):
     """Recibe mercancía contra una OC autorizada, actualizando el inventario
     y el avance de cada partida."""
