@@ -36,7 +36,7 @@ class Consignante(models.Model):
 
 class Clase(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    codigo = models.CharField(max_length=10)
+    codigo = models.CharField(max_length=20)
     descripcion = models.CharField(max_length=100)
 
     class Meta:
@@ -48,7 +48,7 @@ class Clase(models.Model):
 
 class Grupo(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    codigo = models.CharField(max_length=10)
+    codigo = models.CharField(max_length=20)
     descripcion = models.CharField(max_length=100)
     es_inventariable = models.BooleanField(default=True, help_text="¿Este grupo genera movimientos de stock?")
     ubicacion_defecto = models.ForeignKey(
@@ -65,7 +65,7 @@ class Grupo(models.Model):
 
 class Tipo(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    codigo = models.CharField(max_length=10)
+    codigo = models.CharField(max_length=20)
     descripcion = models.CharField(max_length=100)
 
     class Meta:
