@@ -124,6 +124,104 @@ def generar_plantilla(con_ejemplo=True):
     return buf.getvalue()
 
 
+# ---------------------------------------------------------------------------
+# Carga masiva de catálogos de clasificación: Clases, Grupos y Tipos.
+# Un solo Excel con 3 hojas. Se referencian/actualizan por CÓDIGO.
+# ---------------------------------------------------------------------------
+def generar_plantilla_catalogos(con_ejemplo=True):
+    wb = Workbook()
+    FONT = 'Arial'
+    hdr = PatternFill('solid', start_color='1F3864')
+    hdr_req = PatternFill('solid', start_color='C55A11')
+    thin = Side(style='thin', color='D0D0D0')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    hojas = [
+        ('Clases', [('Código', True), ('Descripción', True)],
+         [('IMP', 'Implantes'), ('INST', 'Instrumental')] if con_ejemplo else []),
+        ('Grupos', [('Código', True), ('Descripción', True), ('Inventariable (Sí/No)', False)],
+         [('OST', 'Osteosíntesis', 'Sí'), ('SERV', 'Servicios', 'No')] if con_ejemplo else []),
+        ('Tipos', [('Código', True), ('Descripción', True)],
+         [('CONS', 'Consumible'), ('SRV', 'Servicio')] if con_ejemplo else []),
+    ]
+
+    first = True
+    for nombre, cols, ejemplos in hojas:
+        ws = wb.active if first else wb.create_sheet(nombre)
+        if first:
+            ws.title = nombre
+            first = False
+        for j, (label, req) in enumerate(cols, start=1):
+            c = ws.cell(row=1, column=j, value=label)
+            c.font = Font(name=FONT, bold=True, color='FFFFFF', size=10)
+            c.fill = hdr_req if req else hdr
+            c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            c.border = border
+            ws.column_dimensions[c.column_letter].width = 34 if 'Desc' in label else 22
+        for r, ej in enumerate(ejemplos, start=2):
+            for j, v in enumerate(ej, start=1):
+                ws.cell(row=r, column=j, value=v).font = Font(name=FONT, size=10, italic=True, color='808080')
+        ws.freeze_panes = 'A2'
+        ws.row_dimensions[1].height = 28
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def importar_catalogos(archivo, empresa):
+    """Sube Clases/Grupos/Tipos desde el Excel de 3 hojas. Upsert por código."""
+    wb = load_workbook(archivo, data_only=True)
+    res = {'clases': 0, 'grupos': 0, 'tipos': 0, 'errores': []}
+
+    def _filas(sheet):
+        if sheet not in wb.sheetnames:
+            return
+        ws = wb[sheet]
+        for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            def cel(k):
+                v = row[k] if k < len(row) else None
+                return str(v).strip() if v is not None else ''
+            yield i, cel
+
+    for i, cel in _filas('Clases') or []:
+        codigo, desc = cel(0), cel(1)
+        if not codigo:
+            continue
+        try:
+            Clase.objects.update_or_create(
+                empresa=empresa, codigo=codigo, defaults={'descripcion': desc or codigo})
+            res['clases'] += 1
+        except Exception as e:
+            res['errores'].append(f"Clases fila {i} ({codigo}): {e}")
+
+    for i, cel in _filas('Grupos') or []:
+        codigo, desc, inv = cel(0), cel(1), cel(2)
+        if not codigo:
+            continue
+        inventariable = (inv or 'sí').strip().lower() not in ('no', 'n', 'false', '0')
+        try:
+            Grupo.objects.update_or_create(
+                empresa=empresa, codigo=codigo,
+                defaults={'descripcion': desc or codigo, 'es_inventariable': inventariable})
+            res['grupos'] += 1
+        except Exception as e:
+            res['errores'].append(f"Grupos fila {i} ({codigo}): {e}")
+
+    for i, cel in _filas('Tipos') or []:
+        codigo, desc = cel(0), cel(1)
+        if not codigo:
+            continue
+        try:
+            Tipo.objects.update_or_create(
+                empresa=empresa, codigo=codigo, defaults={'descripcion': desc or codigo})
+            res['tipos'] += 1
+        except Exception as e:
+            res['errores'].append(f"Tipos fila {i} ({codigo}): {e}")
+
+    return res
+
+
 def importar(archivo, empresa):
     wb = load_workbook(archivo, data_only=True)
     ws = wb['Productos'] if 'Productos' in wb.sheetnames else wb.active

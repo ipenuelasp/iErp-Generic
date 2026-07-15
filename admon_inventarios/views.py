@@ -620,6 +620,50 @@ class ImportarProductosView(LoginRequiredMixin, View):
         return redirect('admon_inventarios:catalogos_productos')
 
 
+class DescargarPlantillaCatalogosView(LoginRequiredMixin, View):
+    """Plantilla .xlsx de Clases/Grupos/Tipos (3 hojas). Solo superuser."""
+    def get(self, request):
+        if not request.user.is_superuser:
+            messages.error(request, "Solo el administrador puede descargar la plantilla.")
+            return redirect('admon_inventarios:catalogos_productos')
+        contenido = import_productos.generar_plantilla_catalogos(con_ejemplo=True)
+        resp = HttpResponse(
+            contenido,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        resp['Content-Disposition'] = 'attachment; filename="plantilla_catalogos.xlsx"'
+        return resp
+
+
+class ImportarCatalogosView(LoginRequiredMixin, View):
+    """Carga masiva de Clases/Grupos/Tipos. Solo superuser y sucursal matriz."""
+    def post(self, request):
+        ctx = _contexto_valido(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        if not request.user.is_superuser:
+            messages.error(request, "Solo el administrador puede hacer carga masiva.")
+            return redirect('admon_inventarios:catalogos_productos')
+        if not puede_editar_maestro(request):
+            messages.error(request, "El maestro solo se edita desde la sucursal matriz.")
+            return redirect('admon_inventarios:catalogos_productos')
+        archivo = request.FILES.get('archivo')
+        if not archivo or not archivo.name.lower().endswith('.xlsx'):
+            messages.error(request, "Selecciona un archivo .xlsx (Excel).")
+            return redirect('admon_inventarios:catalogos_productos')
+        try:
+            res = import_productos.importar_catalogos(archivo, empresa)
+        except Exception as e:
+            messages.error(request, f"No se pudo procesar el archivo: {e}")
+            return redirect('admon_inventarios:catalogos_productos')
+        messages.success(
+            request,
+            f"Catálogos cargados: {res['clases']} clases, {res['grupos']} grupos, {res['tipos']} tipos.")
+        for err in res['errores'][:10]:
+            messages.warning(request, err)
+        return redirect('admon_inventarios:catalogos_productos')
+
+
 class DescargarPlantillaKitsView(LoginRequiredMixin, View):
     """Plantilla .xlsx de kits (con ejemplo). Solo superuser."""
     def get(self, request):

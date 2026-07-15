@@ -1,3 +1,38 @@
+{% if user.is_superuser %}
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/40 p-4 mb-6">
+    <div class="min-w-0">
+        <p class="text-[11px] font-black text-slate-700 uppercase"><i class="fa-solid fa-file-arrow-up mr-1 text-emerald-600"></i> Carga masiva de catálogos</p>
+        <p class="text-[10px] font-bold text-slate-400">Un solo Excel con 3 hojas (Clases, Grupos, Tipos). Se crean o actualizan por código.</p>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+        <a href="{% url 'admon_inventarios:plantilla_catalogos' %}" class="bg-white border border-slate-200 text-slate-600 px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-file-arrow-down mr-1"></i> Plantilla</a>
+        <button type="button" onclick="document.getElementById('modalImportCat').classList.remove('hidden')" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-200 hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-upload mr-1"></i> Subir catálogos</button>
+    </div>
+</div>
+<div id="modalImportCat" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalImportCat').classList.add('hidden')"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-10">
+            <h2 class="text-xl font-bold text-slate-800 mb-1">Carga masiva de catálogos</h2>
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-5">Clases · Grupos · Tipos</p>
+            <ol class="text-[11px] font-bold text-slate-500 mb-5 space-y-1 list-decimal ml-4">
+                <li>Descarga la plantilla (3 hojas).</li>
+                <li>Llena Código y Descripción; en Grupos marca "Inventariable" (No = servicio).</li>
+                <li>Súbela: se crean o actualizan por código.</li>
+            </ol>
+            <form method="POST" action="{% url 'admon_inventarios:importar_catalogos' %}" enctype="multipart/form-data" class="space-y-5">
+                {% csrf_token %}
+                <input type="file" name="archivo" accept=".xlsx" required class="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-5 py-6 text-xs font-bold text-slate-600">
+                <div class="flex justify-end gap-3 items-center">
+                    <a href="{% url 'admon_inventarios:plantilla_catalogos' %}" class="text-[10px] font-black uppercase text-brand hover:underline"><i class="fa-solid fa-file-arrow-down mr-1"></i> Descargar plantilla</a>
+                    <button type="button" onclick="document.getElementById('modalImportCat').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 px-4">Cancelar</button>
+                    <button type="submit" class="bg-emerald-600 text-white font-black py-3 px-8 rounded-2xl text-xs uppercase tracking-widest">Subir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-10">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
         <div class="lg:col-span-1 space-y-6">
