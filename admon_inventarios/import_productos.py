@@ -241,8 +241,18 @@ def importar(archivo, empresa):
     unidades = {u.codigo.upper(): u for u in UnidadMedida.objects.filter(empresa=empresa)}
     impuestos = {i.nombre.strip().lower(): i for i in Impuesto.objects.filter(empresa=empresa)}
 
-    creados = actualizados = 0
     errores = []
+    # Precarga en UNA consulta los productos existentes (para no hacer un SELECT
+    # por fila). La carga masiva se resuelve con bulk_create / bulk_update.
+    existentes = {p.sku: p for p in Producto.objects.filter(empresa=empresa)}
+    campos = ['nombre', 'descripcion', 'codigo_barras', 'clase', 'grupo', 'tipo',
+              'unidad_medida', 'alcance', 'es_loteable', 'es_serializable', 'es_comprable',
+              'es_vendible', 'es_materia_prima', 'es_producible', 'es_retornable', 'impuesto',
+              'costo_unitario', 'precio_venta', 'precio_renta', 'activo']
+
+    a_crear = {}      # sku -> Producto nuevo (dedup dentro del archivo)
+    a_actualizar = {}
+    creados = actualizados = 0
 
     for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
         def val(key):
@@ -284,17 +294,25 @@ def importar(archivo, empresa):
             'precio_renta': _dec(val('precio_renta')),
             'activo': _bool(val('activo'), _BOOL_DEFAULTS['activo']),
         }
-        try:
-            existente = Producto.objects.filter(empresa=empresa, sku=sku).first()
-            if existente:
-                for k, v in datos.items():
-                    setattr(existente, k, v)
-                existente.save()
-                actualizados += 1
-            else:
-                Producto.objects.create(empresa=empresa, sku=sku, **datos)
-                creados += 1
-        except Exception as e:
-            errores.append(f"Fila {i} ({sku}): {e}")
+
+        obj = existentes.get(sku) or a_crear.get(sku)
+        if obj:
+            for k, v in datos.items():
+                setattr(obj, k, v)
+            if obj.pk:
+                a_actualizar[sku] = obj
+        else:
+            a_crear[sku] = Producto(empresa=empresa, sku=sku, **datos)
+
+    try:
+        nuevos = list(a_crear.values())
+        Producto.objects.bulk_create(nuevos, batch_size=500)
+        creados = len(nuevos)
+        upd = list(a_actualizar.values())
+        if upd:
+            Producto.objects.bulk_update(upd, campos, batch_size=500)
+        actualizados = len(upd)
+    except Exception as e:
+        errores.append(f"Error al guardar en lote: {e}")
 
     return {'creados': creados, 'actualizados': actualizados, 'errores': errores}
