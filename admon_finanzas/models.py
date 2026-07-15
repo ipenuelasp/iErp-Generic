@@ -143,16 +143,28 @@ class FacturaCliente(models.Model):
         return agg['s'] or decimal.Decimal('0')
 
     @property
+    def anticipo_total(self):
+        """Anticipos recibidos del cliente sobre esta CxC (dinero adelantado)."""
+        agg = self.anticipos.aggregate(s=models.Sum('monto'))
+        return agg['s'] or decimal.Decimal('0')
+
+    @property
+    def total_recibido(self):
+        """Todo el dinero recibido: cobros de facturas + anticipos."""
+        return self.total_pagado + self.anticipo_total
+
+    @property
     def saldo(self):
-        return self.total - self.total_pagado
+        """Lo que falta por cobrar (descontando cobros y anticipos)."""
+        return self.total - self.total_recibido
 
     def recalcular_estado(self):
         if self.estado == 'CANCELADA':
             return
-        pagado = self.total_pagado
-        if pagado <= 0:
+        recibido = self.total_recibido
+        if recibido <= 0:
             self.estado = 'PENDIENTE'
-        elif pagado < self.total:
+        elif recibido < self.total:
             self.estado = 'PARCIAL'
         else:
             self.estado = 'PAGADA'
@@ -309,6 +321,32 @@ class CfdiCliente(models.Model):
 
     def __str__(self):
         return f"{self.uuid} — {self.factura.folio}"
+
+
+class AnticipoCliente(models.Model):
+    """Anticipo recibido de un cliente sobre una CxC (pago por adelantado).
+    Reduce el saldo por cobrar; se va consumiendo conforme se factura la venta.
+    El CFDI de anticipo lo emite el contador y aquí solo se adjunta/registra."""
+    factura = models.ForeignKey(
+        FacturaCliente, on_delete=models.CASCADE, related_name='anticipos')
+    monto = models.DecimalField(max_digits=14, decimal_places=2)
+    fecha = models.DateField(null=True, blank=True)
+    uuid_cfdi = models.CharField(max_length=40, blank=True, default='',
+                                 help_text="UUID del CFDI de anticipo (lo emite el contador)")
+    serie_folio = models.CharField(max_length=60, blank=True, default='')
+    archivo_xml = models.FileField(upload_to='cfdi/anticipos/xml/', null=True, blank=True)
+    archivo_pdf = models.FileField(upload_to='cfdi/anticipos/pdf/', null=True, blank=True)
+    notas = models.CharField(max_length=255, blank=True, default='')
+    creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['fecha', 'id']
+        verbose_name = "Anticipo de cliente"
+        verbose_name_plural = "Anticipos de cliente"
+
+    def __str__(self):
+        return f"Anticipo {self.factura.moneda.simbolo}{self.monto} — {self.factura.folio}"
 
 
 class Pago(models.Model):

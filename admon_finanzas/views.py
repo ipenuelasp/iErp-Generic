@@ -10,7 +10,7 @@ from django.db.models import Sum
 
 from admon_empresas.models import Moneda
 from admon_compras.models import OrdenCompra, Proveedor
-from .models import FacturaProveedor, FacturaCliente, CfdiCliente, Pago, AplicacionPago, MetodoPago
+from .models import FacturaProveedor, FacturaCliente, CfdiCliente, Pago, AplicacionPago, MetodoPago, AnticipoCliente
 from . import services
 
 
@@ -1017,6 +1017,49 @@ class FacturaClienteDetalleView(LoginRequiredMixin, View):
         empresa, sucursal = ctx
         factura = get_object_or_404(FacturaCliente, pk=pk, empresa=empresa)
         accion = request.POST.get('accion')
+        if accion == 'registrar_anticipo':
+            # Anticipo recibido del cliente sobre esta CxC. Reduce el saldo por
+            # cobrar; el CFDI de anticipo lo emite el contador y aquí se adjunta.
+            xml = request.FILES.get('anticipo_xml')
+            pdf = request.FILES.get('anticipo_pdf')
+            cfdi = _leer_cfdi(xml) if xml else None
+            try:
+                monto = decimal.Decimal(request.POST.get('monto') or '0')
+            except decimal.InvalidOperation:
+                monto = decimal.Decimal('0')
+            if monto <= 0 and cfdi and cfdi.get('total'):
+                monto = cfdi['total']
+            if monto <= 0:
+                messages.error(request, "Captura el monto del anticipo (mayor a 0).")
+                return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
+            fecha = request.POST.get('fecha') or None
+            uuid = (request.POST.get('uuid_cfdi') or '').strip().upper()
+            sf = (request.POST.get('serie_folio') or '').strip()
+            if cfdi:
+                if not uuid and cfdi.get('uuid'):
+                    uuid = cfdi['uuid']
+                sf_xml, fecha_xml = _serie_folio_fecha(cfdi)
+                sf = sf or sf_xml
+                if not fecha and fecha_xml:
+                    fecha = fecha_xml.isoformat()
+            AnticipoCliente.objects.create(
+                factura=factura, monto=monto, fecha=fecha, uuid_cfdi=uuid, serie_folio=sf,
+                archivo_xml=xml, archivo_pdf=pdf, notas=(request.POST.get('notas') or '').strip(),
+                creado_por=request.user)
+            factura.recalcular_estado()
+            factura.refresh_from_db()
+            messages.success(
+                request, f"Anticipo de {factura.moneda.simbolo}{monto:,.2f} registrado. "
+                f"Saldo por cobrar: {factura.moneda.simbolo}{factura.saldo:,.2f}.")
+            return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
+
+        if accion == 'eliminar_anticipo':
+            ant = get_object_or_404(AnticipoCliente, id=request.POST.get('anticipo_id'), factura=factura)
+            ant.delete()
+            factura.recalcular_estado()
+            messages.info(request, "Anticipo eliminado.")
+            return redirect('admon_finanzas:factura_cliente_detalle', pk=pk)
+
         if accion == 'preview_zip':
             from django.http import JsonResponse
             import zipfile

@@ -34,8 +34,11 @@
             <div class="flex justify-between text-[11px] font-bold text-rose-400"><span>(−) Retenciones</span><span>−{{ factura.moneda.simbolo }}{{ factura.retenciones|floatformat:2|intcomma }}</span></div>
             {% endif %}
             <div class="flex justify-between text-xs font-bold text-slate-500 {% if factura.retenciones > 0 %}pt-1 border-t border-slate-100{% endif %}"><span>Total a cobrar</span><span>{{ factura.moneda.simbolo }}{{ factura.total|floatformat:2|intcomma }}</span></div>
-            <div class="flex justify-between text-xs font-bold text-emerald-600"><span>Cobrado</span><span>{{ factura.moneda.simbolo }}{{ factura.total_pagado|floatformat:2|intcomma }}</span></div>
-            <div class="flex justify-between text-lg font-black {% if factura.saldo > 0 %}text-emerald-600{% else %}text-slate-400{% endif %} pt-2 border-t border-slate-100"><span>Saldo</span><span>{{ factura.moneda.simbolo }}{{ factura.saldo|floatformat:2|intcomma }}</span></div>
+            {% if factura.anticipo_total > 0 %}
+            <div class="flex justify-between text-xs font-bold text-indigo-600"><span>(−) Anticipo recibido</span><span>−{{ factura.moneda.simbolo }}{{ factura.anticipo_total|floatformat:2|intcomma }}</span></div>
+            {% endif %}
+            <div class="flex justify-between text-xs font-bold text-emerald-600"><span>Cobrado (facturas)</span><span>{{ factura.moneda.simbolo }}{{ factura.total_pagado|floatformat:2|intcomma }}</span></div>
+            <div class="flex justify-between text-lg font-black {% if factura.saldo > 0 %}text-emerald-600{% else %}text-slate-400{% endif %} pt-2 border-t border-slate-100"><span>Saldo por cobrar</span><span>{{ factura.moneda.simbolo }}{{ factura.saldo|floatformat:2|intcomma }}</span></div>
             {% if factura.saldo > 0 and factura.estado != 'CANCELADA' %}
                 {% if factura.cfdis.all %}
                 <a href="#seccion-cfdi" class="block bg-brand text-white text-center font-black py-3 rounded-2xl text-[10px] uppercase tracking-widest mt-4 hover:-translate-y-1 transition-all">Registrar cobro</a>
@@ -90,6 +93,96 @@
             <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1"><i class="fa-solid fa-note-sticky mr-1 text-brand"></i> Observaciones del pedido</p>
             <p class="text-sm text-slate-600 font-medium whitespace-pre-line">{{ factura.pedido.notas }}</p>
         </div>
+        {% endif %}
+    </div>
+
+    <!-- Anticipos del cliente -->
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center"><i class="fa-solid fa-hand-holding-dollar mr-3 text-indigo-500"></i> Anticipos del cliente</h3>
+            {% if factura.anticipo_total > 0 %}<span class="text-[11px] font-black text-indigo-600 uppercase tracking-widest">Recibido: {{ factura.moneda.simbolo }}{{ factura.anticipo_total|floatformat:2|intcomma }}</span>{% endif %}
+        </div>
+        <p class="text-[11px] font-bold text-slate-400 mb-5">Dinero que el cliente pagó por adelantado sobre esta venta. Reduce el saldo por cobrar y se va consumiendo conforme facturas las entregas.</p>
+
+        {% if factura.anticipos.all %}
+        <div class="rounded-2xl border border-slate-100 overflow-hidden mb-5">
+            <table class="w-full text-left">
+                <tbody class="divide-y divide-slate-50">
+                    {% for a in factura.anticipos.all %}
+                    <tr class="hover:bg-slate-50/60">
+                        <td class="px-5 py-3 text-[10px] font-mono text-slate-500">{{ a.serie_folio|default:a.uuid_cfdi|default:"—" }}</td>
+                        <td class="px-3 py-3 text-[10px] font-bold text-slate-400">{{ a.fecha|date:"d/m/Y"|default:"—" }}</td>
+                        <td class="px-3 py-3 text-right text-sm font-black text-indigo-600">{{ factura.moneda.simbolo }}{{ a.monto|floatformat:2|intcomma }}</td>
+                        <td class="px-5 py-3 text-right whitespace-nowrap">
+                            {% if a.archivo_xml %}<a href="{{ a.archivo_xml.url }}" target="_blank" class="text-[10px] font-black text-brand uppercase hover:underline mr-3"><i class="fa-solid fa-file-code mr-1"></i>XML</a>{% endif %}
+                            {% if a.archivo_pdf %}<a href="{{ a.archivo_pdf.url }}" target="_blank" class="text-[10px] font-black text-rose-500 uppercase hover:underline mr-3"><i class="fa-solid fa-file-pdf mr-1"></i>PDF</a>{% endif %}
+                            <form method="POST" class="inline" data-confirm="¿Eliminar este anticipo de {{ factura.moneda.simbolo }}{{ a.monto|floatformat:2 }}? El saldo por cobrar volverá a subir.">{% csrf_token %}
+                                <input type="hidden" name="accion" value="eliminar_anticipo">
+                                <input type="hidden" name="anticipo_id" value="{{ a.id }}">
+                                <button type="submit" title="Eliminar anticipo" class="text-slate-300 hover:text-rose-500"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        {% if factura.estado != 'CANCELADA' %}
+        <form method="POST" enctype="multipart/form-data" class="rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/30 p-5">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="registrar_anticipo">
+            <p class="text-[11px] font-black text-slate-600 uppercase mb-3"><i class="fa-solid fa-plus mr-1 text-indigo-500"></i> Registrar anticipo</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">CFDI de anticipo — XML (autocompleta)</label>
+                    <input type="file" name="anticipo_xml" accept=".xml" onchange="leerAnticipo(this)" class="w-full mt-1 text-xs bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">CFDI de anticipo — PDF</label>
+                    <input type="file" name="anticipo_pdf" accept=".pdf" class="w-full mt-1 text-xs bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Monto</label>
+                    <input type="number" step="0.01" min="0" name="monto" id="antMonto" placeholder="0.00" required class="w-full mt-1 text-xs bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-right">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Fecha</label>
+                    <input type="date" name="fecha" id="antFecha" class="w-full mt-1 text-xs bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Serie/Folio · UUID</label>
+                    <input type="text" name="serie_folio" id="antSerie" placeholder="del XML" class="w-full mt-1 text-xs bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold">
+                    <input type="hidden" name="uuid_cfdi" id="antUuid">
+                </div>
+                <button type="submit" class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all">Registrar</button>
+            </div>
+        </form>
+        <script>
+        function leerAnticipo(input){
+            const f = input.files[0]; if(!f) return;
+            const r = new FileReader();
+            r.onload = function(e){
+                try{
+                    const xml = new DOMParser().parseFromString(e.target.result,'application/xml');
+                    const tag = ln => xml.getElementsByTagNameNS('*', ln)[0];
+                    const comp = tag('Comprobante'); const tfd = tag('TimbreFiscalDigital');
+                    if(!comp) return;
+                    const total = parseFloat(comp.getAttribute('Total')||'0');
+                    if(total>0) document.getElementById('antMonto').value = total.toFixed(2);
+                    const fecha=(comp.getAttribute('Fecha')||'').substring(0,10);
+                    if(fecha) document.getElementById('antFecha').value = fecha;
+                    const serie=comp.getAttribute('Serie')||'', folio=comp.getAttribute('Folio')||'';
+                    document.getElementById('antSerie').value = (serie&&folio)?(serie+'-'+folio):(folio||serie);
+                    if(tfd) document.getElementById('antUuid').value = tfd.getAttribute('UUID')||'';
+                }catch(err){}
+            };
+            r.readAsText(f);
+        }
+        </script>
         {% endif %}
     </div>
 
