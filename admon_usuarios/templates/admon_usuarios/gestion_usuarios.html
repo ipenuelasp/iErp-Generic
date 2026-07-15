@@ -37,7 +37,9 @@
                                     {{ empleado.username|slice:":1"|upper }}
                                 </div>
                                 <div>
-                                    <div class="text-sm font-black text-slate-800 leading-tight">{{ empleado.first_name|default:empleado.username }}</div>
+                                    <div class="text-sm font-black text-slate-800 leading-tight">{{ empleado.first_name|default:empleado.username }}
+                                        {% if not empleado.is_active %}<span class="ml-1 text-[8px] font-black uppercase bg-rose-50 text-rose-500 px-2 py-0.5 rounded-full border border-rose-100">Desactivado</span>{% endif %}
+                                    </div>
                                     <div class="text-[10px] text-slate-400 font-bold uppercase">{{ empleado.email }}</div>
                                 </div>
                             </div>
@@ -106,6 +108,23 @@
                                 )" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-brand hover:border-brand shadow-sm transition-all">
                                     <i class="fa-solid fa-pen-to-square text-[10px]"></i>
                                 </button>
+                                {% if not empleado.is_superuser and empleado.id != request.user.id %}
+                                <form method="post" action="{% url 'toggle_activo_usuario' empleado.id %}" class="inline"
+                                      data-confirm="{% if empleado.is_active %}¿Desactivar a {{ empleado.username }}? No podrá iniciar sesión (es reversible).{% else %}¿Reactivar a {{ empleado.username }}? Volverá a poder iniciar sesión.{% endif %}"
+                                      data-confirm-title="{% if empleado.is_active %}Desactivar usuario{% else %}Reactivar usuario{% endif %}"
+                                      data-confirm-ok="{% if empleado.is_active %}Sí, desactivar{% else %}Sí, reactivar{% endif %}"{% if not empleado.is_active %} data-confirm-variant="ok"{% endif %}>
+                                    {% csrf_token %}
+                                    {% if empleado.is_active %}
+                                    <button type="submit" title="Desactivar acceso" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-rose-200 text-rose-400 hover:bg-rose-50 shadow-sm transition-all">
+                                        <i class="fa-solid fa-user-slash text-[10px]"></i>
+                                    </button>
+                                    {% else %}
+                                    <button type="submit" title="Reactivar acceso" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-emerald-200 text-emerald-500 hover:bg-emerald-50 shadow-sm transition-all">
+                                        <i class="fa-solid fa-user-check text-[10px]"></i>
+                                    </button>
+                                    {% endif %}
+                                </form>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>

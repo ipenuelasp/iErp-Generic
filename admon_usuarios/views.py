@@ -251,6 +251,32 @@ def reenviar_invitacion(request, usuario_id):
     return redirect('gestion_usuarios')
 
 @login_required
+def toggle_activo_usuario(request, usuario_id):
+    """Activa/desactiva el acceso de un usuario (is_active). Desactivado = no
+    puede iniciar sesión; no se borra nada, es reversible. Solo dueño/superadmin."""
+    if request.method != 'POST':
+        return redirect('gestion_usuarios')
+    gestor = getattr(request.user, 'perfil', None)
+    if not (request.user.is_superuser or (gestor and gestor.tipo_usuario == 'OWNER')):
+        messages.error(request, "No tienes permiso para desactivar usuarios.")
+        return redirect('gestion_usuarios')
+    empleado = get_object_or_404(User, id=usuario_id)
+    if empleado.id == request.user.id:
+        messages.error(request, "No puedes desactivar tu propia cuenta.")
+        return redirect('gestion_usuarios')
+    if empleado.is_superuser:
+        messages.error(request, "No se puede desactivar a un superadministrador.")
+        return redirect('gestion_usuarios')
+    empleado.is_active = not empleado.is_active
+    empleado.save(update_fields=['is_active'])
+    if empleado.is_active:
+        messages.success(request, f"{empleado.username} fue reactivado; ya puede iniciar sesión.")
+    else:
+        messages.success(request, f"{empleado.username} fue desactivado; ya no puede iniciar sesión.")
+    return redirect('gestion_usuarios')
+
+
+@login_required
 def cambiar_password_obligatorio(request):
     # Usamos request.empresa (que viene del middleware) para el texto del template
     if request.method == 'POST':
