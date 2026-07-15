@@ -166,13 +166,15 @@
     <div id="__confirmModal" class="fixed inset-0 z-[200] hidden">
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="__closeConfirm()"></div>
         <div class="relative min-h-screen flex items-center justify-center p-4">
-            <div class="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-9">
-                <div id="__confirmIcon" class="w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mb-5"><i class="fa-solid fa-triangle-exclamation text-xl"></i></div>
-                <h2 id="__confirmTitle" class="text-xl font-black text-slate-800 mb-2">¿Confirmar?</h2>
-                <p id="__confirmMsg" class="text-slate-500 text-sm font-medium mb-6"></p>
+            <div class="relative bg-white w-full max-w-md rounded-[2rem] shadow-2xl p-8">
+                <h2 id="__confirmTitle" class="text-lg font-black text-slate-800 italic uppercase tracking-tight mb-2">¿Confirmar?</h2>
+                <p id="__confirmMsg" class="text-slate-500 text-sm font-medium leading-relaxed mb-7"></p>
                 <div class="flex justify-end gap-3">
-                    <button type="button" onclick="__closeConfirm()" class="text-[10px] font-black uppercase text-slate-400 px-4">No, regresar</button>
-                    <button type="button" id="__confirmOk" class="bg-rose-500 text-white font-black py-3 px-8 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-rose-600">Confirmar</button>
+                    <button type="button" onclick="__closeConfirm()" class="px-6 py-3 rounded-xl text-xs font-black text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">Volver</button>
+                    <button type="button" id="__confirmOk" class="px-6 py-3 rounded-xl text-xs font-black text-white bg-rose-500 hover:bg-rose-600 transition-colors flex items-center gap-2">
+                        <i id="__confirmIcon" class="fa-solid fa-triangle-exclamation"></i>
+                        <span id="__confirmOkText">Confirmar</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -201,20 +203,19 @@
             opts = opts || {};
             document.getElementById('__confirmMsg').textContent = message || '¿Confirmar esta acción?';
             document.getElementById('__confirmTitle').textContent = opts.title || '¿Confirmar?';
-            const okBtn = document.getElementById('__confirmOk');
-            okBtn.textContent = opts.ok || 'Sí, continuar';
+            document.getElementById('__confirmOkText').textContent = opts.ok || 'Sí, continuar';
             // Variante: por defecto "peligro" (rojo) para acciones destructivas;
             // opts.danger === false = acción positiva/neutral (azul de marca).
+            const okBtn = document.getElementById('__confirmOk');
             const icon = document.getElementById('__confirmIcon');
             const danger = opts.danger !== false;
+            const base = 'px-6 py-3 rounded-xl text-xs font-black text-white transition-colors flex items-center gap-2 ';
             if (danger) {
-                icon.className = 'w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mb-5';
-                icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-xl"></i>';
-                okBtn.className = 'bg-rose-500 text-white font-black py-3 px-8 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-rose-600';
+                icon.className = 'fa-solid fa-triangle-exclamation';
+                okBtn.className = base + 'bg-rose-500 hover:bg-rose-600';
             } else {
-                icon.className = 'w-14 h-14 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mb-5';
-                icon.innerHTML = '<i class="fa-solid fa-circle-question text-xl"></i>';
-                okBtn.className = 'bg-brand text-white font-black py-3 px-8 rounded-2xl text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-transform';
+                icon.className = 'fa-solid fa-check';
+                okBtn.className = base + 'bg-brand hover:brightness-110';
             }
             __confirmCb = onOk;
             document.getElementById('__confirmModal').classList.remove('hidden');
