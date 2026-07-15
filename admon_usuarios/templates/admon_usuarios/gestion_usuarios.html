@@ -108,6 +108,16 @@
                                 )" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-brand hover:border-brand shadow-sm transition-all">
                                     <i class="fa-solid fa-pen-to-square text-[10px]"></i>
                                 </button>
+                                {% if not empleado.is_superuser or empleado.id == request.user.id %}
+                                <form method="post" action="{% url 'resetear_password_usuario' empleado.id %}" class="inline"
+                                      data-confirm="¿Resetear la contraseña de {{ empleado.username }}? Su contraseña temporal quedará como su usuario y deberá crear una nueva al entrar."
+                                      data-confirm-title="Resetear contraseña" data-confirm-ok="Sí, resetear" data-confirm-variant="ok">
+                                    {% csrf_token %}
+                                    <button type="submit" title="Resetear contraseña" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-indigo-500 hover:border-indigo-300 shadow-sm transition-all">
+                                        <i class="fa-solid fa-key text-[10px]"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
                                 {% if not empleado.is_superuser and empleado.id != request.user.id %}
                                 <form method="post" action="{% url 'toggle_activo_usuario' empleado.id %}" class="inline"
                                       data-confirm="{% if empleado.is_active %}¿Desactivar a {{ empleado.username }}? No podrá iniciar sesión (es reversible).{% else %}¿Reactivar a {{ empleado.username }}? Volverá a poder iniciar sesión.{% endif %}"

@@ -277,6 +277,38 @@ def toggle_activo_usuario(request, usuario_id):
 
 
 @login_required
+def resetear_password_usuario(request, usuario_id):
+    """El admin resetea la contraseña de un usuario que la olvidó: la deja en
+    temporal (= su usuario) y lo obliga a crear una nueva al entrar. Reenvía el
+    correo con las instrucciones. Solo dueño/superadmin."""
+    if request.method != 'POST':
+        return redirect('gestion_usuarios')
+    gestor = getattr(request.user, 'perfil', None)
+    if not (request.user.is_superuser or (gestor and gestor.tipo_usuario == 'OWNER')):
+        messages.error(request, "No tienes permiso para resetear contraseñas.")
+        return redirect('gestion_usuarios')
+    empleado = get_object_or_404(User, id=usuario_id)
+    if empleado.is_superuser and empleado.id != request.user.id:
+        messages.error(request, "No se puede resetear la contraseña de un superadministrador.")
+        return redirect('gestion_usuarios')
+
+    # Contraseña temporal = su usuario (mismo patrón que el alta) y se le fuerza
+    # a crear una nueva al iniciar sesión (invitacion_aceptada = False).
+    empleado.set_password(empleado.username)
+    empleado.save(update_fields=['password'])
+    perfil = empleado.perfil
+    perfil.invitacion_aceptada = False
+    perfil.save(update_fields=['invitacion_aceptada'])
+
+    enviado = enviar_correo_bienvenida(empleado, request) if empleado.email else False
+    if enviado:
+        messages.success(request, f"Contraseña de {empleado.username} reseteada. Se le envió el correo con su contraseña temporal (su mismo usuario) para que cree una nueva al entrar.")
+    else:
+        messages.warning(request, f"Contraseña de {empleado.username} reseteada. Su contraseña temporal es su usuario ('{empleado.username}'); al entrar deberá crear una nueva. No se pudo enviar el correo, avísale manualmente.")
+    return redirect('gestion_usuarios')
+
+
+@login_required
 def cambiar_password_obligatorio(request):
     # Usamos request.empresa (que viene del middleware) para el texto del template
     if request.method == 'POST':

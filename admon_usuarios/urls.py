@@ -8,6 +8,7 @@ urlpatterns = [
     
     path('reenviar-invitacion/<int:usuario_id>/', views.reenviar_invitacion, name='reenviar_invitacion'),
     path('usuario/<int:usuario_id>/toggle-activo/', views.toggle_activo_usuario, name='toggle_activo_usuario'),
+    path('usuario/<int:usuario_id>/resetear-password/', views.resetear_password_usuario, name='resetear_password_usuario'),
     path('configuracion/cambiar-password/', views.cambiar_password_obligatorio, name='cambiar_password_obligatorio'),
     
 ]
