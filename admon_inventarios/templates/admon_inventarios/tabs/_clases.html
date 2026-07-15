@@ -22,7 +22,14 @@
             </ol>
             <form method="POST" action="{% url 'admon_inventarios:importar_catalogos' %}" enctype="multipart/form-data" class="space-y-5">
                 {% csrf_token %}
-                <input type="file" name="archivo" accept=".xlsx" required class="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-5 py-6 text-xs font-bold text-slate-600">
+                <div class="relative h-[72px]">
+                    <input type="file" name="archivo" id="catArchivo" accept=".xlsx" required onchange="catArchivoNombre(this)"
+                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                    <div class="absolute inset-0 flex items-center w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-5 hover:border-emerald-500 transition-all z-10">
+                        <i class="fa-solid fa-cloud-arrow-up text-slate-400 text-lg mr-3"></i>
+                        <span id="catArchivoNombre" class="text-sm text-slate-500 font-medium truncate">Selecciona o arrastra tu archivo .xlsx</span>
+                    </div>
+                </div>
                 <div class="flex justify-end gap-3 items-center">
                     <a href="{% url 'admon_inventarios:plantilla_catalogos' %}" class="text-[10px] font-black uppercase text-brand hover:underline"><i class="fa-solid fa-file-arrow-down mr-1"></i> Descargar plantilla</a>
                     <button type="button" onclick="document.getElementById('modalImportCat').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 px-4">Cancelar</button>
@@ -32,6 +39,13 @@
         </div>
     </div>
 </div>
+<script>
+function catArchivoNombre(inp){
+    const el=document.getElementById('catArchivoNombre');
+    if(inp.files&&inp.files.length){el.textContent=inp.files[0].name;el.classList.remove('text-slate-500');el.classList.add('text-slate-800','font-bold');}
+    else{el.textContent='Selecciona o arrastra tu archivo .xlsx';el.classList.add('text-slate-500');el.classList.remove('text-slate-800','font-bold');}
+}
+</script>
 {% endif %}
 <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-10">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
