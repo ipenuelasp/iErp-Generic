@@ -155,9 +155,10 @@
                                 {% if p.complemento_xml %}<a href="{{ p.complemento_xml.url }}" target="_blank" class="hover:underline">XML</a>{% endif %}
                                 {% if p.complemento_pdf %}<a href="{{ p.complemento_pdf.url }}" target="_blank" class="hover:underline">PDF</a>{% endif %}
                             </span><br>
+                            {% if p.complemento_enviado_en %}<span class="inline-flex items-center gap-1 text-[8px] font-black text-slate-400 uppercase tracking-wider" title="Enviado el {{ p.complemento_enviado_en|date:'d/m/Y H:i' }}"><i class="fa-solid fa-circle-check text-emerald-400"></i> Enviado {{ p.complemento_enviado_en|date:'d/m/Y' }}</span><br>{% endif %}
                             <button onclick='abrirEnviarComp({{ p.id }}, "{{ p.folio }}", "{{ p.cliente.email|default:'' }}", "{{ p.cliente|escapejs }}", {% if p.complemento_pdf %}true{% else %}false{% endif %})'
                                     class="text-[9px] font-black text-brand uppercase tracking-widest hover:underline mt-1">
-                                <i class="fa-solid fa-paper-plane mr-1"></i> Enviar al cliente
+                                <i class="fa-solid fa-paper-plane mr-1"></i> {% if p.complemento_enviado_en %}Reenviar{% else %}Enviar al cliente{% endif %}
                             </button>
                             {% elif p.necesita_complemento %}
                             <span class="inline-flex items-center gap-1 text-[9px] font-black text-amber-600 mb-1"><i class="fa-solid fa-triangle-exclamation"></i> Sin complemento</span><br>

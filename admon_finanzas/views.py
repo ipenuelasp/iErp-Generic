@@ -599,6 +599,9 @@ class EnviarComplementoView(LoginRequiredMixin, View):
             to=destino,
             attachments=adjuntos)
         if ok:
+            from django.utils import timezone as _tz
+            pago.complemento_enviado_en = _tz.now()
+            pago.save(update_fields=['complemento_enviado_en'])
             messages.success(request, f"Complemento de {pago.folio} enviado a {destino}.")
         else:
             messages.error(request, "No se pudo enviar el correo. Revisa la configuración de correo.")

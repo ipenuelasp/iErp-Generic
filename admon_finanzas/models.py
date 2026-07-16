@@ -383,6 +383,8 @@ class Pago(models.Model):
     fecha_complemento = models.DateField(null=True, blank=True)
     complemento_xml = models.FileField(upload_to='cfdi/complementos/xml/', null=True, blank=True)
     complemento_pdf = models.FileField(upload_to='cfdi/complementos/pdf/', null=True, blank=True)
+    complemento_enviado_en = models.DateTimeField(null=True, blank=True,
+                                                  help_text="Cuándo se envió el REP al cliente por correo")
 
     creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     creado_en = models.DateTimeField(auto_now_add=True)
