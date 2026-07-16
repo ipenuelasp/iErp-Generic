@@ -19,6 +19,7 @@ from .forms import (
 from .services import registrar_movimiento, StockInsuficiente
 from . import import_productos
 from . import import_kits
+from . import import_existencias
 from django.http import HttpResponse
 
 
@@ -565,12 +566,25 @@ class ExistenciasView(LoginRequiredMixin, View):
         detalle_existencias = base.select_related(
             'producto', 'ubicacion', 'ubicacion__almacen', 'lote', 'serie')
 
+        # Solo el administrador ve las herramientas de carga inicial / ajuste.
+        es_admin = request.user.is_superuser
+        productos_ajuste = ubicaciones_ajuste = []
+        if es_admin:
+            productos_ajuste = list(Producto.objects.filter(empresa=empresa, activo=True)
+                                    .order_by('sku').values('id', 'sku', 'nombre',
+                                                            'es_loteable', 'es_serializable'))
+            ubicaciones_ajuste = list(Ubicacion.objects.filter(almacen__sucursal=sucursal)
+                                      .select_related('almacen').order_by('almacen__nombre', 'codigo'))
+
         context = {
             'stock_resumen': page_obj,
             'page_obj': page_obj,
             'lista': lista,
             'detalle': detalle_existencias,
             'total_productos': total_productos,
+            'es_admin_inv': es_admin,
+            'productos_ajuste': productos_ajuste,
+            'ubicaciones_ajuste': ubicaciones_ajuste,
             'sucursal_activa': sucursal,
             'seccion': 'inventarios',
         }
@@ -618,6 +632,128 @@ class ImportarProductosView(LoginRequiredMixin, View):
         for err in res['errores'][:10]:
             messages.warning(request, err)
         return redirect('admon_inventarios:catalogos_productos')
+
+
+class DescargarPlantillaExistenciasView(LoginRequiredMixin, View):
+    """Plantilla .xlsx de carga inicial de existencias (inventario de apertura)."""
+    def get(self, request):
+        if not request.user.is_superuser:
+            messages.error(request, "Solo el administrador puede descargar la plantilla.")
+            return redirect('admon_inventarios:existencias')
+        contenido = import_existencias.generar_plantilla(con_ejemplo=True)
+        resp = HttpResponse(
+            contenido,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        resp['Content-Disposition'] = 'attachment; filename="plantilla_inventario_inicial.xlsx"'
+        return resp
+
+
+class CargaInicialExistenciasView(LoginRequiredMixin, View):
+    """Carga masiva del inventario de apertura desde Excel. Solo superuser."""
+    def post(self, request):
+        ctx = _contexto_valido(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        if not request.user.is_superuser:
+            messages.error(request, "Solo el administrador puede cargar el inventario inicial.")
+            return redirect('admon_inventarios:existencias')
+        archivo = request.FILES.get('archivo')
+        if not archivo or not archivo.name.lower().endswith('.xlsx'):
+            messages.error(request, "Selecciona un archivo .xlsx (Excel).")
+            return redirect('admon_inventarios:existencias')
+        try:
+            res = import_existencias.importar(archivo, empresa, sucursal, request.user)
+        except Exception as e:
+            messages.error(request, f"No se pudo procesar el archivo: {e}")
+            return redirect('admon_inventarios:existencias')
+        messages.success(
+            request,
+            f"Inventario inicial: {res['cargadas']} línea(s) cargadas, "
+            f"{res['piezas']:.0f} pieza(s) en total.")
+        for err in res['errores'][:12]:
+            messages.warning(request, err)
+        if len(res['errores']) > 12:
+            messages.warning(request, f"…y {len(res['errores']) - 12} error(es) más.")
+        return redirect('admon_inventarios:existencias')
+
+
+class AjusteExistenciaView(LoginRequiredMixin, View):
+    """Ajuste / entrada manual de existencias (para arranque, correcciones y
+    mermas). Entrada (+) o salida (−) de un producto con lote/serie y motivo."""
+    def post(self, request):
+        import decimal as _dec
+        ctx = _contexto_valido(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        if not request.user.is_superuser:
+            messages.error(request, "Solo el administrador puede ajustar existencias.")
+            return redirect('admon_inventarios:existencias')
+
+        prod = Producto.objects.filter(id=request.POST.get('producto'), empresa=empresa).first()
+        ubic = Ubicacion.objects.filter(
+            id=request.POST.get('ubicacion'), almacen__sucursal=sucursal).first()
+        sentido = request.POST.get('sentido')  # 'entrada' | 'salida'
+        motivo = (request.POST.get('motivo') or '').strip()
+        try:
+            cant = _dec.Decimal(request.POST.get('cantidad') or '0')
+        except _dec.InvalidOperation:
+            cant = _dec.Decimal('0')
+        if not prod or not ubic or cant <= 0 or sentido not in ('entrada', 'salida'):
+            messages.error(request, "Faltan datos del ajuste (producto, ubicación, cantidad o sentido).")
+            return redirect('admon_inventarios:existencias')
+        if not motivo:
+            messages.error(request, "El motivo del ajuste es obligatorio.")
+            return redirect('admon_inventarios:existencias')
+
+        lote_txt = (request.POST.get('lote') or '').strip()
+        serie_txt = (request.POST.get('serie') or '').strip()
+        lote = serie = None
+        try:
+            if lote_txt:
+                from datetime import datetime as _dt
+                cad = (request.POST.get('caducidad') or '').strip()
+                fcad = None
+                if cad:
+                    try:
+                        fcad = _dt.strptime(cad, '%Y-%m-%d').date()
+                    except ValueError:
+                        fcad = None
+                lote, _ = Lote.objects.get_or_create(
+                    producto=prod, numero_lote=lote_txt, defaults={'fecha_caducidad': fcad})
+            if serie_txt:
+                if sentido == 'entrada':
+                    serie, _ = NumeroSerie.objects.get_or_create(
+                        producto=prod, serie=serie_txt, defaults={'estado': 'DISPONIBLE'})
+                else:
+                    serie = NumeroSerie.objects.filter(producto=prod, serie=serie_txt).first()
+                    if not serie:
+                        messages.error(request, f"La serie '{serie_txt}' no existe.")
+                        return redirect('admon_inventarios:existencias')
+
+            costo = None
+            try:
+                if request.POST.get('costo'):
+                    costo = _dec.Decimal(request.POST.get('costo'))
+            except _dec.InvalidOperation:
+                costo = None
+
+            tipo = 'AJUSTE_POS' if sentido == 'entrada' else 'AJUSTE_NEG'
+            registrar_movimiento(
+                empresa=empresa, sucursal=sucursal, producto=prod, ubicacion=ubic,
+                tipo=tipo, origen='AJUSTE', cantidad=cant, usuario=request.user,
+                lote=lote, serie=serie, referencia='AJUSTE MANUAL',
+                costo_unitario=costo, notas=motivo)
+            if serie and sentido == 'entrada':
+                serie.estado = 'DISPONIBLE'; serie.save(update_fields=['estado'])
+        except (ValueError, StockInsuficiente) as e:
+            messages.error(request, f"No se pudo ajustar: {e}")
+            return redirect('admon_inventarios:existencias')
+
+        signo = '+' if sentido == 'entrada' else '−'
+        messages.success(request, f"Ajuste aplicado: {signo}{cant:.0f} {prod.sku} en {ubic}.")
+        return redirect('admon_inventarios:existencias')
 
 
 class DescargarPlantillaCatalogosView(LoginRequiredMixin, View):

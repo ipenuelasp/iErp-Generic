@@ -7,9 +7,14 @@
             <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Existencias en Inventario</h1>
             <p class="text-slate-500 mt-2 font-medium">Consulta el stock físico por almacén, ubicación y lote en esta sucursal.</p>
         </div>
-        <span class="text-[10px] font-black text-slate-400 uppercase italic tracking-widest">
-            {{ total_productos }} producto(s) con stock
-        </span>
+        <div class="flex items-center gap-2">
+            {% if es_admin_inv %}
+            <a href="{% url 'admon_inventarios:plantilla_existencias' %}" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all" title="Descargar plantilla de inventario inicial"><i class="fa-solid fa-file-arrow-down mr-1"></i> Plantilla</a>
+            <button type="button" onclick="document.getElementById('modalCargaInicial').classList.remove('hidden')" class="bg-white border border-emerald-200 text-emerald-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-upload mr-1"></i> Inventario inicial</button>
+            <button type="button" onclick="document.getElementById('modalAjuste').classList.remove('hidden')" class="bg-brand text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-sliders mr-1"></i> Ajustar existencia</button>
+            {% endif %}
+            <span class="text-[10px] font-black text-slate-400 uppercase italic tracking-widest ml-1">{{ total_productos }} producto(s) con stock</span>
+        </div>
     </div>
 
     {% include "includes/lista_filtros.html" %}
@@ -66,6 +71,131 @@
 </div>
 
 {% include "admon_inventarios/modals/modal_detalle_existencia.html" %}
+
+{% if es_admin_inv %}
+<!-- Modal: carga inicial de inventario -->
+<div id="modalCargaInicial" class="hidden fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg">
+        <div class="flex items-center justify-between px-8 pt-8 pb-2">
+            <div>
+                <h3 class="text-lg font-black text-slate-800 italic uppercase">Inventario inicial</h3>
+                <p class="text-[11px] font-bold text-slate-400 mt-1">Sube el stock previo de esta empresa. Cada fila es una entrada con su almacén, lote/serie y costo (puede ser estimado).</p>
+            </div>
+            <button type="button" onclick="document.getElementById('modalCargaInicial').classList.add('hidden')" class="text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <form method="POST" action="{% url 'admon_inventarios:carga_inicial_existencias' %}" enctype="multipart/form-data" class="px-8 pb-8 pt-4 space-y-4">
+            {% csrf_token %}
+            <a href="{% url 'admon_inventarios:plantilla_existencias' %}" class="inline-flex items-center gap-2 text-[11px] font-black text-brand uppercase tracking-widest hover:underline"><i class="fa-solid fa-file-arrow-down"></i> Descargar plantilla</a>
+            <div class="relative h-[60px]">
+                <input type="file" name="archivo" id="cargaInicialFile" accept=".xlsx" required onchange="document.getElementById('cargaInicialName').textContent=this.files[0]?this.files[0].name:'Selecciona el .xlsx'" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                <div class="absolute inset-0 flex items-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-4 hover:border-brand transition-all z-10">
+                    <i class="fa-solid fa-file-excel text-emerald-500 mr-3"></i>
+                    <span id="cargaInicialName" class="text-sm text-slate-500 font-medium truncate">Selecciona el .xlsx</span>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('modalCargaInicial').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cancelar</button>
+                <button type="submit" class="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-upload mr-1"></i> Cargar inventario</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: ajuste / entrada manual -->
+<div id="modalAjuste" class="hidden fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
+        <div class="flex items-center justify-between px-8 pt-8 pb-2">
+            <div>
+                <h3 class="text-lg font-black text-slate-800 italic uppercase">Ajustar existencia</h3>
+                <p class="text-[11px] font-bold text-slate-400 mt-1">Entrada (+) o salida (−) manual de un producto. Para arranque, correcciones y mermas.</p>
+            </div>
+            <button type="button" onclick="document.getElementById('modalAjuste').classList.add('hidden')" class="text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <form method="POST" action="{% url 'admon_inventarios:ajuste_existencia' %}" id="formAjuste" class="px-8 pb-8 pt-4 space-y-3">
+            {% csrf_token %}
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Producto</label>
+                <select name="producto" id="ajusteProd" required class="w-full mt-1">
+                    <option value="">Buscar por SKU o nombre…</option>
+                    {% for p in productos_ajuste %}
+                    <option value="{{ p.id }}" data-lote="{{ p.es_loteable|yesno:'1,0' }}" data-serie="{{ p.es_serializable|yesno:'1,0' }}">[{{ p.sku }}] {{ p.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Movimiento</label>
+                    <select name="sentido" id="ajusteSentido" required class="w-full mt-1 no-select2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+                        <option value="entrada">Entrada (+)</option>
+                        <option value="salida">Salida (−) · merma</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Cantidad</label>
+                    <input type="number" name="cantidad" step="0.01" min="0" placeholder="0" required class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-right">
+                </div>
+            </div>
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Almacén / ubicación</label>
+                <select name="ubicacion" required class="w-full mt-1">
+                    <option value="">Elige ubicación…</option>
+                    {% for u in ubicaciones_ajuste %}
+                    <option value="{{ u.id }}">{{ u.almacen.nombre }} › {{ u.codigo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div id="ajusteLoteBox" class="hidden grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Lote</label>
+                    <input type="text" name="lote" placeholder="Nº de lote" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Caducidad</label>
+                    <input type="date" name="caducidad" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+                </div>
+            </div>
+            <div id="ajusteSerieBox" class="hidden">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Serie</label>
+                <input type="text" name="serie" placeholder="Nº de serie (cantidad 1)" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+            </div>
+            <div id="ajusteCostoBox">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Costo unitario (opcional · estimado)</label>
+                <input type="number" name="costo" step="0.0001" min="0" placeholder="0.00" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-right">
+            </div>
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Motivo</label>
+                <input type="text" name="motivo" required placeholder="Ej. inventario previo, merma, corrección…" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('modalAjuste').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cancelar</button>
+                <button type="submit" class="bg-brand text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-check mr-1"></i> Aplicar ajuste</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const $ = window.jQuery;
+    const prod = document.getElementById('ajusteProd');
+    if (!prod) return;
+    const loteBox = document.getElementById('ajusteLoteBox');
+    const serieBox = document.getElementById('ajusteSerieBox');
+    const costoBox = document.getElementById('ajusteCostoBox');
+    function sync() {
+        const opt = prod.options[prod.selectedIndex];
+        const esLote = opt && opt.dataset.lote === '1';
+        const esSerie = opt && opt.dataset.serie === '1';
+        loteBox.classList.toggle('hidden', !esLote);
+        serieBox.classList.toggle('hidden', !esSerie);
+        const salida = document.getElementById('ajusteSentido').value === 'salida';
+        costoBox.classList.toggle('hidden', salida);  // el costo solo aplica a entradas
+    }
+    if ($) { $('#ajusteProd').on('change', sync); } else { prod.addEventListener('change', sync); }
+    document.getElementById('ajusteSentido').addEventListener('change', sync);
+});
+</script>
+{% endif %}
 
 <script>
     // Alimentamos el array global que usará el modal desde el objeto 'detalle' que envía la vista

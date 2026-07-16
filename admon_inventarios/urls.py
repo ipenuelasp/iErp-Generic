@@ -13,6 +13,9 @@ urlpatterns = [
     path('recepciones/', views.RecepcionesView.as_view(), name='recepciones'),
     path('recepciones/nueva/', views.NuevaRecepcionDirectaView.as_view(), name='nueva_recepcion'),
     path('existencias/', views.ExistenciasView.as_view(), name='existencias'),
+    path('existencias/plantilla-inicial/', views.DescargarPlantillaExistenciasView.as_view(), name='plantilla_existencias'),
+    path('existencias/carga-inicial/', views.CargaInicialExistenciasView.as_view(), name='carga_inicial_existencias'),
+    path('existencias/ajuste/', views.AjusteExistenciaView.as_view(), name='ajuste_existencia'),
     path('kardex/', views.KardexView.as_view(), name='kardex'),
 
     # Traspasos entre sucursales
