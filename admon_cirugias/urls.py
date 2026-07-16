@@ -7,6 +7,7 @@ urlpatterns = [
     path('solicitudes/', views.SolicitudesView.as_view(), name='solicitudes'),
     path('solicitudes/nueva/', views.NuevaSolicitudView.as_view(), name='nueva_solicitud'),
     path('solicitudes/<int:pk>/', views.SolicitudDetalleView.as_view(), name='solicitud_detalle'),
+    path('solicitudes/<int:pk>/existencias/', views.ExistenciasSueltoView.as_view(), name='existencias_suelto'),
     path('solicitudes/<int:pk>/regreso/<int:salida_id>/', views.RegresoSalidaView.as_view(), name='regreso_salida'),
     path('solicitudes/<int:pk>/finalizar/', views.FinalizarCirugiaView.as_view(), name='finalizar_cirugia'),
 

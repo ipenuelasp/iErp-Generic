@@ -109,6 +109,15 @@ class SueltoCirugia(models.Model):
                                   on_delete=models.CASCADE)
     producto = models.ForeignKey('admon_inventarios.Producto', on_delete=models.PROTECT)
     cantidad = models.DecimalField(max_digits=12, decimal_places=4)
+    # Existencia elegida a mano (serie exacta) o indicada (lote/ubicación) para que
+    # el almacén saque físicamente la correcta. Si van en null, el surtido asigna
+    # por FIFO (stock simple sin lote/serie).
+    lote = models.ForeignKey('admon_inventarios.Lote', on_delete=models.PROTECT,
+                             null=True, blank=True)
+    serie = models.ForeignKey('admon_inventarios.NumeroSerie', on_delete=models.PROTECT,
+                              null=True, blank=True)
+    ubicacion = models.ForeignKey('admon_inventarios.Ubicacion', on_delete=models.PROTECT,
+                                  null=True, blank=True)
     creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
                                    null=True, blank=True)
     creado_en = models.DateTimeField(auto_now_add=True)

@@ -373,6 +373,47 @@ def _arbol_salidas(salidas):
     return raiz
 
 
+class ExistenciasSueltoView(LoginRequiredMixin, View):
+    """Devuelve (JSON) las existencias de un producto en el stock general de la
+    sucursal, para elegir qué serie / lote mandar como material suelto."""
+    def get(self, request, pk):
+        from django.http import JsonResponse
+        ctx = _ctx(request)
+        if not ctx:
+            return JsonResponse({'error': 'sin contexto'}, status=400)
+        empresa, sucursal = ctx
+        prod = Producto.objects.filter(id=request.GET.get('producto'), empresa=empresa).first()
+        if not prod:
+            return JsonResponse({'error': 'producto no encontrado'}, status=404)
+
+        exs = list(Existencia.objects
+                   .filter(producto=prod, sucursal=sucursal, cantidad__gt=0)
+                   .exclude(ubicacion__almacen__codigo='CAJAS')
+                   .select_related('ubicacion', 'lote', 'serie')
+                   .order_by('lote__fecha_caducidad', 'id'))
+        total = sum((e.cantidad for e in exs), decimal.Decimal('0'))
+
+        if prod.es_serializable:
+            tipo = 'serie'
+            opciones = [{
+                'serie_id': e.serie_id, 'serie': e.serie.serie if e.serie else '—',
+                'ubicacion_id': e.ubicacion_id, 'ubicacion': str(e.ubicacion),
+            } for e in exs if e.serie_id]
+        elif prod.es_loteable:
+            tipo = 'lote'
+            opciones = [{
+                'lote_id': e.lote_id,
+                'numero_lote': e.lote.numero_lote if e.lote else 's/lote',
+                'caducidad': e.lote.fecha_caducidad.strftime('%d/%m/%Y') if e.lote and e.lote.fecha_caducidad else '',
+                'ubicacion_id': e.ubicacion_id, 'ubicacion': str(e.ubicacion),
+                'disp': _fmt_cant(e.cantidad),
+            } for e in exs]
+        else:
+            tipo = 'simple'
+            opciones = []
+        return JsonResponse({'tipo': tipo, 'total': _fmt_cant(total), 'opciones': opciones})
+
+
 class SolicitudDetalleView(LoginRequiredMixin, View):
     template_name = 'admon_cirugias/solicitud_detalle.html'
 
@@ -545,26 +586,74 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
 
         elif accion == 'agregar_suelto':
             # Agrega un producto individual (fuera de caja) al borrador de surtido.
+            # Serializado → se elige la(s) serie(s) exacta(s). Loteable → se indica el
+            # lote a sacar (el más viejo por defecto). Simple → solo cantidad (FIFO).
             if sol.estado not in ('SOLICITADA', 'SURTIDA'):
                 messages.error(request, "Ya no se puede agregar material a esta cirugía.")
                 return redirect('admon_cirugias:solicitud_detalle', pk=pk)
             prod = Producto.objects.filter(id=request.POST.get('producto'), empresa=empresa).first()
-            try:
-                cant = decimal.Decimal(request.POST.get('cantidad') or '0')
-            except decimal.InvalidOperation:
-                cant = decimal.Decimal('0')
-            if not prod or cant <= 0:
-                messages.error(request, "Selecciona un producto y una cantidad mayor a 0.")
+            if not prod:
+                messages.error(request, "Selecciona un producto.")
                 return redirect('admon_cirugias:solicitud_detalle', pk=pk)
-            # Si ya está en el borrador, suma la cantidad en vez de duplicar la línea.
-            existente = sol.sueltos.filter(producto=prod).first()
-            if existente:
-                existente.cantidad += cant
-                existente.save(update_fields=['cantidad'])
+
+            def _par(valor):
+                # "serie_o_lote_id:ubicacion_id" → (int, int)
+                a, _, b = (valor or '').partition(':')
+                return (int(a) if a else None, int(b) if b else None)
+
+            agregados = 0
+            if prod.es_serializable:
+                seleccion = request.POST.getlist('serie_sel')
+                if not seleccion:
+                    messages.error(request, "Elige al menos una serie a enviar.")
+                    return redirect('admon_cirugias:solicitud_detalle', pk=pk)
+                for val in seleccion:
+                    serie_id, ubic_id = _par(val)
+                    if not serie_id:
+                        continue
+                    if sol.sueltos.filter(serie_id=serie_id).exists():
+                        continue  # ya estaba en el borrador
+                    SueltoCirugia.objects.create(
+                        solicitud=sol, producto=prod, cantidad=decimal.Decimal('1'),
+                        serie_id=serie_id, ubicacion_id=ubic_id, creado_por=request.user)
+                    agregados += 1
+                messages.success(request, f"{agregados} serie(s) de {prod.sku} agregada(s) al borrador.")
+
+            elif prod.es_loteable:
+                lote_id, ubic_id = _par(request.POST.get('lote_sel'))
+                try:
+                    cant = decimal.Decimal(request.POST.get('cantidad') or '0')
+                except decimal.InvalidOperation:
+                    cant = decimal.Decimal('0')
+                if not lote_id or cant <= 0:
+                    messages.error(request, "Elige el lote y una cantidad mayor a 0.")
+                    return redirect('admon_cirugias:solicitud_detalle', pk=pk)
+                existente = sol.sueltos.filter(producto=prod, lote_id=lote_id, ubicacion_id=ubic_id).first()
+                if existente:
+                    existente.cantidad += cant
+                    existente.save(update_fields=['cantidad'])
+                else:
+                    SueltoCirugia.objects.create(
+                        solicitud=sol, producto=prod, cantidad=cant,
+                        lote_id=lote_id, ubicacion_id=ubic_id, creado_por=request.user)
+                messages.success(request, f"Agregado al borrador: {prod.sku} x{_fmt_cant(cant)} (lote indicado).")
+
             else:
-                SueltoCirugia.objects.create(
-                    solicitud=sol, producto=prod, cantidad=cant, creado_por=request.user)
-            messages.success(request, f"Agregado al borrador: {prod.sku} x{_fmt_cant(cant)}.")
+                try:
+                    cant = decimal.Decimal(request.POST.get('cantidad') or '0')
+                except decimal.InvalidOperation:
+                    cant = decimal.Decimal('0')
+                if cant <= 0:
+                    messages.error(request, "Captura una cantidad mayor a 0.")
+                    return redirect('admon_cirugias:solicitud_detalle', pk=pk)
+                existente = sol.sueltos.filter(producto=prod, serie__isnull=True, lote__isnull=True).first()
+                if existente:
+                    existente.cantidad += cant
+                    existente.save(update_fields=['cantidad'])
+                else:
+                    SueltoCirugia.objects.create(
+                        solicitud=sol, producto=prod, cantidad=cant, creado_por=request.user)
+                messages.success(request, f"Agregado al borrador: {prod.sku} x{_fmt_cant(cant)}.")
             return redirect('admon_cirugias:solicitud_detalle', pk=pk)
 
         elif accion == 'quitar_suelto':
@@ -611,7 +700,7 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
         elif accion == 'enviar_borrador':
             borradores = list(sol.salidas.filter(estado='PREPARANDO')
                               .select_related('instancia_kit'))
-            sueltos_plan = list(sol.sueltos.select_related('producto'))
+            sueltos_plan = list(sol.sueltos.select_related('producto', 'serie', 'lote', 'ubicacion'))
             if not borradores and not sueltos_plan:
                 messages.error(request, "No hay material en borrador para surtir.")
                 return redirect('admon_cirugias:solicitud_detalle', pk=pk)
@@ -644,9 +733,7 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
                     notas=f"Material suelto · Cirugía {sol.folio}")
                 try:
                     surtir_material_suelto(
-                        salida=salida_suelto,
-                        planes=[(s.producto, s.cantidad) for s in sueltos_plan],
-                        usuario=request.user)
+                        salida=salida_suelto, planes=sueltos_plan, usuario=request.user)
                     sol.salidas.add(salida_suelto)
                     sol.sueltos.all().delete()
                     enviadas.append(f"Material suelto ({len(sueltos_plan)} producto/s)")

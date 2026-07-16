@@ -100,8 +100,12 @@
                     <tbody>
                         {% for x in sueltos_borrador %}
                         <tr class="border-t border-slate-50">
-                            <td class="py-1 text-[11px] pr-2 break-words"><span class="font-mono text-slate-300">[{{ x.producto.sku }}]</span> <span class="font-bold text-slate-600">{{ x.producto.nombre }}</span></td>
-                            <td class="py-1 text-right text-[11px] font-black text-slate-700 whitespace-nowrap">{{ x.cantidad|floatformat:"-2" }}</td>
+                            <td class="py-1 text-[11px] pr-2 break-words">
+                                <span class="font-mono text-slate-300">[{{ x.producto.sku }}]</span> <span class="font-bold text-slate-600">{{ x.producto.nombre }}</span>
+                                {% if x.serie %}<br><span class="text-[9px] font-black text-indigo-500 uppercase"><i class="fa-solid fa-barcode mr-1"></i>Serie {{ x.serie.serie }}{% if x.ubicacion %} · {{ x.ubicacion }}{% endif %}</span>
+                                {% elif x.lote %}<br><span class="text-[9px] font-black text-amber-600 uppercase"><i class="fa-solid fa-layer-group mr-1"></i>Sacar lote {{ x.lote.numero_lote }}{% if x.lote.fecha_caducidad %} · vence {{ x.lote.fecha_caducidad|date:"d/m/Y" }}{% endif %}{% if x.ubicacion %} · {{ x.ubicacion }}{% endif %}</span>{% endif %}
+                            </td>
+                            <td class="py-1 text-right text-[11px] font-black text-slate-700 whitespace-nowrap align-top">{{ x.cantidad|floatformat:"-2" }}</td>
                             <td class="py-1 text-right">
                                 <form method="POST" data-confirm="¿Quitar {{ x.producto.sku }} del borrador?" data-confirm-title="Quitar producto suelto" data-confirm-ok="Sí, quitar">{% csrf_token %}
                                     <input type="hidden" name="accion" value="quitar_suelto">
@@ -259,25 +263,24 @@
             </div>
             <button type="button" onclick="document.getElementById('modalSuelto').classList.add('hidden')" class="text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark text-xl"></i></button>
         </div>
-        <form method="POST" class="px-8 pb-8 pt-4 space-y-4">
+        <form method="POST" id="formSuelto" class="px-8 pb-8 pt-4 space-y-4">
             {% csrf_token %}
             <input type="hidden" name="accion" value="agregar_suelto">
             <div>
                 <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Producto (con existencia)</label>
-                <select name="producto" required class="w-full mt-1">
+                <select name="producto" id="sueltoProd" required class="w-full mt-1" data-existencias-url="{% url 'admon_cirugias:existencias_suelto' solicitud.pk %}">
                     <option value="">Buscar por SKU o nombre…</option>
                     {% for p in productos_suelto %}
                     <option value="{{ p.id }}">[{{ p.sku }}] {{ p.nombre }} · stock {{ p.stock }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Cantidad</label>
-                <input type="number" name="cantidad" step="0.01" min="0" placeholder="0" required class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+            <div id="sueltoExistencias" class="min-h-[40px]">
+                <p class="text-[11px] text-slate-400 italic">Elige un producto para ver sus existencias.</p>
             </div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="document.getElementById('modalSuelto').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cancelar</button>
-                <button type="submit" class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Agregar al borrador</button>
+                <button type="submit" id="sueltoSubmit" disabled class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"><i class="fa-solid fa-plus mr-1"></i> Agregar al borrador</button>
             </div>
         </form>
     </div>
@@ -415,5 +418,74 @@ function filtrarCajas(q) {
     });
     document.getElementById('surtirVacio').classList.toggle('hidden', visibles !== 0);
 }
+
+// ── Material suelto: al elegir producto, trae sus existencias y arma el
+//    selector adecuado (serie exacta / lote indicado / cantidad simple). ──
+(function () {
+    const $ = window.jQuery;
+    if (!$) return;
+    const cont = document.getElementById('sueltoExistencias');
+    const submit = document.getElementById('sueltoSubmit');
+    const $prod = $('#sueltoProd');
+    if (!cont || !$prod.length) return;
+
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function actualizarSubmit() {
+        const tipo = cont.dataset.tipo || '';
+        let ok = false;
+        if (tipo === 'serie') ok = cont.querySelectorAll('input[name=serie_sel]:checked').length > 0;
+        else if (tipo === 'lote') { const l = cont.querySelector('select[name=lote_sel]'); const c = cont.querySelector('input[name=cantidad]'); ok = l && l.value && c && parseFloat(c.value) > 0; }
+        else if (tipo === 'simple') { const c = cont.querySelector('input[name=cantidad]'); ok = c && parseFloat(c.value) > 0; }
+        submit.disabled = !ok;
+    }
+    cont.addEventListener('change', actualizarSubmit);
+    cont.addEventListener('input', actualizarSubmit);
+
+    function render(data) {
+        cont.dataset.tipo = data.tipo;
+        if (data.tipo === 'serie') {
+            if (!data.opciones.length) { cont.innerHTML = '<p class="text-[11px] text-rose-500 font-bold">Sin series disponibles en el almacén.</p>'; submit.disabled = true; return; }
+            let h = '<label class="text-[10px] font-black text-slate-400 uppercase ml-1">Elige la(s) serie(s) a enviar</label><div class="mt-1 max-h-52 overflow-y-auto space-y-1 border border-slate-100 rounded-xl p-2">';
+            data.opciones.forEach(function (o) {
+                h += '<label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer">'
+                   + '<input type="checkbox" name="serie_sel" value="' + o.serie_id + ':' + o.ubicacion_id + '" class="w-4 h-4">'
+                   + '<span class="text-xs font-bold text-slate-700"><i class="fa-solid fa-barcode text-slate-300 mr-1"></i>' + esc(o.serie) + '</span>'
+                   + '<span class="text-[10px] text-slate-400 ml-auto">' + esc(o.ubicacion) + '</span></label>';
+            });
+            h += '</div><p class="text-[10px] text-slate-400 mt-1 ml-1">Cada serie marcada sale como 1 pieza.</p>';
+            cont.innerHTML = h;
+        } else if (data.tipo === 'lote') {
+            if (!data.opciones.length) { cont.innerHTML = '<p class="text-[11px] text-rose-500 font-bold">Sin lotes disponibles en el almacén.</p>'; submit.disabled = true; return; }
+            let h = '<label class="text-[10px] font-black text-slate-400 uppercase ml-1">Lote a sacar (el más viejo va primero)</label>'
+                  + '<select name="lote_sel" class="w-full mt-1 no-select2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">';
+            data.opciones.forEach(function (o, i) {
+                h += '<option value="' + o.lote_id + ':' + o.ubicacion_id + '"' + (i === 0 ? ' selected' : '') + '>'
+                   + 'Lote ' + esc(o.numero_lote) + (o.caducidad ? ' · vence ' + esc(o.caducidad) : '') + ' · ' + esc(o.disp) + ' disp · ' + esc(o.ubicacion) + '</option>';
+            });
+            h += '</select>'
+               + '<label class="text-[10px] font-black text-slate-400 uppercase ml-1 mt-3 block">Cantidad</label>'
+               + '<input type="number" name="cantidad" step="0.01" min="0" placeholder="0" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">'
+               + '<p class="text-[10px] text-amber-600 font-bold mt-1 ml-1"><i class="fa-solid fa-circle-info mr-1"></i>El almacén debe sacar físicamente este lote.</p>';
+            cont.innerHTML = h;
+        } else {
+            let h = '<label class="text-[10px] font-black text-slate-400 uppercase ml-1">Cantidad (stock general · ' + esc(data.total) + ' disp)</label>'
+                  + '<input type="number" name="cantidad" step="0.01" min="0" placeholder="0" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">';
+            cont.innerHTML = h;
+        }
+        actualizarSubmit();
+    }
+
+    $prod.on('change', function () {
+        const id = this.value;
+        submit.disabled = true;
+        cont.dataset.tipo = '';
+        if (!id) { cont.innerHTML = '<p class="text-[11px] text-slate-400 italic">Elige un producto para ver sus existencias.</p>'; return; }
+        cont.innerHTML = '<p class="text-[11px] text-slate-400 italic">Cargando existencias…</p>';
+        fetch($prod.data('existencias-url') + '?producto=' + encodeURIComponent(id), {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+            .then(function (r) { return r.json(); })
+            .then(render)
+            .catch(function () { cont.innerHTML = '<p class="text-[11px] text-rose-500 font-bold">No se pudieron cargar las existencias.</p>'; });
+    });
+})();
 </script>
 {% endblock %}
