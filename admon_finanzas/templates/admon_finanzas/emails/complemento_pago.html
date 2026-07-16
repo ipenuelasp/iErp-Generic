@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#334155;">
+  <div style="max-width:560px;margin:0 auto;padding:32px 20px;">
+    <div style="background:#fff;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0;">
+      <div style="background:#1f2d4f;padding:24px 28px;">
+        <table style="width:100%;border-collapse:collapse;"><tr>
+          <td style="vertical-align:middle;">
+            <p style="margin:0;color:#cbd5e1;font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;">{{ empresa }}</p>
+            <p style="margin:6px 0 0;color:#fff;font-size:20px;font-weight:800;">Complemento de pago</p>
+          </td>
+          {% if isotipo_uri %}
+          <td style="vertical-align:middle;text-align:right;width:80px;">
+            <img src="{{ isotipo_uri }}" alt="{{ empresa }}" style="height:52px;max-width:80px;">
+          </td>
+          {% endif %}
+        </tr></table>
+      </div>
+      <div style="padding:28px;">
+        <p style="margin:0 0 14px;font-size:15px;">Hola{% if cliente %} {{ cliente }}{% endif %},</p>
+        <p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:#475569;">
+          Adjuntamos el <strong>complemento de pago (REP)</strong> correspondiente al pago que
+          nos realizaste. Encontrarás el archivo <strong>XML</strong>{% if hay_pdf %} y el
+          <strong>PDF</strong>{% endif %} en este correo.
+        </p>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:18px 20px;margin-bottom:18px;">
+          <table style="width:100%;font-size:13px;color:#475569;">
+            <tr><td style="padding:3px 0;">Pago</td><td style="text-align:right;font-weight:700;color:#1e293b;">{{ folio }}</td></tr>
+            {% if fecha %}<tr><td style="padding:3px 0;">Fecha de pago</td><td style="text-align:right;font-weight:700;color:#1e293b;">{{ fecha }}</td></tr>{% endif %}
+            {% if uuid %}<tr><td style="padding:3px 0;">UUID complemento</td><td style="text-align:right;font-weight:700;color:#1e293b;font-size:11px;">{{ uuid }}</td></tr>{% endif %}
+            <tr><td style="padding:3px 0;">Monto</td><td style="text-align:right;font-weight:800;color:#0f766e;font-size:15px;">{{ moneda }}{{ monto }}</td></tr>
+          </table>
+        </div>
+        {% if facturas %}
+        <p style="margin:0 0 8px;font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">Facturas pagadas</p>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px 20px;margin-bottom:18px;">
+          <table style="width:100%;font-size:13px;color:#475569;">
+            {% for f in facturas %}
+            <tr><td style="padding:3px 0;font-weight:700;color:#1e293b;">{{ f.folio }}</td><td style="text-align:right;color:#64748b;font-size:11px;">{{ f.uuid }}</td></tr>
+            {% endfor %}
+          </table>
+        </div>
+        {% endif %}
+        {% if mensaje %}<p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:#475569;">{{ mensaje }}</p>{% endif %}
+        <p style="margin:0;font-size:13px;color:#94a3b8;">Gracias por tu preferencia.</p>
+      </div>
+    </div>
+    <p style="text-align:center;color:#94a3b8;font-size:11px;margin-top:18px;">Enviado por iErp · Sistema de Gestión</p>
+  </div>
+</body>
+</html>

@@ -526,6 +526,85 @@ class AdjuntarComplementoView(LoginRequiredMixin, View):
         return redirect('admon_finanzas:historial_pagos')
 
 
+class EnviarComplementoView(LoginRequiredMixin, View):
+    """Envía el complemento de pago (REP) ya adjunto a un cobro por correo al
+    cliente, con el XML (y PDF si existe) como adjuntos. Espejo del envío de
+    factura, pero para el REP que se emite cuando el cliente paga una PPD."""
+    def post(self, request, pk):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        pago = get_object_or_404(
+            Pago.objects.select_related('cliente', 'moneda'), pk=pk, empresa=empresa)
+
+        if pago.tipo != Pago.TIPO_INGRESO or not pago.tiene_complemento:
+            messages.error(request, "Este cobro no tiene complemento de pago para enviar.")
+            return redirect('admon_finanzas:historial_pagos')
+
+        destino = (request.POST.get('email_destino') or
+                   (pago.cliente.email if pago.cliente_id else '') or '').strip()
+        if not destino:
+            messages.error(request, "El cliente no tiene correo. Captúralo en su ficha para enviar.")
+            return redirect('admon_finanzas:historial_pagos')
+
+        adjuntos = []
+        for campo, fallback in ((pago.complemento_xml, f"Complemento-{pago.folio}.xml"),
+                                (pago.complemento_pdf, f"Complemento-{pago.folio}.pdf")):
+            if campo:
+                try:
+                    campo.open('rb'); data = campo.read(); campo.close()
+                    adjuntos.append({'filename': campo.name.split('/')[-1] or fallback,
+                                     'content': data})
+                except Exception as e:
+                    print(f'[ADJUNTO REP] {e}')
+        if not adjuntos:
+            messages.error(request, "No se encontró el archivo del complemento para adjuntar.")
+            return redirect('admon_finanzas:historial_pagos')
+
+        # Facturas que quedaron pagadas por este cobro (para listarlas en el correo)
+        facturas = []
+        vistos = set()
+        for ap in pago.aplicaciones.select_related('factura_cliente', 'cfdi').all():
+            doc = ap.cfdi or ap.factura_cliente
+            if not doc:
+                continue
+            folio = (getattr(ap.cfdi, 'serie_folio', '') or
+                     (ap.factura_cliente.folio if ap.factura_cliente_id else '') or '—')
+            uuid = (getattr(ap.cfdi, 'uuid', '') or
+                    (ap.factura_cliente.uuid_cfdi if ap.factura_cliente_id else '') or '')
+            clave = (folio, uuid)
+            if clave in vistos:
+                continue
+            vistos.add(clave)
+            facturas.append({'folio': folio, 'uuid': uuid})
+
+        from admon_empresas.emails import send_html
+        ok = send_html(
+            subject=f"Complemento de pago {pago.folio} — {empresa.nombre_fiscal}",
+            template='admon_finanzas/emails/complemento_pago.html',
+            context={
+                'empresa': empresa.nombre_fiscal,
+                'isotipo_uri': _img_url_abs(request, empresa.isotipo or empresa.logo),
+                'cliente': str(pago.cliente) if pago.cliente_id else '',
+                'folio': pago.folio,
+                'fecha': pago.fecha_complemento.strftime('%d/%m/%Y') if pago.fecha_complemento else '',
+                'uuid': pago.uuid_complemento or '',
+                'moneda': pago.moneda.simbolo,
+                'monto': f"{pago.monto:,.2f}",
+                'facturas': facturas,
+                'hay_pdf': bool(pago.complemento_pdf),
+                'mensaje': (request.POST.get('mensaje') or '').strip(),
+            },
+            to=destino,
+            attachments=adjuntos)
+        if ok:
+            messages.success(request, f"Complemento de {pago.folio} enviado a {destino}.")
+        else:
+            messages.error(request, "No se pudo enviar el correo. Revisa la configuración de correo.")
+        return redirect('admon_finanzas:historial_pagos')
+
+
 def _leer_rep(xml_bytes):
     """Parsea un CFDI de complemento de pago (REP). Devuelve dict con su UUID,
     la fecha de pago y los UUIDs de las facturas relacionadas (DoctoRelacionado)."""

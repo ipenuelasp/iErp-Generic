@@ -154,7 +154,16 @@
                                 <i class="fa-solid fa-circle-check"></i>
                                 {% if p.complemento_xml %}<a href="{{ p.complemento_xml.url }}" target="_blank" class="hover:underline">XML</a>{% endif %}
                                 {% if p.complemento_pdf %}<a href="{{ p.complemento_pdf.url }}" target="_blank" class="hover:underline">PDF</a>{% endif %}
-                            </span>
+                            </span><br>
+                            <form method="POST" action="{% url 'admon_finanzas:enviar_complemento' p.id %}" class="inline"
+                                  data-confirm="Se enviará el complemento (XML{% if p.complemento_pdf %} y PDF{% endif %}) a {{ p.cliente.email|default:'—' }}. ¿Enviar?"
+                                  data-confirm-title="Enviar complemento de {{ p.folio }}" data-confirm-ok="Sí, enviar" data-confirm-variant="ok">
+                                {% csrf_token %}
+                                <button type="submit" class="text-[9px] font-black text-brand uppercase tracking-widest hover:underline mt-1"
+                                        {% if not p.cliente.email %}title="El cliente no tiene correo capturado"{% endif %}>
+                                    <i class="fa-solid fa-paper-plane mr-1"></i> Enviar al cliente
+                                </button>
+                            </form>
                             {% elif p.necesita_complemento %}
                             <span class="inline-flex items-center gap-1 text-[9px] font-black text-amber-600 mb-1"><i class="fa-solid fa-triangle-exclamation"></i> Sin complemento</span><br>
                             <button onclick='abrirComplemento({{ p.id }}, "{{ p.folio }}")' class="text-[9px] font-black text-brand uppercase tracking-widest hover:underline">
