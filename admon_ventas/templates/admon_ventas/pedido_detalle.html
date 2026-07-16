@@ -240,6 +240,10 @@
     {% endif %}
 
     <div class="flex justify-end gap-3">
+        <form method="POST" data-confirm="Se creará un pedido nuevo en borrador con el mismo cliente y las mismas partidas. No afecta este pedido." data-confirm-title="Duplicar pedido {{ pedido.folio }}" data-confirm-ok="Sí, duplicar" data-confirm-variant="ok">{% csrf_token %}
+            <input type="hidden" name="accion" value="duplicar">
+            <button class="bg-white border border-slate-200 text-slate-600 font-black py-4 px-8 rounded-2xl text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all"><i class="fa-solid fa-copy mr-2"></i> Duplicar</button>
+        </form>
         {% if pedido.estado == 'BORRADOR' %}
         <a href="{% url 'admon_ventas:editar_pedido' pedido.pk %}" class="bg-white border border-slate-200 text-slate-600 font-black py-4 px-8 rounded-2xl text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all"><i class="fa-solid fa-pen mr-2"></i> Editar</a>
         <form method="POST"><input type="hidden" name="accion" value="confirmar">{% csrf_token %}

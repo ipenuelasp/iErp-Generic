@@ -616,6 +616,39 @@ class PedidoDetalleView(LoginRequiredMixin, View):
             messages.success(request, f"Precio real restaurado. Subtotal {pedido.moneda.simbolo}{pedido.subtotal:,.2f}, total {pedido.moneda.simbolo}{pedido.total:,.2f}.")
             return redirect('admon_ventas:pedido_detalle', pk=pk)
 
+        if accion == 'duplicar':
+            # Clona el pedido en un nuevo BORRADOR (mismo cliente, moneda y partidas).
+            # Útil para servicios recurrentes (rentas mensuales, etc.). No arrastra
+            # entregas, prorrateos, comisiones ni facturas del original.
+            with transaction.atomic():
+                ultimo = Pedido.objects.filter(
+                    empresa=empresa, sucursal=sucursal).order_by('consecutivo').last()
+                consecutivo = (ultimo.consecutivo + 1) if ultimo else 1
+                anio = datetime.now().strftime('%y')
+                folio = f"{sucursal.codigo_sucursal or 'PED'}-V{anio}-{consecutivo:05d}"
+                nuevo = Pedido.objects.create(
+                    empresa=empresa, sucursal=sucursal,
+                    cliente=pedido.cliente, moneda=pedido.moneda,
+                    folio=folio, consecutivo=consecutivo,
+                    genera_cxc=pedido.genera_cxc, notas=pedido.notas,
+                    estado='BORRADOR', origen='MANUAL', creado_por=request.user,
+                )
+                clones = []
+                for d in pedido.detalles.all():
+                    clones.append(DetallePedido(
+                        pedido=nuevo, producto=d.producto, tipo_linea=d.tipo_linea,
+                        cantidad=d.cantidad, cantidad_entregada=0,
+                        precio_unitario=d.precio_unitario, precio_original=None,
+                        margen=d.margen, impuesto=d.impuesto,
+                        iva_porcentaje=d.iva_porcentaje, es_retencion=d.es_retencion,
+                        es_extra=d.es_extra))
+                DetallePedido.objects.bulk_create(clones)
+                services.recalcular_pedido(nuevo)
+            messages.success(
+                request,
+                f"Pedido duplicado en {nuevo.folio} (borrador). Ajústalo y confírmalo cuando quieras.")
+            return redirect('admon_ventas:pedido_detalle', pk=nuevo.pk)
+
         if accion == 'add_extra':
             if bloqueado:
                 messages.error(request, "El pedido está cerrado: no se pueden agregar extras.")
