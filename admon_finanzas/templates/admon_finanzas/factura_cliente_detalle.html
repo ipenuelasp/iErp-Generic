@@ -137,11 +137,26 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-1">CFDI de anticipo — XML (autocompleta)</label>
-                    <input type="file" name="anticipo_xml" accept=".xml" onchange="leerAnticipo(this)" class="w-full mt-1 text-xs bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold">
+                    <div class="relative h-[60px] mt-1">
+                        <input type="file" name="anticipo_xml" id="antXml" accept=".xml" onchange="leerAnticipo(this)"
+                               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                        <div class="absolute inset-0 flex items-center bg-white border-2 border-dashed border-slate-200 rounded-2xl px-4 hover:border-indigo-400 transition-all z-10">
+                            <i class="fa-solid fa-file-code text-slate-400 mr-3"></i>
+                            <span id="antXmlName" class="text-sm text-slate-500 font-medium truncate">Subir XML (lee monto, fecha y UUID)</span>
+                        </div>
+                    </div>
                 </div>
                 <div>
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-1">CFDI de anticipo — PDF</label>
-                    <input type="file" name="anticipo_pdf" accept=".pdf" class="w-full mt-1 text-xs bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold">
+                    <div class="relative h-[60px] mt-1">
+                        <input type="file" name="anticipo_pdf" id="antPdf" accept=".pdf"
+                               onchange="document.getElementById('antPdfName').textContent = this.files[0] ? this.files[0].name : 'Subir PDF del anticipo';"
+                               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                        <div class="absolute inset-0 flex items-center bg-white border-2 border-dashed border-slate-200 rounded-2xl px-4 hover:border-indigo-400 transition-all z-10">
+                            <i class="fa-solid fa-file-pdf text-slate-400 mr-3"></i>
+                            <span id="antPdfName" class="text-sm text-slate-500 font-medium truncate">Subir PDF del anticipo</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -164,6 +179,7 @@
         <script>
         function leerAnticipo(input){
             const f = input.files[0]; if(!f) return;
+            document.getElementById('antXmlName').textContent = f.name;
             const r = new FileReader();
             r.onload = function(e){
                 try{
