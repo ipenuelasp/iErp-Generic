@@ -32,11 +32,14 @@
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-sm font-black text-slate-800 uppercase italic"><i class="fa-solid fa-box mr-2 text-brand"></i> Material surtido</h3>
             {% if puede_surtir %}
-            <button type="button" onclick="document.getElementById('modalSurtir').classList.remove('hidden')" class="bg-brand text-white px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest"><i class="fa-solid fa-truck-medical mr-1"></i> Surtir caja</button>
+            <div class="flex gap-2">
+                <button type="button" onclick="document.getElementById('modalSuelto').classList.remove('hidden')" class="bg-white border border-indigo-200 text-indigo-600 px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Producto suelto</button>
+                <button type="button" onclick="document.getElementById('modalSurtir').classList.remove('hidden')" class="bg-brand text-white px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest"><i class="fa-solid fa-truck-medical mr-1"></i> Surtir caja</button>
+            </div>
             {% endif %}
         </div>
         {% if puede_surtir %}
-        <p class="text-[10px] font-bold text-slate-400 -mt-2 mb-3">Agrega cajas al <b>borrador</b>, revisa su contenido y luego <b>confirma para surtir</b>. Si una está incompleta, <b>reabastécela</b> en <i>Kits / Cajas</i>.</p>
+        <p class="text-[10px] font-bold text-slate-400 -mt-2 mb-3">Agrega cajas armadas o <b>productos sueltos</b> al <b>borrador</b>, revisa el contenido y luego <b>confirma para surtir</b>. Si una caja está incompleta, <b>reabastécela</b> en <i>Kits / Cajas</i>.</p>
         {% endif %}
 
         {# ===== BORRADOR (por surtir) ===== #}
@@ -88,6 +91,31 @@
                 {% endfor %}
             </div>
             {% endfor %}
+
+            {% if sueltos_borrador %}
+            <div class="bg-white rounded-2xl border border-indigo-100 p-4 mb-2">
+                <p class="text-[11px] font-black text-slate-700 mb-2"><i class="fa-solid fa-cubes-stacked text-indigo-400 mr-1"></i>Material suelto <span class="font-bold text-slate-400">· productos fuera de caja</span></p>
+                <table class="w-full text-left">
+                    <thead><tr class="text-[8px] text-slate-400 uppercase font-black"><th class="py-1">Producto</th><th class="py-1 text-right">Cant.</th><th class="py-1 w-8"></th></tr></thead>
+                    <tbody>
+                        {% for x in sueltos_borrador %}
+                        <tr class="border-t border-slate-50">
+                            <td class="py-1 text-[11px] pr-2 break-words"><span class="font-mono text-slate-300">[{{ x.producto.sku }}]</span> <span class="font-bold text-slate-600">{{ x.producto.nombre }}</span></td>
+                            <td class="py-1 text-right text-[11px] font-black text-slate-700 whitespace-nowrap">{{ x.cantidad|floatformat:"-2" }}</td>
+                            <td class="py-1 text-right">
+                                <form method="POST" data-confirm="¿Quitar {{ x.producto.sku }} del borrador?" data-confirm-title="Quitar producto suelto" data-confirm-ok="Sí, quitar">{% csrf_token %}
+                                    <input type="hidden" name="accion" value="quitar_suelto">
+                                    <input type="hidden" name="suelto_id" value="{{ x.id }}">
+                                    <button type="submit" class="text-[9px] font-black uppercase text-rose-400 hover:text-rose-600"><i class="fa-solid fa-xmark"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <p class="text-[9px] font-bold text-slate-400 mt-2 italic">Al confirmar, se descuentan del stock general del almacén (lote/serie por vencimiento más próximo).</p>
+            </div>
+            {% endif %}
         </div>
         {% endif %}
 
@@ -113,7 +141,25 @@
                 {% endfor %}
             </div>
             {% empty %}
-            {% if not hay_borradores %}<p class="text-slate-400 italic text-sm">Aún no se surte material. Usa <b>Surtir caja</b> para agregar al borrador.</p>{% endif %}
+            {% if not hay_borradores and not sueltos_enviados %}<p class="text-slate-400 italic text-sm">Aún no se surte material. Usa <b>Surtir caja</b> o <b>Producto suelto</b> para agregar al borrador.</p>{% endif %}
+            {% endfor %}
+
+            {% for s in sueltos_enviados %}
+            <div class="bg-indigo-50/40 border border-indigo-100 rounded-2xl px-5 py-3">
+                <div class="flex flex-wrap justify-between items-center gap-2">
+                    <span class="flex items-center gap-2">
+                        <span class="text-xs font-black text-slate-600">{{ s.folio }}</span>
+                        <span class="text-[10px] font-bold text-indigo-500"><i class="fa-solid fa-cubes-stacked mr-1"></i>Material suelto</span>
+                        <span class="inline-flex px-2 py-1 rounded-lg text-[9px] font-black uppercase bg-slate-200 text-slate-600">{{ s.get_estado_display }}</span>
+                    </span>
+                    {% if s.estado == 'ENVIADA' or s.estado == 'EN_USO' %}
+                    <a href="{% url 'admon_cirugias:regreso_salida' solicitud.pk s.pk %}" class="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest"><i class="fa-solid fa-rotate-left mr-1"></i> Registrar regreso</a>
+                    {% elif s.estado == 'RETORNADA' %}
+                    <span class="text-[10px] font-black uppercase text-emerald-600"><i class="fa-solid fa-check mr-1"></i> Regreso listo</span>
+                    {% endif %}
+                </div>
+                {% include 'admon_cirugias/_items_tabla.html' with items=s.items_enviados %}
+            </div>
             {% endfor %}
         </div>
     </div>
@@ -203,6 +249,40 @@
     </div>
 </div>
 
+<!-- Modal agregar producto suelto -->
+<div id="modalSuelto" class="hidden fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg">
+        <div class="flex items-center justify-between px-8 pt-8 pb-2">
+            <div>
+                <h3 class="text-lg font-black text-slate-800 italic uppercase">Agregar producto suelto</h3>
+                <p class="text-[11px] font-bold text-slate-400 mt-1">Producto individual, fuera de caja. Se descuenta del stock general al confirmar el surtido.</p>
+            </div>
+            <button type="button" onclick="document.getElementById('modalSuelto').classList.add('hidden')" class="text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <form method="POST" class="px-8 pb-8 pt-4 space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="agregar_suelto">
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Producto (con existencia)</label>
+                <select name="producto" required class="w-full mt-1">
+                    <option value="">Buscar por SKU o nombre…</option>
+                    {% for p in productos_suelto %}
+                    <option value="{{ p.id }}">[{{ p.sku }}] {{ p.nombre }} · stock {{ p.stock }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Cantidad</label>
+                <input type="number" name="cantidad" step="0.01" min="0" placeholder="0" required class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('modalSuelto').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cancelar</button>
+                <button type="submit" class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Agregar al borrador</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% if hay_borradores %}
 <!-- Modal confirmar surtido -->
 <div id="modalConfirmSurtir" class="hidden fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
@@ -241,12 +321,19 @@
                 {% endfor %}
             </div>
             {% endfor %}
+            {% if sueltos_borrador %}
+            <div class="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
+                <p class="text-[11px] font-black text-slate-700 mb-2"><i class="fa-solid fa-cubes-stacked text-indigo-400 mr-1"></i>Material suelto (stock general)</p>
+                {% for x in sueltos_borrador %}<div class="flex justify-between items-start gap-2 text-[11px] text-slate-600"><span class="min-w-0 break-words"><span class="font-mono text-slate-300">[{{ x.producto.sku }}]</span> {{ x.producto.nombre }}</span><span class="font-black whitespace-nowrap flex-shrink-0">{{ x.cantidad|floatformat:"-2" }}</span></div>{% endfor %}
+            </div>
+            {% endif %}
             <div class="rounded-2xl bg-blue-50 border border-blue-100 p-4">
                 <p class="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1"><i class="fa-solid fa-circle-info mr-1"></i>Qué pasará al surtir</p>
                 <ul class="text-[11px] font-bold text-blue-700 space-y-1 list-disc ml-4">
                     <li>Se <b>descuenta el stock</b> de las cajas de tu inventario.</li>
                     <li>Las cajas dejan de estar <b>Disponibles</b> en Kits / Cajas y pasan a <b>En hospital (en campo)</b>.</li>
-                    <li>Quedarán ligadas a esta cirugía hasta que registres su <b>regreso</b>.</li>
+                    {% if sueltos_borrador %}<li>El <b>material suelto</b> se descuenta del <b>stock general del almacén</b> (lote/serie por vencimiento).</li>{% endif %}
+                    <li>Quedará ligado a esta cirugía hasta que registres su <b>regreso</b>.</li>
                 </ul>
             </div>
         </div>

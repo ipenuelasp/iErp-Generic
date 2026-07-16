@@ -633,7 +633,10 @@ class SalidaKit(models.Model):
 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     folio = models.CharField(max_length=20, blank=True)
-    instancia_kit = models.ForeignKey(InstanciaKit, related_name='salidas', on_delete=models.PROTECT)
+    # Null = salida de "material suelto" de cirugía (productos individuales que no
+    # viven en ninguna caja; se toman del stock general de la sucursal).
+    instancia_kit = models.ForeignKey(InstanciaKit, related_name='salidas',
+                                      on_delete=models.PROTECT, null=True, blank=True)
     sucursal_origen = models.ForeignKey(Sucursal, on_delete=models.PROTECT)
 
     # Propiedad de la caja: una salida lleva stock todo propio o todo a consignación, sin mezclar.
@@ -674,8 +677,14 @@ class SalidaKit(models.Model):
             self.folio = f"SAL-{ultimo:05d}"
         super().save(*args, **kwargs)
 
+    @property
+    def es_suelto(self):
+        """Salida de material suelto (sin caja): productos individuales de cirugía."""
+        return self.instancia_kit_id is None
+
     def __str__(self):
-        return f"{self.folio}: {self.instancia_kit.codigo_caja} → {self.hospital_cliente} [{self.estado}]"
+        origen = self.instancia_kit.codigo_caja if self.instancia_kit_id else "Material suelto"
+        return f"{self.folio}: {origen} → {self.hospital_cliente} [{self.estado}]"
 
 
 class ContenidoSalidaKit(models.Model):

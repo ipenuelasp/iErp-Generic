@@ -6,13 +6,14 @@ from django.views import View
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
+from django.db.models import Sum
 
 from admon_empresas.models import Moneda
-from admon_inventarios.models import InstanciaKit, SalidaKit, Producto
+from admon_inventarios.models import InstanciaKit, SalidaKit, Producto, Existencia
 from admon_inventarios.services import (registrar_retorno_kit, StockInsuficiente,
-                                        enviar_caja_a_cirugia)
+                                        enviar_caja_a_cirugia, surtir_material_suelto)
 from admon_ventas.models import Cliente
-from .models import Doctor, Hospital, SolicitudCirugia
+from .models import Doctor, Hospital, SolicitudCirugia, SueltoCirugia
 from . import import_catalogos as IC
 from . import services
 
@@ -363,7 +364,7 @@ def _arbol_salidas(salidas):
         s.hijas_salidas = []
     raiz = []
     for s in salidas:
-        pid = s.instancia_kit.caja_contenedora_id
+        pid = s.instancia_kit.caja_contenedora_id if s.instancia_kit_id else None
         padre = por_box.get(pid) if pid else None
         if padre and padre is not s:
             padre.hijas_salidas.append(s)
@@ -416,6 +417,10 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
         borradores = [s for s in salidas if s.estado == 'PREPARANDO']
         enviadas = [s for s in salidas if s.estado not in ('PREPARANDO', 'CANCELADA')]
 
+        # El material suelto (salida sin caja) se maneja aparte del árbol de cajas.
+        enviadas_cajas = [s for s in enviadas if s.instancia_kit_id]
+        sueltos_enviados = [s for s in enviadas if not s.instancia_kit_id]
+
         # Borrador: adjunta el resumen del contenido actual + completitud.
         for s in borradores:
             s.resumen = _resumen_caja(s.instancia_kit)
@@ -424,7 +429,7 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
             s.items_enviados = _items_enviados(s)
 
         borradores_arbol = _arbol_salidas(borradores)
-        enviadas_arbol = _arbol_salidas(enviadas)
+        enviadas_arbol = _arbol_salidas(enviadas_cajas)
 
         # Cajas disponibles para surtir: de nivel superior (no anidadas), que no
         # estén ya en esta cirugía. Incluye cajas con plantilla y armadas libres.
@@ -437,7 +442,9 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
         # Ya no se puede surtir cuando todo lo enviado ya regresó y no quedan
         # borradores pendientes (la cirugía está lista para finalizar).
         puede_surtir = sol.estado in ('SOLICITADA', 'SURTIDA')
-        if enviadas and all(s.estado == 'RETORNADA' for s in enviadas) and not borradores:
+        hay_sueltos_plan = sol.sueltos.exists()
+        if (enviadas and all(s.estado == 'RETORNADA' for s in enviadas)
+                and not borradores and not hay_sueltos_plan):
             puede_surtir = False
         cajas_surtir = []
         if puede_surtir:
@@ -446,6 +453,27 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
                 info['tornilleras'] = [
                     _resumen_caja(h) for h in c.cajas_hijas.filter(estado='DISPONIBLE')]
                 cajas_surtir.append(info)
+
+        # ----- Material suelto (productos individuales, fuera de caja) -----
+        sueltos_borrador = list(sol.sueltos.select_related('producto'))
+        for s in sueltos_enviados:
+            s.items_enviados = _items_enviados(s)
+        # Productos que hoy tienen existencia en el stock general de la sucursal
+        # (excluye el almacén de CAJAS): son los que se pueden surtir sueltos.
+        productos_suelto = []
+        if puede_surtir:
+            disp = (Existencia.objects
+                    .filter(sucursal=sucursal, cantidad__gt=0, producto__empresa=empresa)
+                    .exclude(ubicacion__almacen__codigo='CAJAS')
+                    .values('producto_id')
+                    .annotate(total=Sum('cantidad')))
+            tot_por_prod = {d['producto_id']: d['total'] for d in disp}
+            if tot_por_prod:
+                prods = Producto.objects.filter(id__in=tot_por_prod.keys()).order_by('sku')
+                productos_suelto = [
+                    {'id': p.id, 'sku': p.sku, 'nombre': p.nombre,
+                     'stock': _fmt_cant(tot_por_prod.get(p.id, 0))}
+                    for p in prods]
 
         # La solicitud se puede editar mientras no esté finalizada/liquidada.
         puede_editar = sol.estado in ('SOLICITADA', 'SURTIDA', 'RETORNADA')
@@ -462,7 +490,10 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
             'salidas': salidas,
             'borradores_arbol': borradores_arbol,
             'enviadas_arbol': enviadas_arbol,
-            'hay_borradores': bool(borradores),
+            'sueltos_borrador': sueltos_borrador,
+            'sueltos_enviados': sueltos_enviados,
+            'productos_suelto': productos_suelto,
+            'hay_borradores': bool(borradores) or bool(sueltos_borrador),
             'hay_retornadas': hay_retornadas,
             'cajas_surtir': cajas_surtir,
             'puede_surtir': puede_surtir,
@@ -512,6 +543,35 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
                 + " agregada al borrador. Revísala y confirma para surtir.")
             return redirect('admon_cirugias:solicitud_detalle', pk=pk)
 
+        elif accion == 'agregar_suelto':
+            # Agrega un producto individual (fuera de caja) al borrador de surtido.
+            if sol.estado not in ('SOLICITADA', 'SURTIDA'):
+                messages.error(request, "Ya no se puede agregar material a esta cirugía.")
+                return redirect('admon_cirugias:solicitud_detalle', pk=pk)
+            prod = Producto.objects.filter(id=request.POST.get('producto'), empresa=empresa).first()
+            try:
+                cant = decimal.Decimal(request.POST.get('cantidad') or '0')
+            except decimal.InvalidOperation:
+                cant = decimal.Decimal('0')
+            if not prod or cant <= 0:
+                messages.error(request, "Selecciona un producto y una cantidad mayor a 0.")
+                return redirect('admon_cirugias:solicitud_detalle', pk=pk)
+            # Si ya está en el borrador, suma la cantidad en vez de duplicar la línea.
+            existente = sol.sueltos.filter(producto=prod).first()
+            if existente:
+                existente.cantidad += cant
+                existente.save(update_fields=['cantidad'])
+            else:
+                SueltoCirugia.objects.create(
+                    solicitud=sol, producto=prod, cantidad=cant, creado_por=request.user)
+            messages.success(request, f"Agregado al borrador: {prod.sku} x{_fmt_cant(cant)}.")
+            return redirect('admon_cirugias:solicitud_detalle', pk=pk)
+
+        elif accion == 'quitar_suelto':
+            sol.sueltos.filter(id=request.POST.get('suelto_id')).delete()
+            messages.info(request, "Producto suelto quitado del borrador.")
+            return redirect('admon_cirugias:solicitud_detalle', pk=pk)
+
         elif accion == 'editar':
             if sol.estado not in ('SOLICITADA', 'SURTIDA'):
                 messages.error(request, "Ya no se puede editar (la cirugía está finalizada o liquidada).")
@@ -551,8 +611,9 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
         elif accion == 'enviar_borrador':
             borradores = list(sol.salidas.filter(estado='PREPARANDO')
                               .select_related('instancia_kit'))
-            if not borradores:
-                messages.error(request, "No hay cajas en borrador para surtir.")
+            sueltos_plan = list(sol.sueltos.select_related('producto'))
+            if not borradores and not sueltos_plan:
+                messages.error(request, "No hay material en borrador para surtir.")
                 return redirect('admon_cirugias:solicitud_detalle', pk=pk)
             enviadas, fallidas = [], []
             for s in borradores:
@@ -570,6 +631,29 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
                     enviadas.append(caja.codigo_caja)
                 except (ValueError, StockInsuficiente) as e:
                     fallidas.append(f"{caja.codigo_caja} ({e})")
+
+            # Material suelto: una sola salida sin caja con todos los productos
+            # individuales, descontados del stock general de la sucursal.
+            if sueltos_plan:
+                salida_suelto = SalidaKit.objects.create(
+                    empresa=empresa, instancia_kit=None, sucursal_origen=sucursal,
+                    hospital_cliente=sol.hospital.nombre if sol.hospital else '—',
+                    doctor_responsable=sol.doctor.nombre if sol.doctor else None,
+                    numero_cirugia=sol.folio, paciente_referencia=sol.paciente or None,
+                    cliente=sol.cliente, creado_por=request.user,
+                    notas=f"Material suelto · Cirugía {sol.folio}")
+                try:
+                    surtir_material_suelto(
+                        salida=salida_suelto,
+                        planes=[(s.producto, s.cantidad) for s in sueltos_plan],
+                        usuario=request.user)
+                    sol.salidas.add(salida_suelto)
+                    sol.sueltos.all().delete()
+                    enviadas.append(f"Material suelto ({len(sueltos_plan)} producto/s)")
+                except (ValueError, StockInsuficiente) as e:
+                    salida_suelto.delete()
+                    fallidas.append(f"Material suelto ({e})")
+
             if enviadas and sol.estado == 'SOLICITADA':
                 sol.estado = 'SURTIDA'
                 sol.save(update_fields=['estado'])

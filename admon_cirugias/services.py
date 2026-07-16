@@ -29,10 +29,12 @@ def finalizar_cirugia(*, solicitud, usuario):
     salidas = list(solicitud.salidas.filter(estado='RETORNADA'))
     if not salidas:
         raise ErrorLiquidacion("No hay material retornado. Registra el regreso de cada caja primero.")
-    # Libera las cajas (su material ya volvió en el regreso)
+    # Libera las cajas (su material ya volvió en el regreso). El material suelto
+    # no tiene caja que liberar.
     for salida in salidas:
-        salida.instancia_kit.estado = 'DISPONIBLE'
-        salida.instancia_kit.save(update_fields=['estado'])
+        if salida.instancia_kit_id:
+            salida.instancia_kit.estado = 'DISPONIBLE'
+            salida.instancia_kit.save(update_fields=['estado'])
     solicitud.estado = 'POR_FACTURAR'
     solicitud.save(update_fields=['estado'])
     return solicitud

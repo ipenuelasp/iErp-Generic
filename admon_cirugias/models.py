@@ -98,3 +98,25 @@ class SolicitudCirugia(models.Model):
 
     def __str__(self):
         return f"{self.folio} — {self.paciente or 's/paciente'}"
+
+
+class SueltoCirugia(models.Model):
+    """Producto individual (fuera de caja) agregado al borrador de una cirugía.
+    Es solo la línea planeada: al surtir se descuenta del stock general de la
+    sucursal y se convierte en el contenido de una salida de 'material suelto'.
+    Se elimina en cuanto se surte."""
+    solicitud = models.ForeignKey(SolicitudCirugia, related_name='sueltos',
+                                  on_delete=models.CASCADE)
+    producto = models.ForeignKey('admon_inventarios.Producto', on_delete=models.PROTECT)
+    cantidad = models.DecimalField(max_digits=12, decimal_places=4)
+    creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+                                   null=True, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+        verbose_name = "Material suelto de cirugía"
+        verbose_name_plural = "Material suelto de cirugía"
+
+    def __str__(self):
+        return f"{self.solicitud.folio}: {self.producto.sku} x{self.cantidad}"

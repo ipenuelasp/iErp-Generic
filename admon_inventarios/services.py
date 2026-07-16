@@ -259,8 +259,10 @@ def registrar_retorno_kit(*, salida, retornos, usuario, cobrados=None):
     salida.fecha_retorno_real = timezone.now()
     salida.retorno_procesado_por = usuario
     salida.save()
-    salida.instancia_kit.estado = 'RETORNADA'
-    salida.instancia_kit.save()
+    # El material suelto no tiene caja física que liberar.
+    if salida.instancia_kit_id:
+        salida.instancia_kit.estado = 'RETORNADA'
+        salida.instancia_kit.save()
 
 
 def ubicacion_de_caja(caja):
@@ -411,6 +413,59 @@ def enviar_caja_a_cirugia(*, salida, usuario, permitir_vacia=False):
     salida.save()
     caja.estado = 'EN_CAMPO'
     caja.save(update_fields=['estado'])
+
+
+@transaction.atomic
+def surtir_material_suelto(*, salida, planes, usuario):
+    """Surte 'material suelto' (productos individuales, fuera de caja) tomándolo del
+    stock general de la sucursal (excluye el almacén de CAJAS). Asigna lote/serie
+    por FIFO (vencimiento más próximo primero) y crea el contenido del viaje.
+
+    planes: iterable de (producto, cantidad). Lanza StockInsuficiente si falta
+    existencia para alguna línea (toda la operación se revierte).
+    """
+    from django.utils import timezone
+    from .models import ContenidoSalidaKit, Existencia
+    empresa = salida.empresa
+    sucursal = salida.sucursal_origen
+
+    hubo = False
+    for prod, cant in planes:
+        restante = decimal.Decimal(cant or 0)
+        if restante <= 0:
+            continue
+        existencias = list(
+            Existencia.objects.filter(producto=prod, sucursal=sucursal, cantidad__gt=0)
+            .exclude(ubicacion__almacen__codigo='CAJAS')
+            .select_related('ubicacion', 'lote', 'serie')
+            .order_by('lote__fecha_vencimiento', 'id'))
+        disponible = sum((e.cantidad for e in existencias), decimal.Decimal('0'))
+        if disponible < restante:
+            raise StockInsuficiente(
+                f"{prod.sku} — {prod.nombre}: hay {disponible} y se piden {restante}.")
+        for ex in existencias:
+            if restante <= 0:
+                break
+            tomar = min(restante, ex.cantidad)
+            registrar_movimiento(
+                empresa=empresa, sucursal=sucursal, producto=prod, ubicacion=ex.ubicacion,
+                tipo='KIT_SALIDA', origen='KIT', cantidad=tomar, usuario=usuario,
+                lote=ex.lote, serie=ex.serie, referencia=salida.folio,
+                propiedad=ex.propiedad, consignante=ex.consignante)
+            if ex.serie:
+                ex.serie.estado = 'EN_KIT'
+                ex.serie.save(update_fields=['estado'])
+            ContenidoSalidaKit.objects.create(
+                salida=salida, producto=prod, lote=ex.lote, serie=ex.serie,
+                ubicacion_origen=ex.ubicacion, es_retornable=False,
+                propiedad=ex.propiedad, consignante=ex.consignante, cantidad_enviada=tomar)
+            restante -= tomar
+            hubo = True
+
+    salida.estado = 'ENVIADA'
+    salida.fecha_salida = timezone.now()
+    salida.save()
+    return hubo
 
 
 def stock_disponible(producto, ubicacion=None, sucursal=None, lote=None, serie=None):

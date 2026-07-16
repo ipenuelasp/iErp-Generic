@@ -5,7 +5,7 @@
     <div class="mb-10 flex justify-between items-end">
         <div>
             <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Regreso de material</h1>
-            <p class="text-slate-500 mt-2 font-medium">Cirugía {{ solicitud.folio }} · Caja {{ salida.instancia_kit.codigo_caja }} · {{ salida.folio }}</p>
+            <p class="text-slate-500 mt-2 font-medium">Cirugía {{ solicitud.folio }} · {% if salida.instancia_kit %}Caja {{ salida.instancia_kit.codigo_caja }}{% else %}Material suelto{% endif %} · {{ salida.folio }}</p>
         </div>
         <a href="{% url 'admon_cirugias:solicitud_detalle' solicitud.pk %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-2"></i> Volver</a>
     </div>
