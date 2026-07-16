@@ -421,7 +421,9 @@ function filtrarCajas(q) {
 
 // ── Material suelto: al elegir producto, trae sus existencias y arma el
 //    selector adecuado (serie exacta / lote indicado / cantidad simple). ──
-(function () {
+// Se difiere a DOMContentLoaded porque este bloque se renderiza antes de que
+// jQuery/select2 se carguen al final del <body>.
+document.addEventListener('DOMContentLoaded', function () {
     const $ = window.jQuery;
     if (!$) return;
     const cont = document.getElementById('sueltoExistencias');
@@ -486,6 +488,6 @@ function filtrarCajas(q) {
             .then(render)
             .catch(function () { cont.innerHTML = '<p class="text-[11px] text-rose-500 font-bold">No se pudieron cargar las existencias.</p>'; });
     });
-})();
+});
 </script>
 {% endblock %}
