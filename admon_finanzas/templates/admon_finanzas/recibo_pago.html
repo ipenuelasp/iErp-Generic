@@ -38,19 +38,34 @@
     </table>
     <div class="bar">&nbsp;</div>
 
-    <table style="margin-bottom:16px;"><tr><td class="panel">
-        <span class="label">{% if es_ingreso %}RECIBIMOS DE{% else %}PAGADO A{% endif %}</span><br>
-        <span class="val" style="font-weight:bold; font-size:11px;">{% if es_ingreso %}{{ pago.cliente|default:"—" }}{% else %}{{ pago.proveedor|default:"—" }}{% endif %}</span>
-    </td></tr></table>
+    <table style="margin-bottom:16px;"><tr>
+        <td class="panel" width="60%">
+            <span class="label">{% if es_ingreso %}RECIBIMOS DE{% else %}PAGADO A{% endif %}</span><br>
+            <span class="val" style="font-weight:bold; font-size:11px;">{% if es_ingreso %}{{ pago.cliente|default:"—" }}{% else %}{{ pago.proveedor|default:"—" }}{% endif %}</span>
+            {% if es_ingreso and pago.cliente.rfc %}<br><span class="muted">RFC: {{ pago.cliente.rfc }}</span>{% endif %}
+        </td>
+        <td width="4%"></td>
+        <td class="panel" width="36%">
+            <span class="label">DATOS DEL {% if es_ingreso %}COBRO{% else %}PAGO{% endif %}</span><br>
+            <span class="muted">Método: <b style="color:#334155;">{{ pago.metodo.nombre|default:"—" }}</b></span>
+            {% if pago.cuenta_banco %}<br><span class="muted">Cuenta/banco: {{ pago.cuenta_banco }}</span>{% endif %}
+            {% if pago.referencia %}<br><span class="muted">Referencia: {{ pago.referencia }}</span>{% endif %}
+        </td>
+    </tr></table>
 
     <table class="items">
         <thead><tr>
-            <th>Documento aplicado</th><th class="right" width="20%">Tipo de cambio</th><th class="right" width="22%">Aplicado</th>
+            <th>Documento aplicado</th><th width="18%">Factura (CFDI)</th>
+            <th class="right" width="14%">T.C.</th><th class="right" width="20%">Aplicado</th>
         </tr></thead>
         <tbody>
             {% for ap in aplicaciones %}
             <tr class="{% cycle '' 'alt' %}">
-                <td>{% if ap.factura_cliente %}{{ ap.factura_cliente.folio }}{% elif ap.factura %}{{ ap.factura.folio }}{% else %}—{% endif %}</td>
+                <td>
+                    <b>{% if ap.factura_cliente %}{{ ap.factura_cliente.folio }}{% elif ap.factura %}{{ ap.factura.folio }}{% else %}—{% endif %}</b>
+                    {% if ap.pedido %}<br><span class="muted">Pedido {{ ap.pedido.folio }}{% if ap.concepto %} · {{ ap.concepto|truncatechars:60 }}{% endif %}</span>{% endif %}
+                </td>
+                <td class="muted">{{ ap.cfdi_ref|default:"—" }}</td>
                 <td class="right">{{ ap.tipo_cambio|floatformat:"-4" }}</td>
                 <td class="right">{{ pago.moneda.simbolo }}{{ ap.monto_aplicado|floatformat:2|intcomma }}</td>
             </tr>

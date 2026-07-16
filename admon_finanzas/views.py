@@ -809,10 +809,21 @@ def _render_pago_pdf(pago, empresa):
     import io
     from django.template.loader import get_template
     from xhtml2pdf import pisa
+    aplicaciones = list(pago.aplicaciones.select_related(
+        'factura', 'factura_cliente__pedido', 'cfdi').all())
+    for ap in aplicaciones:
+        ped = ap.factura_cliente.pedido if ap.factura_cliente_id and ap.factura_cliente.pedido_id else None
+        ap.pedido = ped
+        ap.concepto = ''
+        if ped:
+            dets = list(ped.detalles.select_related('producto').all())
+            nombres = [d.producto.nombre for d in dets[:3]]
+            ap.concepto = ', '.join(nombres) + (f" y {len(dets) - 3} más" if len(dets) > 3 else '')
+        ap.cfdi_ref = (ap.cfdi.serie_folio or ap.cfdi.uuid) if ap.cfdi_id else ''
     html = get_template('admon_finanzas/recibo_pago.html').render({
         'pago': pago,
         'empresa': empresa,
-        'aplicaciones': pago.aplicaciones.select_related('factura', 'factura_cliente'),
+        'aplicaciones': aplicaciones,
         'es_ingreso': pago.tipo == Pago.TIPO_INGRESO,
     })
     result = io.BytesIO()
