@@ -105,7 +105,10 @@
                                 {% if x.serie %}<br><span class="text-[9px] font-black text-indigo-500 uppercase"><i class="fa-solid fa-barcode mr-1"></i>Serie {{ x.serie.serie }}{% if x.ubicacion %} · {{ x.ubicacion }}{% endif %}</span>
                                 {% elif x.lote %}<br><span class="text-[9px] font-black text-amber-600 uppercase"><i class="fa-solid fa-layer-group mr-1"></i>Sacar lote {{ x.lote.numero_lote }}{% if x.lote.fecha_caducidad %} · vence {{ x.lote.fecha_caducidad|date:"d/m/Y" }}{% endif %}{% if x.ubicacion %} · {{ x.ubicacion }}{% endif %}</span>{% endif %}
                             </td>
-                            <td class="py-1 text-right text-[11px] font-black text-slate-700 whitespace-nowrap align-top">{{ x.cantidad|floatformat:"-2" }}</td>
+                            <td class="py-1 text-right whitespace-nowrap align-top">
+                                <span class="text-[11px] font-black {% if x.falta %}text-rose-600{% else %}text-slate-700{% endif %}">{{ x.cantidad|floatformat:"-2" }}</span>
+                                {% if x.falta %}<br><span class="text-[9px] font-black text-rose-500 uppercase"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Faltan {{ x.falta }} · {{ x.disp }} disp</span>{% endif %}
+                            </td>
                             <td class="py-1 text-right">
                                 <form method="POST" data-confirm="¿Quitar {{ x.producto.sku }} del borrador?" data-confirm-title="Quitar producto suelto" data-confirm-ok="Sí, quitar">{% csrf_token %}
                                     <input type="hidden" name="accion" value="quitar_suelto">
@@ -327,7 +330,12 @@
             {% if sueltos_borrador %}
             <div class="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
                 <p class="text-[11px] font-black text-slate-700 mb-2"><i class="fa-solid fa-cubes-stacked text-indigo-400 mr-1"></i>Material suelto (stock general)</p>
-                {% for x in sueltos_borrador %}<div class="flex justify-between items-start gap-2 text-[11px] text-slate-600"><span class="min-w-0 break-words"><span class="font-mono text-slate-300">[{{ x.producto.sku }}]</span> {{ x.producto.nombre }}</span><span class="font-black whitespace-nowrap flex-shrink-0">{{ x.cantidad|floatformat:"-2" }}</span></div>{% endfor %}
+                {% for x in sueltos_borrador %}<div class="flex justify-between items-start gap-2 text-[11px] {% if x.falta %}text-rose-600{% else %}text-slate-600{% endif %}"><span class="min-w-0 break-words"><span class="font-mono text-slate-300">[{{ x.producto.sku }}]</span> {{ x.producto.nombre }}{% if x.falta %} <span class="text-[9px] font-black uppercase">· faltan {{ x.falta }} ({{ x.disp }} disp)</span>{% endif %}</span><span class="font-black whitespace-nowrap flex-shrink-0">{{ x.cantidad|floatformat:"-2" }}</span></div>{% endfor %}
+            </div>
+            {% endif %}
+            {% if hay_falta_suelto %}
+            <div class="rounded-2xl bg-rose-50 border border-rose-200 p-4">
+                <p class="text-[11px] font-black text-rose-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i>No hay existencia suficiente para algún producto suelto (marcado en rojo). Baja la cantidad o reabastece antes de surtir; si confirmas así, el surtido se rechazará.</p>
             </div>
             {% endif %}
             <div class="rounded-2xl bg-blue-50 border border-blue-100 p-4">

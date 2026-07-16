@@ -496,7 +496,26 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
                 cajas_surtir.append(info)
 
         # ----- Material suelto (productos individuales, fuera de caja) -----
-        sueltos_borrador = list(sol.sueltos.select_related('producto'))
+        sueltos_borrador = list(sol.sueltos.select_related('producto', 'serie', 'lote', 'ubicacion'))
+        # Existencia disponible de cada línea (según su serie/lote/ubicación elegida)
+        # para avisar en el borrador si se pide más de lo que hay.
+        hay_falta_suelto = False
+        for x in sueltos_borrador:
+            base = (Existencia.objects
+                    .filter(producto=x.producto, sucursal=sucursal, cantidad__gt=0)
+                    .exclude(ubicacion__almacen__codigo='CAJAS'))
+            if x.serie_id:
+                base = base.filter(serie_id=x.serie_id)
+            elif x.lote_id:
+                base = base.filter(lote_id=x.lote_id)
+                if x.ubicacion_id:
+                    base = base.filter(ubicacion_id=x.ubicacion_id)
+            disp = base.aggregate(t=Sum('cantidad'))['t'] or decimal.Decimal('0')
+            falta = x.cantidad - disp
+            x.disp = _fmt_cant(disp)
+            x.falta = _fmt_cant(falta) if falta > 0 else None
+            if falta > 0:
+                hay_falta_suelto = True
         for s in sueltos_enviados:
             s.items_enviados = _items_enviados(s)
         # Productos que hoy tienen existencia en el stock general de la sucursal
@@ -533,6 +552,7 @@ class SolicitudDetalleView(LoginRequiredMixin, View):
             'enviadas_arbol': enviadas_arbol,
             'sueltos_borrador': sueltos_borrador,
             'sueltos_enviados': sueltos_enviados,
+            'hay_falta_suelto': hay_falta_suelto,
             'productos_suelto': productos_suelto,
             'hay_borradores': bool(borradores) or bool(sueltos_borrador),
             'hay_retornadas': hay_retornadas,
