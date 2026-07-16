@@ -15,9 +15,53 @@
                 <i class="fa-solid fa-triangle-exclamation mr-2"></i> Avisar a contador
             </button>
             {% endif %}
+            <button type="button" onclick="document.getElementById('modalCompZip').classList.remove('hidden')" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-1 transition-all">
+                <i class="fa-solid fa-file-zipper mr-2 text-brand"></i> Complementos (ZIP)
+            </button>
             <a href="{% url 'admon_finanzas:registrar_pago' %}" class="bg-brand text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand/20 transition-all hover:-translate-y-1">
                 <i class="fa-solid fa-plus mr-2"></i> Nuevo Pago
             </a>
+        </div>
+    </div>
+
+    <!-- MODAL SUBIR COMPLEMENTOS POR ZIP -->
+    <div id="modalCompZip" class="fixed inset-0 z-[100] hidden overflow-y-auto">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modalCompZip').classList.add('hidden')"></div>
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[88vh] flex flex-col">
+                <div class="px-8 pt-8 pb-3">
+                    <h3 class="text-lg font-black text-slate-800 italic uppercase">Complementos de pago por ZIP</h3>
+                    <p class="text-[11px] font-bold text-slate-400 mt-1">Sube un ZIP con los REP (XML/PDF). Cada uno se empareja con su cobro por el UUID de la factura. Revisa antes de adjuntar.</p>
+                </div>
+                <form id="formCompZip" method="POST" action="{% url 'admon_finanzas:complementos_zip' %}" enctype="multipart/form-data" class="px-8">
+                    {% csrf_token %}
+                    <div id="compZipUuids"></div>
+                    <div class="relative h-[60px] mb-2">
+                        <input type="file" name="archivo_zip" id="compZipFile" accept=".zip" onchange="document.getElementById('compZipName').textContent=this.files[0]?this.files[0].name:'Selecciona un .zip'" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                        <div class="absolute inset-0 flex items-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-4 hover:border-brand transition-all z-10">
+                            <i class="fa-solid fa-file-zipper text-slate-400 mr-3"></i>
+                            <span id="compZipName" class="text-sm text-slate-500 font-medium truncate">Selecciona un .zip</span>
+                        </div>
+                    </div>
+                    <p id="compZipError" class="hidden text-[11px] font-bold text-rose-500 mb-2"></p>
+                    <div class="text-right mb-3">
+                        <button type="button" onclick="previewCompZip()" class="bg-brand text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-magnifying-glass mr-1"></i> Vista previa</button>
+                    </div>
+                </form>
+                <div class="px-8 overflow-y-auto">
+                    <table class="w-full text-left">
+                        <thead><tr class="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                            <th class="py-2 w-8"></th><th class="py-2">UUID complemento</th><th class="py-2">Fecha</th>
+                            <th class="py-2 text-center">PDF</th><th class="py-2">Cobro</th>
+                        </tr></thead>
+                        <tbody id="compZipBody" class="divide-y divide-slate-50"></tbody>
+                    </table>
+                </div>
+                <div class="flex justify-end gap-3 px-8 py-6">
+                    <button type="button" onclick="document.getElementById('modalCompZip').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cerrar</button>
+                    <button type="button" id="compZipBtn" onclick="confirmCompZip()" class="bg-brand text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all" style="opacity:.5">Adjuntar seleccionados</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -156,11 +200,23 @@
                 {% csrf_token %}
                 <div class="space-y-1">
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-1">XML del complemento (autocompleta)</label>
-                    <input type="file" name="complemento_xml" accept=".xml" onchange="leerREP(this)">
+                    <div class="relative h-[60px]">
+                        <input type="file" name="complemento_xml" id="repXml" accept=".xml" onchange="leerREP(this)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                        <div class="absolute inset-0 flex items-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-4 hover:border-brand transition-all z-10">
+                            <i class="fa-solid fa-file-code text-slate-400 mr-3"></i>
+                            <span id="repXmlName" class="text-sm text-slate-500 font-medium truncate">Subir XML del complemento</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="space-y-1">
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-1">PDF del complemento</label>
-                    <input type="file" name="complemento_pdf" accept=".pdf">
+                    <div class="relative h-[60px]">
+                        <input type="file" name="complemento_pdf" id="repPdf" accept=".pdf" onchange="document.getElementById('repPdfName').textContent=this.files[0]?this.files[0].name:'Subir PDF del complemento'" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                        <div class="absolute inset-0 flex items-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl px-4 hover:border-brand transition-all z-10">
+                            <i class="fa-solid fa-file-pdf text-slate-400 mr-3"></i>
+                            <span id="repPdfName" class="text-sm text-slate-500 font-medium truncate">Subir PDF del complemento</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase ml-1">UUID</label><input type="text" name="uuid_complemento" id="rep_uuid"></div>
@@ -210,8 +266,60 @@ function abrirComplemento(pagoId, folio) {
     document.getElementById('formComplemento').action = `/finanzas/pagos/${pagoId}/complemento/`;
     document.getElementById('modalComplemento').classList.remove('hidden');
 }
+function _czEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _czErr(m){ const e=document.getElementById('compZipError'); e.textContent=m; e.classList.remove('hidden'); }
+function previewCompZip(){
+    document.getElementById('compZipError').classList.add('hidden');
+    const f=document.getElementById('compZipFile');
+    if(!f.files.length){ _czErr('Selecciona un archivo .zip primero.'); return; }
+    const fd=new FormData();
+    fd.append('accion','preview');
+    fd.append('archivo_zip', f.files[0]);
+    fd.append('csrfmiddlewaretoken', document.querySelector('#formCompZip [name=csrfmiddlewaretoken]').value);
+    fetch("{% url 'admon_finanzas:complementos_zip' %}", {method:'POST', body:fd})
+        .then(r=>r.json()).then(function(data){
+            if(data.error){ _czErr(data.error); return; }
+            _czRender(data.items);
+        }).catch(function(){ _czErr('No se pudo leer el ZIP.'); });
+}
+function _czRender(items){
+    const b=document.getElementById('compZipBody'); b.innerHTML='';
+    if(!items.length){ b.innerHTML='<tr><td colspan="5" class="py-6 text-center text-slate-400 italic text-sm">El ZIP no trae XML de complemento.</td></tr>'; }
+    items.forEach(function(it){
+        if(it.error){ b.innerHTML+='<tr><td></td><td colspan="4" class="py-2 text-[11px] text-rose-500 font-bold">No se pudo leer: '+_czEsc(it.nombre)+'</td></tr>'; return; }
+        const puede = it.pago && !it.ya_tiene;
+        const chk = puede ? '<input type="checkbox" class="cz-chk" value="'+_czEsc(it.uuid)+'" checked onchange="_czCount()">' : '';
+        let cobro;
+        if(!it.pago) cobro='<span class="text-[9px] font-black uppercase text-rose-500">Sin coincidencia</span>';
+        else if(it.ya_tiene) cobro='<span class="text-[9px] font-black uppercase text-slate-400">'+_czEsc(it.pago)+' · ya tiene</span>';
+        else cobro='<span class="text-[9px] font-black uppercase text-emerald-600">'+_czEsc(it.pago)+'</span>';
+        b.innerHTML+='<tr class="'+(puede?'':'opacity-60')+'">'+
+            '<td class="py-2">'+chk+'</td>'+
+            '<td class="py-2 text-[10px] font-mono text-slate-500">'+_czEsc(it.uuid)+'</td>'+
+            '<td class="py-2 text-[11px] font-bold text-slate-500 whitespace-nowrap">'+_czEsc(it.fecha)+'</td>'+
+            '<td class="py-2 text-center">'+(it.tiene_pdf?'<i class="fa-solid fa-check text-emerald-500"></i>':'<span class="text-[9px] font-bold text-amber-500">sin PDF</span>')+'</td>'+
+            '<td class="py-2">'+cobro+'</td></tr>';
+    });
+    _czCount();
+}
+function _czCount(){
+    const n=document.querySelectorAll('.cz-chk:checked').length;
+    const btn=document.getElementById('compZipBtn');
+    btn.textContent = n ? 'Adjuntar seleccionados ('+n+')' : 'Nada seleccionado';
+    btn.style.opacity = n ? '1' : '.5';
+}
+function confirmCompZip(){
+    const ids=Array.from(document.querySelectorAll('.cz-chk:checked')).map(c=>c.value);
+    if(!ids.length) return;
+    const cont=document.getElementById('compZipUuids'); cont.innerHTML='';
+    ids.forEach(function(u){ const i=document.createElement('input'); i.type='hidden'; i.name='rep_uuids'; i.value=u; cont.appendChild(i); });
+    document.getElementById('compZipBtn').disabled=true;
+    document.getElementById('formCompZip').submit();
+}
 function leerREP(input) {
     const file = input.files[0];
+    const nm = document.getElementById('repXmlName');
+    if (nm) nm.textContent = file ? file.name : 'Subir XML del complemento';
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {

@@ -526,6 +526,121 @@ class AdjuntarComplementoView(LoginRequiredMixin, View):
         return redirect('admon_finanzas:historial_pagos')
 
 
+def _leer_rep(xml_bytes):
+    """Parsea un CFDI de complemento de pago (REP). Devuelve dict con su UUID,
+    la fecha de pago y los UUIDs de las facturas relacionadas (DoctoRelacionado)."""
+    import xml.etree.ElementTree as ET
+    try:
+        root = ET.fromstring(xml_bytes)
+    except Exception:
+        return None
+    info = {'uuid': '', 'fecha': '', 'docs': []}
+    for el in root.iter():
+        tag = el.tag.split('}')[-1]
+        if tag == 'TimbreFiscalDigital':
+            info['uuid'] = (el.get('UUID') or '').upper()
+        elif tag == 'Pago':
+            info['fecha'] = (el.get('FechaPago') or '')[:10]
+        elif tag == 'DoctoRelacionado':
+            u = (el.get('IdDocumento') or '').upper()
+            if u:
+                info['docs'].append(u)
+    return info
+
+
+class ComplementosZipView(LoginRequiredMixin, View):
+    """Sube un ZIP con varios complementos de pago (REP) y los empareja con su
+    cobro por el UUID de la factura relacionada. Vista previa + confirmación."""
+    def post(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, sucursal = ctx
+        import io, zipfile
+        from django.core.files.base import ContentFile
+
+        z = request.FILES.get('archivo_zip')
+        accion = request.POST.get('accion')
+        if not z:
+            if accion == 'preview':
+                from django.http import JsonResponse
+                return JsonResponse({'error': 'Selecciona un archivo .zip.'}, status=400)
+            messages.error(request, "Selecciona un archivo .zip.")
+            return redirect('admon_finanzas:historial_pagos')
+        try:
+            zf = zipfile.ZipFile(z)
+        except zipfile.BadZipFile:
+            if accion == 'preview':
+                from django.http import JsonResponse
+                return JsonResponse({'error': 'El archivo no es un ZIP válido.'}, status=400)
+            messages.error(request, "El archivo no es un ZIP válido.")
+            return redirect('admon_finanzas:historial_pagos')
+
+        # PDFs por nombre base
+        pdfs = {}
+        for n in zf.namelist():
+            if n.lower().endswith('.pdf'):
+                pdfs[n.rsplit('/', 1)[-1].rsplit('.', 1)[0].upper()] = n
+
+        # Empareja cada REP con su cobro por el UUID de la factura relacionada
+        items = []
+        for n in zf.namelist():
+            if not n.lower().endswith('.xml'):
+                continue
+            nombre = n.rsplit('/', 1)[-1]
+            info = _leer_rep(zf.read(n))
+            if not info or not info['uuid']:
+                items.append({'error': True, 'nombre': nombre})
+                continue
+            pago = Pago.objects.filter(
+                empresa=empresa, tipo='INGRESO',
+                aplicaciones__cfdi__uuid__in=info['docs']).distinct().first() if info['docs'] else None
+            base = nombre.rsplit('.', 1)[0].upper()
+            pdf_name = pdfs.get(base) or pdfs.get(info['uuid'])
+            items.append({
+                'error': False, 'uuid': info['uuid'], 'fecha': info['fecha'],
+                'xml_name': n, 'pdf_name': pdf_name,
+                'pago': pago, 'ya_tiene': bool(pago and pago.tiene_complemento),
+            })
+
+        if accion == 'preview':
+            from django.http import JsonResponse
+            out = []
+            for it in items:
+                if it.get('error'):
+                    out.append({'error': True, 'nombre': it['nombre']})
+                    continue
+                out.append({
+                    'uuid': it['uuid'], 'fecha': it['fecha'] or '—',
+                    'tiene_pdf': bool(it['pdf_name']),
+                    'pago': it['pago'].folio if it['pago'] else None,
+                    'ya_tiene': it['ya_tiene'],
+                })
+            return JsonResponse({'items': out})
+
+        # Commit: adjunta a los pagos seleccionados (por UUID del REP)
+        seleccion = set(u.upper() for u in request.POST.getlist('rep_uuids'))
+        adjuntados = 0
+        for it in items:
+            if it.get('error') or not it['pago'] or it['ya_tiene']:
+                continue
+            if it['uuid'] not in seleccion:
+                continue
+            pago = it['pago']
+            pago.uuid_complemento = it['uuid']
+            pago.fecha_complemento = it['fecha'] or None
+            pago.complemento_xml.save(f"{it['uuid']}.xml", ContentFile(zf.read(it['xml_name'])), save=False)
+            if it['pdf_name']:
+                pago.complemento_pdf.save(f"{it['uuid']}.pdf", ContentFile(zf.read(it['pdf_name'])), save=False)
+            pago.save()
+            adjuntados += 1
+        if adjuntados:
+            messages.success(request, f"{adjuntados} complemento(s) adjuntado(s) a sus cobros.")
+        else:
+            messages.info(request, "No se adjuntó ningún complemento (nada seleccionado o sin coincidencia).")
+        return redirect('admon_finanzas:historial_pagos')
+
+
 class AvisarComplementosView(LoginRequiredMixin, View):
     """Avisa por correo al contador qué cobros (PPD ya pagados) siguen sin su
     complemento de pago (REP), para que los genere."""
