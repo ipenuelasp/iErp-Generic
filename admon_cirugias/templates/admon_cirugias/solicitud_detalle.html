@@ -68,7 +68,7 @@
                 {% if s.resumen.faltantes %}
                 <div class="mt-2 rounded-lg bg-amber-50 border border-amber-100 p-2">
                     <p class="text-[9px] font-black uppercase text-amber-600 mb-1">Falta para completar</p>
-                    {% for f in s.resumen.faltantes %}<div class="flex justify-between text-[10px] text-amber-700"><span class="truncate pr-2">[{{ f.sku }}] {{ f.nombre|truncatechars:34 }}</span><span class="font-black">faltan {{ f.falta }}</span></div>{% endfor %}
+                    {% for f in s.resumen.faltantes %}<div class="flex justify-between items-start gap-2 text-[10px] text-amber-700"><span class="min-w-0 break-words">[{{ f.sku }}] {{ f.nombre }}</span><span class="font-black whitespace-nowrap flex-shrink-0">faltan {{ f.falta }}</span></div>{% endfor %}
                 </div>
                 {% endif %}
                 {% for h in s.hijas_salidas %}
@@ -81,7 +81,7 @@
                     {% if h.resumen.faltantes %}
                     <div class="mt-2 rounded-lg bg-amber-50 border border-amber-100 p-2">
                         <p class="text-[9px] font-black uppercase text-amber-600 mb-1">Debe llevar (falta para completar)</p>
-                        {% for f in h.resumen.faltantes %}<div class="flex justify-between text-[10px] text-amber-700"><span class="truncate pr-2">[{{ f.sku }}] {{ f.nombre|truncatechars:34 }}</span><span class="font-black">faltan {{ f.falta }} de {{ f.objetivo }}</span></div>{% endfor %}
+                        {% for f in h.resumen.faltantes %}<div class="flex justify-between items-start gap-2 text-[10px] text-amber-700"><span class="min-w-0 break-words">[{{ f.sku }}] {{ f.nombre }}</span><span class="font-black whitespace-nowrap flex-shrink-0">faltan {{ f.falta }} de {{ f.objetivo }}</span></div>{% endfor %}
                     </div>
                     {% endif %}
                 </div>
@@ -227,7 +227,7 @@
                 {% if s.resumen.faltantes %}
                 <div class="mt-2 rounded-lg bg-amber-50 border border-amber-100 p-2">
                     <p class="text-[9px] font-black uppercase text-amber-600 mb-1">Se surtirá incompleta — falta:</p>
-                    {% for f in s.resumen.faltantes %}<div class="flex justify-between text-[10px] text-amber-700"><span class="truncate pr-2">[{{ f.sku }}] {{ f.nombre|truncatechars:32 }}</span><span class="font-black">faltan {{ f.falta }}</span></div>{% endfor %}
+                    {% for f in s.resumen.faltantes %}<div class="flex justify-between items-start gap-2 text-[10px] text-amber-700"><span class="min-w-0 break-words">[{{ f.sku }}] {{ f.nombre }}</span><span class="font-black whitespace-nowrap flex-shrink-0">faltan {{ f.falta }}</span></div>{% endfor %}
                 </div>
                 {% endif %}
                 {% for h in s.hijas_salidas %}
