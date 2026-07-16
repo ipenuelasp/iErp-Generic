@@ -466,12 +466,12 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             h += '</select>'
                + '<label class="text-[10px] font-black text-slate-400 uppercase ml-1 mt-3 block">Cantidad</label>'
-               + '<input type="number" name="cantidad" step="0.01" min="0" placeholder="0" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">'
+               + '<input type="number" name="cantidad" step="0.01" min="0" placeholder="0" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-right">'
                + '<p class="text-[10px] text-amber-600 font-bold mt-1 ml-1"><i class="fa-solid fa-circle-info mr-1"></i>El almacén debe sacar físicamente este lote.</p>';
             cont.innerHTML = h;
         } else {
             let h = '<label class="text-[10px] font-black text-slate-400 uppercase ml-1">Cantidad (stock general · ' + esc(data.total) + ' disp)</label>'
-                  + '<input type="number" name="cantidad" step="0.01" min="0" placeholder="0" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">';
+                  + '<input type="number" name="cantidad" step="0.01" min="0" placeholder="0" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-right">';
             cont.innerHTML = h;
         }
         actualizarSubmit();
