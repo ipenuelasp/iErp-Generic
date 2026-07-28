@@ -207,6 +207,9 @@ class TableroDetalleView(LoginRequiredMixin, View):
         if not empresa:
             return redirect('home')
         tablero = get_object_or_404(Tablero, pk=pk, empresa=empresa)
+        # Recalcula derivados (WBS, avance, fechas de fases + cascada) al abrir,
+        # para que la vista siempre sea consistente y se auto-corrija.
+        services.recalcular_tablero(tablero)
         tareas = list(tablero.tareas.select_related('padre')
                       .prefetch_related('asignaciones__usuario')
                       .order_by('orden', 'ruta_wbs', 'id'))
