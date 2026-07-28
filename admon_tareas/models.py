@@ -281,8 +281,12 @@ class TareaAsignacion(models.Model):
 class TareaDependencia(models.Model):
     """Grafo dirigido entre tareas (puede cruzar tableros). Alimenta el Gantt y
     los bloqueos. origen='BLOQUEO' cuando se reporta en ejecución."""
-    TIPO = [('FS', 'Fin → Inicio'), ('SS', 'Inicio → Inicio'),
-            ('FF', 'Fin → Fin'), ('SF', 'Inicio → Fin')]
+    TIPO = [
+        ('FS', 'Fin → Inicio · empieza cuando la otra termina'),
+        ('SS', 'Inicio → Inicio · empiezan al mismo tiempo'),
+        ('FF', 'Fin → Fin · terminan al mismo tiempo'),
+        ('SF', 'Inicio → Fin · termina cuando la otra empieza'),
+    ]
     ORIGEN = [('PLANEADA', 'Del cronograma'), ('BLOQUEO', 'Reportada en ejecución')]
 
     predecesora = models.ForeignKey(Tarea, on_delete=models.CASCADE, related_name='dependencias_salientes')

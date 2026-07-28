@@ -151,11 +151,17 @@
                 {% for c in candidatas %}<option value="{{ c.id }}">{% if c.ruta_wbs %}{{ c.ruta_wbs }} · {% endif %}{{ c.titulo }}</option>{% endfor %}
             </select>
             <select name="tipo_dep" class="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs font-bold" title="Tipo de dependencia">
-                {% for k,v in tipos_dep %}<option value="{{ k }}" {% if k == 'FS' %}selected{% endif %}>{{ k }}</option>{% endfor %}
+                {% for k,v in tipos_dep %}<option value="{{ k }}" {% if k == 'FS' %}selected{% endif %}>{{ v }}</option>{% endfor %}
             </select>
             <button class="bg-brand text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase"><i class="fa-solid fa-plus"></i></button>
         </form>
-        <p class="text-[10px] text-slate-400 mt-1 italic">FS = fin→inicio (la más común): esta tarea no arranca hasta que la otra termine.</p>
+        <div class="mt-2 rounded-lg bg-slate-50 border border-slate-100 p-2.5 space-y-1">
+            <p class="text-[10px] text-slate-500"><b class="font-mono text-slate-700">FS</b> · Fin → Inicio — la sucesora <b>no empieza</b> hasta que la otra <b>termine</b>. <span class="text-slate-400">(la más común)</span></p>
+            <p class="text-[10px] text-slate-500"><b class="font-mono text-slate-700">SS</b> · Inicio → Inicio — <b>empiezan al mismo tiempo</b> (arranca cuando la otra arranca).</p>
+            <p class="text-[10px] text-slate-500"><b class="font-mono text-slate-700">FF</b> · Fin → Fin — <b>terminan al mismo tiempo</b>.</p>
+            <p class="text-[10px] text-slate-500"><b class="font-mono text-slate-700">SF</b> · Inicio → Fin — la sucesora termina cuando la otra empieza <span class="text-slate-400">(poco usada)</span>.</p>
+            <p class="text-[9px] text-slate-400 italic pt-0.5">Hoy bloquean el arranque FS y SS; FF y SF quedan como referencia para el cronograma.</p>
+        </div>
     </div>
 
     <!-- Archivos -->
