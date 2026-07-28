@@ -118,7 +118,7 @@
                                 {% if t.es_hito %}
                                 <div {% if t.es_resumen or t.es_bloqueante %}onclick="abrirTarea({{ t.id }})"{% else %}class="g-drag" data-id="{{ t.id }}" data-hito="1"{% endif %} title="{{ t.titulo }}" style="position:absolute; left:{{ t.gmid|add:'-8' }}px; top:{{ t.gy }}px; width:16px; height:16px; background:#7c3aed; transform:rotate(45deg); border-radius:2px; cursor:pointer; z-index:3"></div>
                                 {% else %}
-                                <div {% if t.es_resumen or t.es_bloqueante %}onclick="abrirTarea({{ t.id }})"{% else %}data-id="{{ t.id }}"{% endif %} title="{{ t.titulo }} · {{ t.avance|floatformat:0 }}%" style="position:absolute; left:{{ t.gx }}px; top:{{ t.gy }}px; width:{{ t.gw }}px; height:{{ gantt.bar_h }}px; border-radius:4px; cursor:pointer; z-index:3;" class="flex items-center px-1.5 overflow-hidden {% if not t.es_resumen and not t.es_bloqueante %}g-drag {% endif %}{% if t.es_resumen %}bg-slate-700{% elif t.estado == 'COMP' %}bg-emerald-500{% elif t.estado == 'BLOQ' %}bg-rose-500{% elif t.estado == 'PEND' %}bg-slate-400{% else %}bg-brand{% endif %}">
+                                <div {% if t.es_resumen or t.es_bloqueante %}onclick="abrirTarea({{ t.id }})"{% else %}data-id="{{ t.id }}"{% endif %} title="{{ t.titulo }} · {{ t.avance|floatformat:0 }}%" style="position:absolute; left:{{ t.gx }}px; top:{% if t.es_resumen %}{{ t.gy|add:4 }}{% else %}{{ t.gy }}{% endif %}px; width:{{ t.gw }}px; height:{% if t.es_resumen %}8{% else %}{{ gantt.bar_h }}{% endif %}px; border-radius:{% if t.es_resumen %}2{% else %}4{% endif %}px; cursor:pointer; z-index:3;" class="flex items-center px-1.5 overflow-hidden {% if not t.es_resumen and not t.es_bloqueante %}g-drag {% endif %}{% if t.es_resumen %}bg-slate-600{% elif t.es_bloqueante %}bg-rose-600{% elif t.estado == 'COMP' %}bg-emerald-500{% elif t.estado == 'BLOQ' %}bg-rose-500{% elif t.estado == 'REVI' %}bg-amber-500{% elif t.estado == 'PROC' %}bg-blue-600{% elif t.estado == 'CANC' %}bg-slate-300{% else %}bg-slate-400{% endif %}">
                                     {% if not t.es_resumen %}<span class="text-[9px] font-bold text-white whitespace-nowrap pointer-events-none">{{ t.avance|floatformat:0 }}%</span>{% endif %}
                                 </div>
                                 {% endif %}
@@ -128,10 +128,11 @@
                 </div>
             </div>
             <div class="flex flex-wrap gap-4 px-4 py-3 border-t border-slate-100 bg-slate-50/50 text-[10px] text-slate-500">
-                <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-slate-700 inline-block"></i>Fase</span>
-                <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-brand inline-block"></i>En proceso</span>
-                <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-emerald-500 inline-block"></i>Completada</span>
+                <span class="flex items-center gap-1.5"><i class="w-4 h-1.5 rounded-sm bg-slate-600 inline-block"></i>Fase</span>
                 <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-slate-400 inline-block"></i>Pendiente</span>
+                <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-blue-600 inline-block"></i>En proceso</span>
+                <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-amber-500 inline-block"></i>En revisión</span>
+                <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-emerald-500 inline-block"></i>Completada</span>
                 <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-rose-500 inline-block"></i>Bloqueada</span>
                 <span class="flex items-center gap-1.5"><span style="width:9px;height:9px;background:#7c3aed;transform:rotate(45deg);display:inline-block"></span>Hito</span>
                 <span class="flex items-center gap-1.5 ml-auto text-slate-400 italic"><i class="fa-solid fa-arrows-left-right-to-line"></i> Arrastra una barra para moverla, o su borde derecho para la duración. Sin fechas → no hay barra.</span>
