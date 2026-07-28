@@ -32,13 +32,31 @@
         <span class="font-bold text-slate-700 text-right">{{ t.avance|floatformat:0 }}%{% if t.es_resumen %} <span class="text-[10px] text-slate-400 font-medium">(calculado)</span>{% endif %}</span>
     </div>
 
-    {% if bloqueada %}
+    {% if espera_dep %}
     <div class="rounded-2xl bg-rose-50 border border-rose-200 p-4">
         <p class="text-[11px] font-black text-rose-700 uppercase tracking-widest mb-1"><i class="fa-solid fa-lock mr-1"></i>No puede empezar todavía</p>
-        <p class="text-[12px] text-rose-800">Esta tarea espera a que termine{{ bloqueada|length|pluralize:"n" }}:</p>
+        <p class="text-[12px] text-rose-800">Esta tarea espera a que termine{{ espera_dep|length|pluralize:"n" }}:</p>
         <ul class="mt-1 space-y-0.5">
-            {% for d in bloqueada %}<li class="text-[12px] text-rose-800 font-bold">· {% if d.predecesora.ruta_wbs %}WBS {{ d.predecesora.ruta_wbs }} · {% endif %}{{ d.predecesora.titulo }} <span class="font-medium text-rose-500">({{ d.predecesora.get_estado_display }})</span></li>{% endfor %}
+            {% for d in espera_dep %}<li class="text-[12px] text-rose-800 font-bold">· {% if d.predecesora.ruta_wbs %}WBS {{ d.predecesora.ruta_wbs }} · {% endif %}{{ d.predecesora.titulo }} <span class="font-medium text-rose-500">({{ d.predecesora.get_estado_display }})</span></li>{% endfor %}
         </ul>
+    </div>
+    {% endif %}
+
+    {% if bloqueos %}
+    <div class="rounded-2xl bg-rose-50 border border-rose-200 p-4">
+        <p class="text-[11px] font-black text-rose-700 uppercase tracking-widest mb-2"><i class="fa-solid fa-hand mr-1"></i>Bloqueo activo</p>
+        {% for d in bloqueos %}
+        <div class="bg-white rounded-xl border border-rose-100 p-3 mb-2 last:mb-0">
+            {% if d.motivo %}<p class="text-[12px] text-rose-800 mb-2">{{ d.motivo }}</p>{% endif %}
+            <div onclick="abrirTarea({{ d.predecesora_id }})" class="flex items-center gap-2 cursor-pointer">
+                <span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-600">Desbloquea</span>
+                <span class="text-[10px] font-mono text-slate-300">{{ d.predecesora.folio }}</span>
+                <span class="text-[13px] font-bold text-slate-700 flex-1 truncate">{{ d.predecesora.titulo }}</span>
+                {% include 'admon_tareas/_estado_badge.html' with estado=d.predecesora.estado display=d.predecesora.get_estado_display %}
+            </div>
+        </div>
+        {% endfor %}
+        <p class="text-[10px] text-rose-500 italic">Al completar la tarea que desbloquea, esta sale de «Bloqueada» sola.</p>
     </div>
     {% endif %}
 
@@ -84,6 +102,27 @@
             <i class="fa-solid fa-circle-check mr-1"></i> {% if mi_asignacion.completado %}Quitar mi confirmación{% else %}Confirmar mi parte{% endif %}
         </button>
     </form>
+    {% endif %}
+
+    {% if puede_bloquear %}
+    <details class="rounded-xl border border-rose-100 bg-rose-50/40">
+        <summary class="cursor-pointer text-[11px] font-black text-rose-500 uppercase tracking-widest px-4 py-2.5"><i class="fa-solid fa-hand mr-1"></i> Marcar bloqueada</summary>
+        <form method="POST" action="{{ post_url }}" class="px-4 pb-4 pt-1 space-y-2">{% csrf_token %}
+            <input type="hidden" name="accion" value="bloquear_tarea"><input type="hidden" name="tarea_id" value="{{ t.id }}">
+            <p class="text-[10px] text-rose-500 italic">No se puede bloquear sin crear la tarea que la desbloquea.</p>
+            <div><label class="text-[9px] font-bold text-slate-400 ml-1">Motivo del bloqueo</label>
+                <textarea name="motivo" rows="2" required placeholder="¿Qué impide avanzar?" class="w-full mt-0.5 bg-white border border-slate-200 rounded-xl px-3 py-2 text-[13px] font-medium"></textarea></div>
+            <div><label class="text-[9px] font-bold text-slate-400 ml-1">Tarea que la desbloquea (título)</label>
+                <input type="text" name="titulo_bloqueante" required placeholder="Ej. Solicitar layout a Dirección" class="w-full mt-0.5 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold"></div>
+            <div><label class="text-[9px] font-bold text-slate-400 ml-1">Responsable(s) de resolverla</label>
+                <select name="asignados" multiple class="w-full mt-0.5">
+                    {% for u in usuarios %}<option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+                </select></div>
+            <div><label class="text-[9px] font-bold text-slate-400 ml-1">Fecha compromiso (opcional)</label>
+                <input type="date" name="fecha_compromiso" class="w-full mt-0.5 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold"></div>
+            <button class="w-full bg-rose-600 text-white py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all">Bloquear y crear la tarea</button>
+        </form>
+    </details>
     {% endif %}
 
     <!-- Asignados -->

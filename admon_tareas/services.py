@@ -117,7 +117,10 @@ def _inicio_requerido(suc):
         return None
     dur = dias_habiles_entre(suc.fecha_inicio_plan, suc.fecha_fin_plan) or 1
     reqs = []
-    for dep in TareaDependencia.objects.filter(sucesora=suc).select_related('predecesora'):
+    # Solo las dependencias del cronograma (PLANEADA) reprograman fechas; las de
+    # BLOQUEO son impedimentos de estatus, no mueven el calendario.
+    for dep in (TareaDependencia.objects.filter(sucesora=suc, origen='PLANEADA')
+                .select_related('predecesora')):
         p = dep.predecesora
         if not p.fecha_inicio_plan or not p.fecha_fin_plan:
             continue
@@ -150,7 +153,7 @@ def reprogramar_cascada(tarea_movida, usuario):
     while cola and iters < 1000:
         iters += 1
         actual = cola.popleft()
-        for dep in (TareaDependencia.objects.filter(predecesora=actual)
+        for dep in (TareaDependencia.objects.filter(predecesora=actual, origen='PLANEADA')
                     .select_related('sucesora')):
             suc = dep.sucesora
             if not suc.fecha_inicio_plan or not suc.fecha_fin_plan:
@@ -345,6 +348,65 @@ def confirmar_asignacion(asignacion, usuario, *, completado=True, nota=''):
         asignacion.tarea, usuario, 'CONFIRMO' if completado else 'DESCONFIRMO',
         detalle=f"{usuario} {'confirmó' if completado else 'quitó su confirmación de'} su parte")
     evaluar_cierre(asignacion.tarea)
+
+
+# --------------------------------------------------------------------------
+# Bloqueos (generan una tarea bloqueante, fuera del WBS)
+# --------------------------------------------------------------------------
+@transaction.atomic
+def bloquear(*, tarea, usuario, motivo, titulo, asignados_ids=None, fecha_compromiso=None):
+    """Marca una tarea como bloqueada CREANDO la tarea que la desbloquea. En una
+    sola transacción: crea la Tarea bloqueante (padre=None, es_bloqueante=True),
+    la dependencia origen='BLOQUEO' y pone la tarea en BLOQ. Nunca se bloquea sin
+    generar la bloqueante."""
+    tablero = tarea.tablero
+    empresa = tablero.empresa
+    asignados_ids = [a for a in (asignados_ids or []) if a]
+    agg = Tarea.objects.filter(tablero=tablero, padre__isnull=True).aggregate(m=Max('orden'))
+    bloqueante = Tarea.objects.create(
+        empresa=empresa, tablero=tablero, padre=None, es_bloqueante=True,
+        titulo=titulo.strip(), folio=siguiente_folio(empresa), prioridad='ALTA',
+        estado='PROC' if asignados_ids else 'PEND',
+        fecha_inicio_plan=timezone.localdate(), fecha_fin_plan=fecha_compromiso or None,
+        orden=(agg['m'] or 0) + 1, creado_por=usuario)
+    for uid in asignados_ids:
+        TareaAsignacion.objects.get_or_create(
+            tarea=bloqueante, usuario_id=uid,
+            defaults={'rol': 'RESP', 'asignado_por': usuario})
+    TareaDependencia.objects.create(
+        predecesora=bloqueante, sucesora=tarea, tipo='FS', origen='BLOQUEO',
+        motivo=motivo, creado_por=usuario)
+    tarea.estado = 'BLOQ'
+    tarea.save(update_fields=['estado'])
+    registrar_actividad(tarea, usuario, 'BLOQUEO',
+                        detalle=f"Bloqueada · {motivo}. Se creó {bloqueante.folio}.")
+    registrar_actividad(bloqueante, usuario, 'CREADA',
+                        detalle=f"Tarea bloqueante para desbloquear {tarea.folio}")
+    recalcular_tablero(tablero)
+    return bloqueante
+
+
+def resolver_bloqueos_de(bloqueante, usuario):
+    """Al completarse una tarea bloqueante, marca resueltos sus bloqueos y saca de
+    BLOQ a las tareas que ya no tengan bloqueos pendientes."""
+    afectadas = []
+    deps = (TareaDependencia.objects
+            .filter(predecesora=bloqueante, origen='BLOQUEO', resuelta=False)
+            .select_related('sucesora'))
+    for d in deps:
+        d.resuelta = True
+        d.resuelta_en = timezone.now()
+        d.save(update_fields=['resuelta', 'resuelta_en'])
+        suc = d.sucesora
+        pendientes = TareaDependencia.objects.filter(
+            sucesora=suc, origen='BLOQUEO', resuelta=False).exists()
+        if not pendientes and suc.estado == 'BLOQ':
+            suc.estado = 'PROC' if suc.asignaciones.exists() else 'PEND'
+            suc.save(update_fields=['estado'])
+            registrar_actividad(suc, usuario, 'DESBLOQUEO',
+                                detalle=f"Desbloqueada al completar {bloqueante.folio}")
+            afectadas.append(suc)
+    return afectadas
 
 
 # --------------------------------------------------------------------------

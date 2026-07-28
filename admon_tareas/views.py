@@ -313,8 +313,29 @@ class TableroDetalleView(LoginRequiredMixin, View):
             messages.info(request, f"Tarea {folio} eliminada.")
             return redirect(base_url)
 
+        elif accion == 'bloquear_tarea' and tarea:
+            if tarea.estado in ('BLOQ', 'COMP', 'CANC'):
+                messages.error(request, "Esta tarea no se puede bloquear en su estado actual.")
+                return volver
+            motivo = (request.POST.get('motivo') or '').strip()
+            titulo = (request.POST.get('titulo_bloqueante') or '').strip()
+            if not motivo or not titulo:
+                messages.error(request, "El motivo y el título de la tarea que la desbloquea son obligatorios.")
+                return volver
+            asignados = [u for u in request.POST.getlist('asignados')
+                         if _usuarios_empresa(empresa).filter(id=u).exists()]
+            fecha = request.POST.get('fecha_compromiso') or None
+            bloqueante = services.bloquear(
+                tarea=tarea, usuario=request.user, motivo=motivo, titulo=titulo,
+                asignados_ids=asignados, fecha_compromiso=fecha)
+            messages.warning(request, f"Tarea bloqueada. Se creó {bloqueante.folio} para desbloquearla.")
+            return volver
+
         elif accion == 'cambiar_estado' and tarea:
             nuevo = request.POST.get('estado')
+            if nuevo == 'BLOQ':
+                messages.error(request, "Para bloquear usa «Bloquear tarea»: exige motivo y la tarea que la desbloquea.")
+                return volver
             if nuevo in ('PROC', 'REVI', 'COMP') and services.bloqueada_por(tarea):
                 bloq = services.bloqueada_por(tarea)
                 nombres = ", ".join(f"{d.predecesora.ruta_wbs or d.predecesora.folio}" for d in bloq)
@@ -336,6 +357,8 @@ class TableroDetalleView(LoginRequiredMixin, View):
                     tarea.cerrado_por = None
                     tarea.fecha_fin_real = None
                 tarea.save(update_fields=campos)
+                if nuevo == 'COMP':
+                    services.resolver_bloqueos_de(tarea, request.user)
                 services.recalcular_tablero(tablero)
                 services.registrar_actividad(tarea, request.user, 'ESTADO',
                                              campo='estado', valor_ant=ant, valor_nue=nuevo)
@@ -355,10 +378,14 @@ class TableroDetalleView(LoginRequiredMixin, View):
                     tarea.avance = 100
                 tarea.save(update_fields=['estado', 'cerrado_en', 'cerrado_por',
                                           'fecha_fin_real', 'avance'])
+                desb = services.resolver_bloqueos_de(tarea, request.user)
                 services.recalcular_tablero(tablero)
                 services.registrar_actividad(tarea, request.user, 'APROBO',
                                              detalle="Aprobó y completó la tarea")
-                messages.success(request, f"{tarea.folio} aprobada y completada.")
+                msg = f"{tarea.folio} aprobada y completada."
+                if desb:
+                    msg += f" Se desbloqueó {len(desb)} tarea(s)."
+                messages.success(request, msg)
 
         elif accion == 'rechazar_tarea' and tarea:
             motivo = (request.POST.get('motivo') or '').strip()
@@ -497,8 +524,9 @@ class TareaPanelView(LoginRequiredMixin, View):
                          .prefetch_related('asignaciones__usuario').order_by('orden', 'ruta_wbs'))
         ct = ContentType.objects.get_for_model(Tarea)
         adjuntos = Adjunto.objects.filter(content_type=ct, object_id=tarea.id)
-        dependencias = (TareaDependencia.objects.filter(sucesora=tarea)
-                        .select_related('predecesora'))
+        todas_deps = list(TareaDependencia.objects.filter(sucesora=tarea)
+                          .select_related('predecesora'))
+        dependencias = [d for d in todas_deps if d.origen == 'PLANEADA']
         # Candidatas a predecesora: otras tareas del tablero (no la misma).
         candidatas = (tarea.tablero.tareas.exclude(id=tarea.id)
                       .order_by('orden', 'ruta_wbs').values('id', 'folio', 'ruta_wbs', 'titulo'))
@@ -518,7 +546,11 @@ class TareaPanelView(LoginRequiredMixin, View):
             'dependencias': dependencias,
             'candidatas': candidatas,
             'tipos_dep': TareaDependencia.TIPO,
-            'bloqueada': services.bloqueada_por(tarea),
+            # "Espera por cronograma": solo dependencias PLANEADA no cumplidas.
+            'espera_dep': [d for d in dependencias if services._bloquea(d)],
+            # Bloqueo formal: tareas bloqueantes (origen BLOQUEO).
+            'bloqueos': [d for d in todas_deps if d.origen == 'BLOQUEO'],
+            'puede_bloquear': tarea.estado not in ('BLOQ', 'COMP', 'CANC') and not tarea.es_bloqueante,
         }
         return render(request, self.template_name, context)
 
