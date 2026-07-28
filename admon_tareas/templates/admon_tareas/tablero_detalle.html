@@ -22,6 +22,15 @@
         <div><p class="text-2xl font-black {% if resumen.bloq %}text-rose-600{% else %}text-slate-300{% endif %}">{{ resumen.bloq }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Bloqueadas</p></div>
     </div>
 
+    <!-- Pestañas de vista -->
+    <div class="flex gap-1 mb-4 border-b border-slate-100">
+        <button type="button" data-vista="lista" onclick="cambiarVista('lista')" class="tab-tareas px-4 py-2.5 text-sm font-bold text-brand border-b-2 border-brand -mb-px"><i class="fa-solid fa-list-ul mr-1"></i> Lista</button>
+        <button type="button" data-vista="gantt" onclick="cambiarVista('gantt')" class="tab-tareas px-4 py-2.5 text-sm font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-slate-600"><i class="fa-solid fa-chart-gantt mr-1"></i> Cronograma</button>
+        <button type="button" data-vista="kanban" onclick="cambiarVista('kanban')" class="tab-tareas px-4 py-2.5 text-sm font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-slate-600"><i class="fa-solid fa-table-columns mr-1"></i> Tablero</button>
+    </div>
+
+    <!-- ===== VISTA LISTA ===== -->
+    <div class="vista-tareas" data-vista="lista">
     <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         <table class="w-full text-left">
             <thead class="bg-slate-50/70 border-b border-slate-100">
@@ -74,6 +83,89 @@
         </table>
     </div>
     <p class="text-[11px] text-slate-400 mt-3 italic">Da clic en cualquier tarea para abrir su detalle: asignados, subtareas, comentarios y archivos.</p>
+    </div><!-- /vista lista -->
+
+    <!-- ===== VISTA CRONOGRAMA (GANTT) ===== -->
+    <div class="vista-tareas hidden" data-vista="gantt">
+        <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <div class="flex">
+                <div class="flex-none w-64 border-r border-slate-100">
+                    <div style="height:52px" class="flex items-end px-3 pb-2 text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50/70 border-b border-slate-100">Tarea</div>
+                    {% for t in tareas %}
+                    <div onclick="abrirTarea({{ t.id }})" style="height:{{ gantt.rowh }}px" class="flex items-center gap-1.5 px-3 border-b border-slate-50 cursor-pointer hover:bg-slate-50/60">
+                        <span class="text-[10px] font-mono text-slate-300 flex-none">{% if t.es_bloqueante %}⛔{% else %}{{ t.ruta_wbs }}{% endif %}</span>
+                        <span class="text-xs truncate {% if t.es_resumen %}font-black text-slate-700{% else %}font-medium text-slate-600{% endif %}">{% if t.es_hito %}<i class="fa-solid fa-diamond text-violet-500 text-[9px] mr-1"></i>{% endif %}{{ t.titulo }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="flex-1 overflow-x-auto">
+                    <div style="width:{{ gantt.ancho }}px; min-width:100%;">
+                        <div class="bg-slate-50/70 border-b border-slate-100" style="height:52px">
+                            <div class="flex" style="height:26px">
+                                {% for w in gantt.semanas %}<div style="width:{{ w.ancho }}px" class="flex items-center px-2 text-[10px] font-black text-slate-400 uppercase tracking-wide border-r border-slate-100 whitespace-nowrap overflow-hidden">{{ w.label }}</div>{% endfor %}
+                            </div>
+                            <div class="flex" style="height:26px">
+                                {% for d in gantt.dias %}<div style="width:{{ gantt.cw }}px" class="flex items-center justify-center text-[9px] text-slate-300 border-r border-slate-50 flex-none {% if d.week_start %}border-l border-slate-100{% endif %}">{{ d.num }}</div>{% endfor %}
+                            </div>
+                        </div>
+                        <div style="position:relative; height:{{ gantt.alto }}px;">
+                            {% if gantt.hoy_x %}<div class="bg-brand" style="position:absolute; left:{{ gantt.hoy_x }}px; top:0; bottom:0; width:2px; opacity:.4; z-index:2"></div>{% endif %}
+                            <svg style="position:absolute; inset:0; z-index:1; pointer-events:none;" width="{{ gantt.ancho }}" height="{{ gantt.alto }}">
+                                <defs><marker id="arw" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8"/></marker></defs>
+                                {% for s in gantt.segmentos %}<path d="M {{ s.x1 }} {{ s.y1 }} L {{ s.x1|add:8 }} {{ s.y1 }} L {{ s.x1|add:8 }} {{ s.y2 }} L {{ s.x2 }} {{ s.y2 }}" fill="none" stroke="#94a3b8" stroke-width="1.3" marker-end="url(#arw)"/>{% endfor %}
+                            </svg>
+                            {% for t in tareas %}{% if t.gvis %}
+                                {% if t.es_hito %}
+                                <div onclick="abrirTarea({{ t.id }})" title="{{ t.titulo }}" style="position:absolute; left:{{ t.gmid|add:'-8' }}px; top:{{ t.gy }}px; width:16px; height:16px; background:#7c3aed; transform:rotate(45deg); border-radius:2px; cursor:pointer; z-index:3"></div>
+                                {% else %}
+                                <div onclick="abrirTarea({{ t.id }})" title="{{ t.titulo }} · {{ t.avance|floatformat:0 }}%" style="position:absolute; left:{{ t.gx }}px; top:{{ t.gy }}px; width:{{ t.gw }}px; height:{{ gantt.bar_h }}px; border-radius:4px; cursor:pointer; z-index:3;" class="flex items-center px-1.5 overflow-hidden {% if t.es_resumen %}bg-slate-700{% elif t.estado == 'COMP' %}bg-emerald-500{% elif t.estado == 'BLOQ' %}bg-rose-500{% elif t.estado == 'PEND' %}bg-slate-400{% else %}bg-brand{% endif %}">
+                                    {% if not t.es_resumen %}<span class="text-[9px] font-bold text-white whitespace-nowrap">{{ t.avance|floatformat:0 }}%</span>{% endif %}
+                                </div>
+                                {% endif %}
+                            {% endif %}{% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-4 px-4 py-3 border-t border-slate-100 bg-slate-50/50 text-[10px] text-slate-500">
+                <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-slate-700 inline-block"></i>Fase</span>
+                <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-brand inline-block"></i>En proceso</span>
+                <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-emerald-500 inline-block"></i>Completada</span>
+                <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-slate-400 inline-block"></i>Pendiente</span>
+                <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-rose-500 inline-block"></i>Bloqueada</span>
+                <span class="flex items-center gap-1.5"><span style="width:9px;height:9px;background:#7c3aed;transform:rotate(45deg);display:inline-block"></span>Hito</span>
+                <span class="flex items-center gap-1.5 ml-auto text-slate-400 italic">Las flechas son dependencias. Sin fechas → no aparece barra.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== VISTA TABLERO (KANBAN) ===== -->
+    <div class="vista-tareas hidden" data-vista="kanban">
+        <div class="overflow-x-auto pb-2">
+            <div class="grid gap-3" style="grid-template-columns:repeat(5,minmax(210px,1fr)); min-width:1080px">
+                {% for col in kanban %}
+                <div class="bg-slate-100/70 rounded-2xl p-3">
+                    <div class="flex items-center gap-2 mb-3 px-1">
+                        {% include 'admon_tareas/_estado_badge.html' with estado=col.k display=col.label %}
+                        <span class="ml-auto text-[10px] font-bold text-slate-400 bg-white rounded-full px-2 py-0.5">{{ col.tareas|length }}</span>
+                    </div>
+                    {% for t in col.tareas %}
+                    <div onclick="abrirTarea({{ t.id }})" class="bg-white rounded-xl border border-slate-100 p-3 mb-2 cursor-pointer hover:border-slate-200 transition-all {% if t.estado == 'BLOQ' %}border-l-4 border-l-rose-400{% endif %}">
+                        <p class="text-[10px] font-mono text-slate-300">{{ t.folio }}{% if t.ruta_wbs %} · {{ t.ruta_wbs }}{% endif %}</p>
+                        <p class="text-[13px] font-bold text-slate-700 leading-snug my-1">{% if t.es_hito %}<i class="fa-solid fa-diamond text-violet-500 text-[9px] mr-1"></i>{% endif %}{{ t.titulo }}</p>
+                        <div class="flex items-center gap-2 mt-2">
+                            <div class="flex -space-x-1.5">{% for a in t.asignaciones.all %}<span class="w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-black text-white border border-white {% if a.completado %}bg-emerald-500{% else %}bg-slate-400{% endif %}">{{ a.usuario.get_full_name|default:a.usuario.username|slice:":2"|upper }}</span>{% endfor %}</div>
+                            <span class="ml-auto text-[10px] font-bold {% if t.prioridad == 'ALTA' or t.prioridad == 'URGE' %}text-rose-500{% elif t.prioridad == 'MEDIA' %}text-amber-500{% else %}text-slate-400{% endif %}">{{ t.get_prioridad_display }}</span>
+                            {% if t.fecha_fin_plan %}<span class="text-[10px] text-slate-400 whitespace-nowrap">{{ t.fecha_fin_plan|date:"d/m" }}</span>{% endif %}
+                        </div>
+                        {% if t.espera %}<p class="text-[9px] font-black text-rose-500 mt-1"><i class="fa-solid fa-lock mr-0.5"></i>espera {{ t.espera|join:", " }}</p>{% endif %}
+                    </div>
+                    {% empty %}<p class="text-[11px] text-slate-300 italic px-1 py-3">Nada aquí.</p>{% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Modal nueva tarea / subtarea -->
@@ -136,6 +228,17 @@
 
 <script>
 const TAB_PK = {{ tablero.pk }};
+function cambiarVista(v){
+    document.querySelectorAll('.vista-tareas').forEach(el=>el.classList.toggle('hidden', el.dataset.vista !== v));
+    document.querySelectorAll('.tab-tareas').forEach(b=>{
+        const on = b.dataset.vista === v;
+        b.classList.toggle('text-brand', on);
+        b.classList.toggle('border-brand', on);
+        b.classList.toggle('text-slate-400', !on);
+        b.classList.toggle('border-transparent', !on);
+    });
+    try { localStorage.setItem('tareas_vista_'+TAB_PK, v); } catch(e){}
+}
 function abrirCrear(padreId){
     document.getElementById('crearPadre').value = padreId || '';
     const sub = document.getElementById('crearSubDe');
@@ -159,6 +262,9 @@ function cerrarTarea(){
     history.replaceState(null,'', location.pathname);
 }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') cerrarTarea(); });
-(function(){ const p=new URLSearchParams(location.search).get('t'); if(p) abrirTarea(p); })();
+(function(){
+    try { const v = localStorage.getItem('tareas_vista_'+TAB_PK); if(v && v!=='lista') cambiarVista(v); } catch(e){}
+    const p=new URLSearchParams(location.search).get('t'); if(p) abrirTarea(p);
+})();
 </script>
 {% endblock %}

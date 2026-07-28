@@ -190,10 +190,18 @@ class TableroDetalleView(LoginRequiredMixin, View):
             'bloq': sum(1 for t in tareas if t.estado == 'BLOQ'),
             'avance': (sum(float(t.avance) for t in hojas) / len(hojas)) if hojas else 0,
         }
+        gantt = _datos_gantt(ordenadas, tablero, list(deps))
+        # Kanban: tareas hoja (no resumen) por estado
+        estado_labels = dict(Tarea.ESTADO)
+        kanban = [{'k': k, 'label': estado_labels[k],
+                   'tareas': [t for t in ordenadas if not t.es_resumen and t.estado == k]}
+                  for k in ('PEND', 'PROC', 'BLOQ', 'REVI', 'COMP')]
         context = {
             'tablero': tablero,
             'tareas': ordenadas,
             'resumen': resumen,
+            'gantt': gantt,
+            'kanban': kanban,
             'usuarios': _usuarios_empresa(empresa),
             'estados': Tarea.ESTADO,
             'prioridades': Tarea.PRIORIDAD,
@@ -475,6 +483,109 @@ class AdjuntoDescargaView(LoginRequiredMixin, View):
                                 filename=adj.nombre_original)
         except FileNotFoundError:
             raise Http404
+
+
+def _datos_gantt(ordenadas, tablero, deps):
+    """Calcula el calendario de días hábiles y la posición (px) de cada barra,
+    hitos, línea de hoy y segmentos de dependencia para el cronograma.
+    Atributos que deja en cada tarea: gx, gw, grow, gvis (si tiene barra)."""
+    import datetime as _dt
+    CW, ROWH, BAR_TOP, BAR_H = 28, 34, 9, 16
+
+    fechas = []
+    for t in ordenadas:
+        if t.fecha_inicio_plan:
+            fechas.append(t.fecha_inicio_plan)
+        if t.fecha_fin_plan:
+            fechas.append(t.fecha_fin_plan)
+    if tablero.fecha_inicio:
+        fechas.append(tablero.fecha_inicio)
+    if tablero.fecha_fin:
+        fechas.append(tablero.fecha_fin)
+
+    hoy = timezone.localdate()
+    if fechas:
+        inicio, fin = min(fechas), max(fechas)
+    else:
+        inicio, fin = hoy, hoy + _dt.timedelta(days=27)
+    inicio = min(inicio, hoy)
+    fin = max(fin, hoy)
+    # límite de seguridad para no generar un Gantt gigante
+    if (fin - inicio).days > 260:
+        fin = inicio + _dt.timedelta(days=260)
+
+    meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+    dias, idx_map = [], {}
+    d = inicio
+    while d <= fin:
+        if d.weekday() < 5:   # lun-vie
+            idx_map[d] = len(dias)
+            dias.append({'num': d.day, 'mes': meses[d.month - 1],
+                         'week_start': d.weekday() == 0})
+        d += _dt.timedelta(days=1)
+    if not dias:   # por si acaso
+        dias = [{'num': hoy.day, 'mes': meses[hoy.month - 1], 'week_start': True}]
+
+    def idx_de(f):
+        if not f:
+            return None
+        x = max(inicio, min(f, fin))
+        while x.weekday() >= 5 and x < fin:
+            x += _dt.timedelta(days=1)
+        return idx_map.get(x)
+
+    fila = {}
+    for row, t in enumerate(ordenadas):
+        t.grow = row
+        t.gy = row * ROWH + BAR_TOP
+        si = idx_de(t.fecha_inicio_plan)
+        ei = idx_de(t.fecha_fin_plan) if not t.es_hito else si
+        if si is not None and ei is not None:
+            if ei < si:
+                ei = si
+            t.gvis = True
+            t.gx = si * CW
+            t.gw = (ei - si + 1) * CW
+            t.gmid = si * CW + CW / 2   # centro (para el hito)
+            fila[t.id] = (si, ei, row)
+        else:
+            t.gvis = False
+
+    # Segmentos de dependencia (predecesora fin → sucesora inicio)
+    segmentos = []
+    for dep in deps:
+        p = fila.get(dep.predecesora_id)
+        s = fila.get(dep.sucesora_id)
+        if not p or not s:
+            continue
+        x1 = (p[1] + 1) * CW
+        y1 = p[2] * ROWH + ROWH / 2
+        x2 = s[0] * CW
+        y2 = s[2] * ROWH + ROWH / 2
+        segmentos.append({'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2})
+
+    hoy_idx = idx_map.get(hoy)
+    if hoy_idx is None:   # si hoy cae en finde, usa el hábil más cercano
+        h = hoy
+        while h.weekday() >= 5 and h < fin:
+            h += _dt.timedelta(days=1)
+        hoy_idx = idx_map.get(h)
+
+    # Semanas (para el encabezado)
+    semanas = []
+    i = 0
+    while i < len(dias):
+        semanas.append({'label': f"{dias[i]['num']} {dias[i]['mes']}",
+                        'ancho': min(5, len(dias) - i) * CW})
+        i += 5
+
+    return {
+        'dias': dias, 'semanas': semanas, 'cw': CW, 'rowh': ROWH,
+        'bar_top': BAR_TOP, 'bar_h': BAR_H,
+        'ancho': len(dias) * CW, 'alto': len(ordenadas) * ROWH,
+        'hoy_x': (hoy_idx * CW + CW / 2) if hoy_idx is not None else None,
+        'segmentos': segmentos,
+    }
 
 
 def _orden_jerarquico(tareas):
