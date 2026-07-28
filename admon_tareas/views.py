@@ -758,18 +758,29 @@ def _datos_gantt(ordenadas, tablero, deps):
         else:
             t.gvis = False
 
-    # Segmentos de dependencia (predecesora fin → sucesora inicio)
+    # Segmentos de dependencia (flechas).
+    por_id = {t.id: t for t in ordenadas}
     segmentos = []
     for dep in deps:
         p = fila.get(dep.predecesora_id)
         s = fila.get(dep.sucesora_id)
         if not p or not s:
             continue
-        x1 = (p[1] + 1) * CW
-        y1 = p[2] * ROWH + ROWH / 2
-        x2 = s[0] * CW
-        y2 = s[2] * ROWH + ROWH / 2
-        segmentos.append({'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2})
+        y_pred = p[2] * ROWH + ROWH / 2
+        y_suc = s[2] * ROWH + ROWH / 2
+        suc = por_id.get(dep.sucesora_id)
+        if dep.origen == 'BLOQUEO' and suc and suc.gsplit:
+            # Tarea partida: fin del 1er segmento → inicio del bloqueo, y fin del
+            # bloqueo → inicio del 2do segmento.
+            seg1, seg2 = suc.gsegs[0], suc.gsegs[-1]
+            bsi, bei = p[0], p[1]
+            segmentos.append({'x1': seg1['x'] + seg1['w'], 'y1': y_suc,
+                              'x2': bsi * CW, 'y2': y_pred})
+            segmentos.append({'x1': (bei + 1) * CW, 'y1': y_pred,
+                              'x2': seg2['x'], 'y2': y_suc})
+        else:
+            segmentos.append({'x1': (p[1] + 1) * CW, 'y1': y_pred,
+                              'x2': s[0] * CW, 'y2': y_suc})
 
     hoy_idx = idx_map.get(hoy)
     if hoy_idx is None:   # si hoy cae en finde, usa el hábil más cercano
