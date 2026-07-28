@@ -313,6 +313,7 @@ class TableroDetalleView(LoginRequiredMixin, View):
             tarea.titulo = (request.POST.get('titulo') or tarea.titulo).strip()
             tarea.descripcion = request.POST.get('descripcion', tarea.descripcion)
             tarea.prioridad = request.POST.get('prioridad') or tarea.prioridad
+            tarea.es_hito = bool(request.POST.get('es_hito'))
             ini, fin, dias, horas = _fechas_desde_post(request)
             tarea.fecha_inicio_plan = ini
             tarea.fecha_fin_plan = fin
