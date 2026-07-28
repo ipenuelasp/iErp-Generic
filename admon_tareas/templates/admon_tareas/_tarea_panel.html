@@ -32,6 +32,31 @@
         <span class="font-bold text-slate-700 text-right">{{ t.avance|floatformat:0 }}%{% if t.es_resumen %} <span class="text-[10px] text-slate-400 font-medium">(calculado)</span>{% endif %}</span>
     </div>
 
+    {% if t.estado == 'REVI' %}
+    <div class="rounded-2xl bg-amber-50 border border-amber-200 p-4">
+        <p class="text-[11px] font-black text-amber-700 uppercase tracking-widest mb-1"><i class="fa-solid fa-hourglass-half mr-1"></i>En revisión</p>
+        {% if puede_cerrar %}
+        <p class="text-[12px] text-amber-800 mb-3">El trabajo se marcó como terminado. Da tu visto bueno para cerrarla, o regrésala a proceso con un motivo.</p>
+        <div class="flex flex-col gap-2">
+            <form method="POST" action="{{ post_url }}">{% csrf_token %}
+                <input type="hidden" name="accion" value="aprobar_tarea"><input type="hidden" name="tarea_id" value="{{ t.id }}">
+                <button class="w-full bg-emerald-600 text-white py-3 rounded-xl font-black text-[11px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-circle-check mr-1"></i> Aprobar y completar</button>
+            </form>
+            <details class="bg-white rounded-xl border border-amber-100">
+                <summary class="cursor-pointer text-[11px] font-black text-rose-500 uppercase tracking-widest px-4 py-2.5"><i class="fa-solid fa-rotate-left mr-1"></i> Regresar a proceso</summary>
+                <form method="POST" action="{{ post_url }}" class="px-4 pb-4 pt-1">{% csrf_token %}
+                    <input type="hidden" name="accion" value="rechazar_tarea"><input type="hidden" name="tarea_id" value="{{ t.id }}">
+                    <textarea name="motivo" rows="2" required placeholder="¿Por qué se regresa? El motivo queda en la bitácora." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[13px] font-medium"></textarea>
+                    <button class="w-full mt-2 bg-white border border-rose-200 text-rose-600 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-50 transition-all">Regresar a proceso con este motivo</button>
+                </form>
+            </details>
+        </div>
+        {% else %}
+        <p class="text-[12px] text-amber-800">Esperando el visto bueno del responsable del tablero para cerrarla.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <!-- Estado -->
     <form method="POST" action="{{ post_url }}" class="flex items-center gap-2">{% csrf_token %}
         <input type="hidden" name="accion" value="cambiar_estado"><input type="hidden" name="tarea_id" value="{{ t.id }}">

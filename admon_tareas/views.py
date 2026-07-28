@@ -43,6 +43,17 @@ def _usuarios_empresa(empresa):
         'first_name', 'username')
 
 
+def _puede_cerrar(user, tablero):
+    """Quién puede aprobar/rechazar el cierre: el responsable del tablero, el
+    dueño (OWNER) o un superusuario."""
+    if user.is_superuser:
+        return True
+    perfil = getattr(user, 'perfil', None)
+    if perfil and getattr(perfil, 'tipo_usuario', None) == 'OWNER':
+        return True
+    return tablero.responsable_id == user.id
+
+
 def _fechas_desde_post(request):
     """Devuelve (inicio, fin, dias, horas). Si hay duración (días/horas) calcula
     la fecha fin en días hábiles; si no, respeta la fecha fin capturada."""
@@ -270,6 +281,43 @@ class TableroDetalleView(LoginRequiredMixin, View):
                                              campo='estado', valor_ant=ant, valor_nue=nuevo)
                 messages.success(request, "Estado actualizado.")
 
+        elif accion == 'aprobar_tarea' and tarea:
+            if not _puede_cerrar(request.user, tablero):
+                messages.error(request, "Solo el responsable del tablero puede aprobar el cierre.")
+            elif tarea.estado != 'REVI':
+                messages.error(request, "La tarea no está en revisión.")
+            else:
+                tarea.estado = 'COMP'
+                tarea.cerrado_en = timezone.now()
+                tarea.cerrado_por = request.user
+                tarea.fecha_fin_real = timezone.localdate()
+                if not tarea.es_resumen:
+                    tarea.avance = 100
+                tarea.save(update_fields=['estado', 'cerrado_en', 'cerrado_por',
+                                          'fecha_fin_real', 'avance'])
+                services.recalcular_tablero(tablero)
+                services.registrar_actividad(tarea, request.user, 'APROBO',
+                                             detalle="Aprobó y completó la tarea")
+                messages.success(request, f"{tarea.folio} aprobada y completada.")
+
+        elif accion == 'rechazar_tarea' and tarea:
+            motivo = (request.POST.get('motivo') or '').strip()
+            if not _puede_cerrar(request.user, tablero):
+                messages.error(request, "Solo el responsable del tablero puede rechazar.")
+            elif tarea.estado != 'REVI':
+                messages.error(request, "La tarea no está en revisión.")
+            elif not motivo:
+                messages.error(request, "Escribe el motivo del rechazo para regresarla.")
+            else:
+                tarea.estado = 'PROC'
+                tarea.save(update_fields=['estado'])
+                # Se limpian las confirmaciones: los asignados deben volver a confirmar.
+                tarea.asignaciones.update(completado=False, completado_en=None)
+                services.registrar_actividad(
+                    tarea, request.user, 'RECHAZO',
+                    detalle=f"Regresó a proceso · Motivo: {motivo}")
+                messages.info(request, "Tarea regresada a proceso. Se avisó el motivo en la bitácora.")
+
         elif accion == 'asignar' and tarea:
             uid = request.POST.get('usuario')
             if uid and _usuarios_empresa(empresa).filter(id=uid).exists():
@@ -358,6 +406,7 @@ class TareaPanelView(LoginRequiredMixin, View):
             'roles': TareaAsignacion.ROL,
             'estados': Tarea.ESTADO,
             'mi_asignacion': tarea.asignaciones.filter(usuario=request.user).first(),
+            'puede_cerrar': _puede_cerrar(request.user, tarea.tablero),
         }
         return render(request, self.template_name, context)
 
