@@ -129,9 +129,13 @@ def _inicio_requerido(suc):
 
 
 def reprogramar_cascada(tarea_movida, usuario):
-    """Empuja hacia adelante las sucesoras (directas e indirectas) para respetar
-    las dependencias. Solo adelanta cuando una sucesora empezaría demasiado
-    pronto; nunca la jala hacia atrás. Devuelve la lista de tareas recorridas."""
+    """Reprograma las sucesoras (directas e indirectas) para que queden pegadas a
+    su predecesora según la dependencia y su desfase. Las mueve en AMBOS sentidos:
+    si la predecesora se recorre a más tarde, las empuja; si se acorta/adelanta,
+    las jala hacia atrás. Devuelve la lista de tareas recorridas.
+
+    Nota: los enlazadas quedan una tras otra. Para dejar un hueco intencional
+    entre dos tareas, usar el desfase (lag) de la dependencia."""
     from collections import deque
     cambiadas = []
     cola = deque([tarea_movida])
@@ -145,7 +149,7 @@ def reprogramar_cascada(tarea_movida, usuario):
             if not suc.fecha_inicio_plan or not suc.fecha_fin_plan:
                 continue
             req = _inicio_requerido(suc)
-            if req and req > suc.fecha_inicio_plan:
+            if req and req != suc.fecha_inicio_plan:
                 dur = dias_habiles_entre(suc.fecha_inicio_plan, suc.fecha_fin_plan) or 1
                 suc.fecha_inicio_plan = req
                 suc.fecha_fin_plan = sumar_dias_habiles(req, dur - 1)
