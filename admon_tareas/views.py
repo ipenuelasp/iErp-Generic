@@ -281,7 +281,7 @@ class TableroDetalleView(LoginRequiredMixin, View):
                     TareaDependencia.objects.create(
                         predecesora=pred, sucesora=nueva, tipo=tipo,
                         desfase_dias=desfase, origen='PLANEADA', creado_por=request.user)
-                    services.reprogramar_cascada(pred, request.user)
+                    services.agendar_desde_dependencias(nueva, request.user)
                     services.recalcular_tablero(tablero)
                     messages.success(request, f"Tarea agregada, depende de {pred.folio}.")
                 else:
@@ -506,8 +506,8 @@ class TableroDetalleView(LoginRequiredMixin, View):
                 services.registrar_actividad(
                     tarea, request.user, 'DEPENDENCIA',
                     detalle=f"Depende de {pred.folio} · {pred.titulo} ({tipo}{lag_txt})")
-                # Reposiciona la sucesora (y su cadena) para respetar la dependencia.
-                services.reprogramar_cascada(pred, request.user)
+                # Agenda la tarea justo después de su predecesora (y recorre su cadena).
+                services.agendar_desde_dependencias(tarea, request.user)
                 services.recalcular_tablero(tablero)
                 messages.success(request, msg)
 

@@ -138,6 +138,42 @@ def _inicio_requerido(suc):
     return max(reqs) if reqs else None
 
 
+def agendar_desde_dependencias(tarea, usuario):
+    """Fija el inicio de la tarea según sus predecesoras (tipo + desfase) y calcula
+    el fin con su duración. Útil al crear/enlazar una tarea sin fecha aún, para
+    que quede justo después de aquella de la que depende. Devuelve True si movió."""
+    dur = (tarea.duracion_dias
+           or (dias_habiles_entre(tarea.fecha_inicio_plan, tarea.fecha_fin_plan)
+               if tarea.fecha_inicio_plan and tarea.fecha_fin_plan else 1)
+           or 1)
+    reqs = []
+    for dep in (TareaDependencia.objects.filter(sucesora=tarea, origen='PLANEADA')
+                .select_related('predecesora')):
+        p = dep.predecesora
+        if not p.fecha_inicio_plan or not p.fecha_fin_plan:
+            continue
+        lag = dep.desfase_dias or 0
+        if dep.tipo == 'FS':
+            reqs.append(desplazar_habiles(p.fecha_fin_plan, 1 + lag))
+        elif dep.tipo == 'SS':
+            reqs.append(desplazar_habiles(p.fecha_inicio_plan, lag))
+        elif dep.tipo == 'FF':
+            reqs.append(restar_dias_habiles(desplazar_habiles(p.fecha_fin_plan, lag), dur - 1))
+        else:
+            reqs.append(restar_dias_habiles(desplazar_habiles(p.fecha_inicio_plan, lag), dur - 1))
+    if not reqs:
+        return False
+    ini = max(reqs)
+    tarea.fecha_inicio_plan = ini
+    tarea.fecha_fin_plan = sumar_dias_habiles(ini, dur - 1)
+    tarea.duracion_dias = dur
+    tarea.save(update_fields=['fecha_inicio_plan', 'fecha_fin_plan', 'duracion_dias'])
+    registrar_actividad(tarea, usuario, 'FECHA',
+                        detalle="Agendada después de su dependencia")
+    reprogramar_cascada(tarea, usuario)
+    return True
+
+
 def reprogramar_cascada(tarea_movida, usuario):
     """Reprograma las sucesoras (directas e indirectas) para que queden pegadas a
     su predecesora según la dependencia y su desfase. Las mueve en AMBOS sentidos:
