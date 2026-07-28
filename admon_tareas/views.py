@@ -108,8 +108,15 @@ class TablerosView(LoginRequiredMixin, View):
             t.n_tareas = len(hojas)
             t.n_comp = sum(1 for x in hojas if x.estado == 'COMP')
             t.n_bloq = sum(1 for x in dets if x.estado == 'BLOQ')
+        plantillas = list(Tablero.objects.filter(empresa=empresa, es_plantilla=True, activo=True)
+                          .order_by('nombre'))
+        for p in plantillas:
+            dets = list(p.tareas.all())
+            p.n_tareas = sum(1 for x in dets if not x.es_resumen and not x.es_bloqueante)
+            p.n_fases = sum(1 for x in dets if x.es_resumen)
         context = {
             'tableros': tableros,
+            'plantillas': plantillas,
             'usuarios': _usuarios_empresa(empresa),
             'tipos': tipos_de(empresa),
             'tipos_todos': TipoTablero.objects.filter(empresa=empresa),
@@ -141,6 +148,22 @@ class TablerosView(LoginRequiredMixin, View):
                 messages.info(request, f"Tipo '{tp.nombre}' {'activado' if tp.activo else 'desactivado'}.")
             return redirect('admon_tareas:tableros')
 
+        if accion == 'instanciar':
+            plantilla = Tablero.objects.filter(
+                id=request.POST.get('plantilla_id'), empresa=empresa, es_plantilla=True).first()
+            nombre = (request.POST.get('nombre') or '').strip()
+            if not plantilla or not nombre:
+                messages.error(request, "Elige la plantilla y captura el nombre del tablero.")
+                return redirect('admon_tareas:tableros')
+            nuevo = services.instanciar_plantilla(
+                plantilla, nombre=nombre,
+                fecha_arranque=request.POST.get('fecha_arranque') or None,
+                responsable_id=request.POST.get('responsable') or None,
+                modo_cierre=request.POST.get('modo_cierre') or plantilla.modo_cierre,
+                usuario=request.user)
+            messages.success(request, f"Tablero {nuevo.codigo} creado desde la plantilla «{plantilla.nombre}». Asigna a las personas.")
+            return redirect('admon_tareas:tablero_detalle', pk=nuevo.pk)
+
         nombre = (request.POST.get('nombre') or '').strip()
         if not nombre:
             messages.error(request, "Captura el nombre del tablero.")
@@ -155,6 +178,7 @@ class TablerosView(LoginRequiredMixin, View):
             responsable_id=request.POST.get('responsable') or None,
             fecha_inicio=request.POST.get('fecha_inicio') or None,
             fecha_fin=request.POST.get('fecha_fin') or None,
+            es_plantilla=bool(request.POST.get('es_plantilla')),
             creado_por=request.user)
         messages.success(request, f"Tablero {tablero.codigo} creado.")
         return redirect('admon_tareas:tablero_detalle', pk=tablero.pk)

@@ -410,6 +410,65 @@ def resolver_bloqueos_de(bloqueante, usuario):
 
 
 # --------------------------------------------------------------------------
+# Plantillas: instanciar un tablero molde en uno operativo
+# --------------------------------------------------------------------------
+@transaction.atomic
+def instanciar_plantilla(plantilla, *, nombre, fecha_arranque, responsable_id, modo_cierre, usuario):
+    """Crea un tablero operativo a partir de una plantilla: copia estructura
+    (tareas, jerarquía, orden, pesos, hitos, perfil_sugerido), dependencias
+    PLANEADA y recalcula las fechas en días hábiles desde `fecha_arranque`.
+    NO copia asignaciones, comentarios, bitácora, bloqueos ni progreso."""
+    empresa = plantilla.empresa
+    n = Tablero.objects.filter(empresa=empresa).count() + 1
+    nuevo = Tablero.objects.create(
+        empresa=empresa, codigo=f"TAB-{n:04d}", nombre=nombre.strip(),
+        descripcion=plantilla.descripcion, tipo=plantilla.tipo, color=plantilla.color,
+        modo_cierre=modo_cierre or plantilla.modo_cierre,
+        responsable_id=responsable_id or None, fecha_inicio=fecha_arranque,
+        es_plantilla=False, plantilla_origen=plantilla,
+        instanciado_en=timezone.now(), creado_por=usuario)
+
+    tareas = list(plantilla.tareas.all())
+    starts = [t.fecha_inicio_plan for t in tareas if t.fecha_inicio_plan]
+    base = min(starts) if starts else None
+
+    def _recorre(t):
+        if not t.fecha_inicio_plan or not base or not fecha_arranque:
+            return None, None
+        offset = (dias_habiles_entre(base, t.fecha_inicio_plan) or 1) - 1
+        n_ini = sumar_dias_habiles(fecha_arranque, max(0, offset))
+        if t.es_hito or not t.fecha_fin_plan:
+            return n_ini, n_ini
+        dur = dias_habiles_entre(t.fecha_inicio_plan, t.fecha_fin_plan) or 1
+        return n_ini, sumar_dias_habiles(n_ini, dur - 1)
+
+    mapa = {}
+    for t in tareas:
+        ni, nf = _recorre(t)
+        mapa[t.id] = Tarea.objects.create(
+            empresa=empresa, tablero=nuevo, padre=None, es_bloqueante=t.es_bloqueante,
+            titulo=t.titulo, descripcion=t.descripcion, folio=siguiente_folio(empresa),
+            orden=t.orden, prioridad=t.prioridad, perfil_sugerido=t.perfil_sugerido,
+            peso=t.peso, es_hito=t.es_hito, estado='PEND', avance=0,
+            fecha_inicio_plan=ni, fecha_fin_plan=nf,
+            duracion_dias=(dias_habiles_entre(ni, nf) if ni and nf else None),
+            duracion_horas=t.duracion_horas, creado_por=usuario)
+    for t in tareas:
+        if t.padre_id in mapa:
+            hijo = mapa[t.id]
+            hijo.padre = mapa[t.padre_id]
+            hijo.save(update_fields=['padre'])
+    for dep in TareaDependencia.objects.filter(sucesora__tablero=plantilla, origen='PLANEADA'):
+        if dep.predecesora_id in mapa and dep.sucesora_id in mapa:
+            TareaDependencia.objects.create(
+                predecesora=mapa[dep.predecesora_id], sucesora=mapa[dep.sucesora_id],
+                tipo=dep.tipo, desfase_dias=dep.desfase_dias, origen='PLANEADA',
+                creado_por=usuario)
+    recalcular_tablero(nuevo)
+    return nuevo
+
+
+# --------------------------------------------------------------------------
 # Alta de tarea
 # --------------------------------------------------------------------------
 @transaction.atomic

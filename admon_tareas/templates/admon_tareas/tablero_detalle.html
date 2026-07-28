@@ -5,7 +5,7 @@
     <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <a href="{% url 'admon_tareas:tableros' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-1"></i> Tableros</a>
-            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase mt-1">{{ tablero.nombre }}</h1>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase mt-1">{{ tablero.nombre }}{% if tablero.es_plantilla %} <span class="text-[11px] font-black uppercase px-2 py-1 rounded-lg bg-violet-50 text-violet-600 align-middle not-italic">Plantilla</span>{% endif %}</h1>
             <p class="text-slate-500 mt-1 font-medium text-sm">
                 <span class="font-mono text-slate-400">{{ tablero.codigo }}</span> ·
                 {% if tablero.tipo %}{{ tablero.tipo.nombre }} · {% endif %}Cierre: {{ tablero.get_modo_cierre_display }}

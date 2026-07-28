@@ -32,7 +32,83 @@
         </div>
         {% endfor %}
     </div>
+
+    {% if plantillas %}
+    <div class="mt-10">
+        <h2 class="text-sm font-black text-slate-500 uppercase tracking-widest italic mb-3"><i class="fa-solid fa-clone mr-2 text-violet-400"></i>Plantillas</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {% for p in plantillas %}
+            <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-violet-100 p-6">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-[10px] font-mono text-slate-400">{{ p.codigo }}</span>
+                    <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-violet-50 text-violet-600">Plantilla</span>
+                    {% if p.alcance == 'GLOBAL' %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-500">Global</span>{% endif %}
+                </div>
+                <h3 class="text-lg font-black text-slate-800 leading-tight mb-1">{{ p.nombre }}</h3>
+                <p class="text-xs text-slate-400 font-medium mb-4">{{ p.descripcion|truncatechars:90|default:"Sin descripción" }}</p>
+                <div class="flex items-center gap-5 pt-3 border-t border-slate-50">
+                    <div><p class="text-lg font-black text-slate-800">{{ p.n_tareas }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Tareas</p></div>
+                    <div><p class="text-lg font-black text-slate-800">{{ p.n_fases }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Fases</p></div>
+                    <button type="button" onclick="instanciar({{ p.id }}, '{{ p.nombre|escapejs }}')" class="ml-auto bg-brand text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Instanciar</button>
+                    <a href="{% url 'admon_tareas:tablero_detalle' p.pk %}" class="text-[10px] font-black text-slate-400 uppercase hover:text-slate-600">Editar</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
+
+<!-- Modal instanciar plantilla -->
+<div id="modalInstanciar" class="hidden fixed inset-0 bg-slate-900/50 z-[60] flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg">
+        <div class="flex items-center justify-between px-8 pt-8 pb-2">
+            <div>
+                <h3 class="text-lg font-black text-slate-800 italic uppercase">Instanciar plantilla</h3>
+                <p class="text-[11px] font-bold text-slate-400 mt-1">Copia la estructura y recorre las fechas en días hábiles desde el arranque. Las personas se asignan después.</p>
+            </div>
+            <button type="button" onclick="document.getElementById('modalInstanciar').classList.add('hidden')" class="text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <form method="POST" class="px-8 pb-8 pt-4 space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="instanciar">
+            <input type="hidden" name="plantilla_id" id="instPlantillaId">
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Nombre del tablero nuevo</label>
+                <input type="text" name="nombre" id="instNombre" required class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+            </div>
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Fecha de arranque</label>
+                <input type="date" name="fecha_arranque" required class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+                <p class="text-[10px] text-slate-400 ml-1 mt-0.5">Todo se recorre desde aquí; nada cae en fin de semana.</p>
+            </div>
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Responsable</label>
+                <select name="responsable" data-placeholder="Sin responsable" class="w-full mt-1">
+                    <option value=""></option>
+                    {% for u in usuarios %}<option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Modo de cierre</label>
+                <select name="modo_cierre" class="w-full mt-1">
+                    {% for k,v in modos %}<option value="{{ k }}">{{ v }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('modalInstanciar').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cancelar</button>
+                <button type="submit" class="bg-brand text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Crear tablero</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+function instanciar(id, nombre){
+    document.getElementById('instPlantillaId').value = id;
+    document.getElementById('instNombre').value = nombre;
+    document.getElementById('modalInstanciar').classList.remove('hidden');
+}
+</script>
 
 <!-- Modal nuevo tablero -->
 <div id="modalTablero" class="hidden fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
@@ -76,6 +152,16 @@
                 </div>
                 <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Inicio</label><input type="date" name="fecha_inicio" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold"></div>
                 <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Fin</label><input type="date" name="fecha_fin" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold"></div>
+                <div class="md:col-span-2">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <span class="relative inline-flex items-center">
+                            <input type="checkbox" name="es_plantilla" class="sr-only peer">
+                            <span class="w-11 h-6 bg-slate-200 rounded-full peer-checked:bg-violet-500 transition-all"></span>
+                            <span class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all peer-checked:translate-x-5"></span>
+                        </span>
+                        <span class="text-xs font-bold text-slate-600">Es plantilla (molde) <span class="text-slate-400 font-medium">— se arma una vez y se instancia en cada cliente</span></span>
+                    </label>
+                </div>
             </div>
             <div class="flex justify-end gap-3 pt-6">
                 <button type="button" onclick="document.getElementById('modalTablero').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cancelar</button>
