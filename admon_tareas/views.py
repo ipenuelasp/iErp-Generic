@@ -131,13 +131,23 @@ class TablerosView(LoginRequiredMixin, View):
             return redirect('home')
         accion = request.POST.get('accion') or 'crear_tablero'
 
+        es_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
         if accion == 'crear_tipo':
             nombre = (request.POST.get('nombre') or '').strip()
-            if nombre:
-                orden = (TipoTablero.objects.filter(empresa=empresa).count())
-                TipoTablero.objects.get_or_create(
-                    empresa=empresa, nombre=nombre[:60], defaults={'orden': orden})
-                messages.success(request, f"Tipo '{nombre}' agregado.")
+            if not nombre:
+                if es_ajax:
+                    return JsonResponse({'ok': False, 'error': 'nombre vacío'}, status=400)
+                return redirect('admon_tareas:tableros')
+            orden = TipoTablero.objects.filter(empresa=empresa).count()
+            tp, creada = TipoTablero.objects.get_or_create(
+                empresa=empresa, nombre=nombre[:60], defaults={'orden': orden})
+            if not tp.activo:
+                tp.activo = True
+                tp.save(update_fields=['activo'])
+            if es_ajax:
+                return JsonResponse({'ok': True, 'id': tp.id, 'nombre': tp.nombre})
+            messages.success(request, f"Tipo '{tp.nombre}' agregado.")
             return redirect('admon_tareas:tableros')
 
         if accion == 'toggle_tipo':
@@ -145,7 +155,12 @@ class TablerosView(LoginRequiredMixin, View):
             if tp:
                 tp.activo = not tp.activo
                 tp.save(update_fields=['activo'])
+                if es_ajax:
+                    return JsonResponse({'ok': True, 'id': tp.id, 'activo': tp.activo,
+                                         'nombre': tp.nombre})
                 messages.info(request, f"Tipo '{tp.nombre}' {'activado' if tp.activo else 'desactivado'}.")
+            elif es_ajax:
+                return JsonResponse({'ok': False}, status=404)
             return redirect('admon_tareas:tableros')
 
         if accion == 'instanciar':

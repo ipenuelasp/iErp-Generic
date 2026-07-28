@@ -179,24 +179,73 @@ function instanciar(id, nombre){
             <button type="button" onclick="document.getElementById('modalTipos').classList.add('hidden')" class="text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark text-xl"></i></button>
         </div>
         <div class="px-8 pb-8 pt-2">
-            <div class="divide-y divide-slate-50 mb-4">
+            <div id="tiposLista" class="divide-y divide-slate-50 mb-4">
                 {% for tp in tipos_todos %}
-                <div class="flex items-center gap-2 py-2">
-                    <span class="text-sm font-bold {% if not tp.activo %}text-slate-300 line-through{% else %}text-slate-700{% endif %}">{{ tp.nombre }}</span>
-                    <form method="POST" class="ml-auto">{% csrf_token %}
-                        <input type="hidden" name="accion" value="toggle_tipo"><input type="hidden" name="tipo_id" value="{{ tp.id }}">
-                        <button class="text-[10px] font-black uppercase tracking-widest {% if tp.activo %}text-slate-400 hover:text-rose-500{% else %}text-emerald-500{% endif %}">{% if tp.activo %}Desactivar{% else %}Activar{% endif %}</button>
-                    </form>
+                <div class="flex items-center gap-2 py-2" data-tipo-row="{{ tp.id }}">
+                    <span class="tipo-nombre text-sm font-bold {% if not tp.activo %}text-slate-300 line-through{% else %}text-slate-700{% endif %}">{{ tp.nombre }}</span>
+                    <button type="button" onclick="toggleTipo({{ tp.id }}, this)" class="ml-auto text-[10px] font-black uppercase tracking-widest {% if tp.activo %}text-slate-400 hover:text-rose-500{% else %}text-emerald-500{% endif %}">{% if tp.activo %}Desactivar{% else %}Activar{% endif %}</button>
                 </div>
-                {% empty %}<p class="text-xs text-slate-400 italic py-2">Aún no hay tipos.</p>{% endfor %}
+                {% empty %}<p class="text-xs text-slate-400 italic py-2" data-tipos-vacio>Aún no hay tipos.</p>{% endfor %}
             </div>
-            <form method="POST" class="flex items-center gap-2">{% csrf_token %}
-                <input type="hidden" name="accion" value="crear_tipo">
+            <form id="formNuevoTipo" onsubmit="crearTipo(event)" class="flex items-center gap-2">{% csrf_token %}
                 <input type="text" name="nombre" required placeholder="Nuevo tipo…" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
-                <button class="bg-brand text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase"><i class="fa-solid fa-plus"></i></button>
+                <button type="submit" class="bg-brand text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase"><i class="fa-solid fa-plus"></i></button>
             </form>
-            <p class="text-[10px] text-slate-400 mt-2 italic">Los tipos son por empresa. Desactivar uno no afecta los tableros que ya lo usan.</p>
+            <p class="text-[10px] text-slate-400 mt-2 italic">Se agregan al instante, sin perder lo que llevas en el tablero. Desactivar uno no afecta los tableros que ya lo usan.</p>
         </div>
     </div>
 </div>
+
+<script>
+const TAREAS_TABLEROS_URL = '{% url "admon_tareas:tableros" %}';
+const CSRF_TAREAS = '{{ csrf_token }}';
+function _selTipo(){ return document.querySelector('#modalTablero select[name="tipo"]'); }
+function crearTipo(e){
+    e.preventDefault();
+    const form = e.target;
+    const nombre = (form.nombre.value || '').trim();
+    if(!nombre) return;
+    const fd = new FormData(); fd.append('accion','crear_tipo'); fd.append('nombre', nombre); fd.append('csrfmiddlewaretoken', CSRF_TAREAS);
+    fetch(TAREAS_TABLEROS_URL, {method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'}})
+      .then(r=>r.json()).then(d=>{
+        if(!d.ok) return;
+        const sel = _selTipo();
+        if(sel && !sel.querySelector('option[value="'+d.id+'"]')){
+            const opt = new Option(d.nombre, d.id, false, true); sel.add(opt);
+            if(window.jQuery){ jQuery(sel).val(String(d.id)).trigger('change'); }
+        }
+        // fila en la lista de tipos
+        const vac = document.querySelector('#tiposLista [data-tipos-vacio]'); if(vac) vac.remove();
+        if(!document.querySelector('#tiposLista [data-tipo-row="'+d.id+'"]')){
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-2 py-2'; row.dataset.tipoRow = d.id;
+            row.innerHTML = '<span class="tipo-nombre text-sm font-bold text-slate-700"></span>'
+                + '<button type="button" class="ml-auto text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500">Desactivar</button>';
+            row.querySelector('.tipo-nombre').textContent = d.nombre;
+            row.querySelector('button').onclick = function(){ toggleTipo(d.id, this); };
+            document.getElementById('tiposLista').appendChild(row);
+        }
+        form.reset();
+    }).catch(()=>{});
+}
+function toggleTipo(id, btn){
+    const fd = new FormData(); fd.append('accion','toggle_tipo'); fd.append('tipo_id', id); fd.append('csrfmiddlewaretoken', CSRF_TAREAS);
+    fetch(TAREAS_TABLEROS_URL, {method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'}})
+      .then(r=>r.json()).then(d=>{
+        if(!d.ok) return;
+        const row = document.querySelector('#tiposLista [data-tipo-row="'+d.id+'"]');
+        const nombre = row.querySelector('.tipo-nombre');
+        nombre.className = 'tipo-nombre text-sm font-bold ' + (d.activo ? 'text-slate-700' : 'text-slate-300 line-through');
+        btn.textContent = d.activo ? 'Desactivar' : 'Activar';
+        btn.className = 'ml-auto text-[10px] font-black uppercase tracking-widest ' + (d.activo ? 'text-slate-400 hover:text-rose-500' : 'text-emerald-500');
+        const sel = _selTipo();
+        if(sel){
+            const opt = sel.querySelector('option[value="'+d.id+'"]');
+            if(d.activo && !opt){ sel.add(new Option(d.nombre, d.id)); }
+            else if(!d.activo && opt){ if(sel.value == String(d.id)) sel.value=''; opt.remove(); }
+            if(window.jQuery){ jQuery(sel).trigger('change'); }
+        }
+      }).catch(()=>{});
+}
+</script>
 {% endblock %}
