@@ -301,6 +301,44 @@ def recalcular_tablero(tablero):
         Tarea.objects.bulk_update(vistos.values(), ['ruta_wbs', 'nivel', 'es_resumen'])
 
     _rollup_avance(tablero)
+    _estabilizar_fechas(tablero)
+
+
+def _rollup_fechas(tablero):
+    """Fija las fechas de cada FASE (resumen) al rango de sus hijas (min inicio,
+    max fin), de abajo hacia arriba. Devuelve las fases cuyas fechas cambiaron."""
+    tareas = list(Tarea.objects.filter(tablero=tablero))
+    hijos = {}
+    for t in tareas:
+        if t.padre_id and not t.es_bloqueante:
+            hijos.setdefault(t.padre_id, []).append(t)
+    cambiadas = []
+    for t in sorted(tareas, key=lambda x: -(x.nivel or 0)):   # hijas antes que padres
+        if not t.es_resumen:
+            continue
+        hs = [h for h in hijos.get(t.id, []) if h.fecha_inicio_plan and h.fecha_fin_plan]
+        if not hs:
+            continue
+        ni = min(h.fecha_inicio_plan for h in hs)
+        nf = max(h.fecha_fin_plan for h in hs)
+        if t.fecha_inicio_plan != ni or t.fecha_fin_plan != nf:
+            t.fecha_inicio_plan = ni
+            t.fecha_fin_plan = nf
+            t.save(update_fields=['fecha_inicio_plan', 'fecha_fin_plan'])
+            cambiadas.append(t)
+    return cambiadas
+
+
+def _estabilizar_fechas(tablero, max_iter=8):
+    """Sube las fechas de las fases desde sus hijas y recorre en cascada a las
+    sucesoras de las fases que cambiaron, hasta estabilizar (una dependencia
+    puede apuntar a una fase, no solo a una tarea hoja)."""
+    for _ in range(max_iter):
+        cambiadas = _rollup_fechas(tablero)
+        if not cambiadas:
+            break
+        for fase in cambiadas:
+            reprogramar_cascada(fase, None)
 
 
 def _rollup_avance(tablero):
