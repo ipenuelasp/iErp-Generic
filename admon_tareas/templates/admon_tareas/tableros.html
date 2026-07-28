@@ -1,0 +1,86 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+{% block main_content %}
+<div class="max-w-screen-2xl mx-auto p-8">
+    <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Tableros de tareas</h1>
+            <p class="text-slate-500 mt-2 font-medium">Cada tablero agrupa tareas con subtareas, asignados y fechas. Da clic para abrirlo.</p>
+        </div>
+        <button type="button" onclick="document.getElementById('modalTablero').classList.remove('hidden')" class="bg-brand text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Nuevo tablero</button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {% for t in tableros %}
+        <a href="{% url 'admon_tareas:tablero_detalle' t.pk %}" class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 hover:-translate-y-1 transition-all block">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="text-[10px] font-mono text-slate-400">{{ t.codigo }}</span>
+                <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-500">{{ t.get_tipo_display }}</span>
+                {% if t.n_bloq %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-rose-50 text-rose-500"><i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ t.n_bloq }} bloqueada(s)</span>{% endif %}
+            </div>
+            <h3 class="text-lg font-black text-slate-800 leading-tight mb-1">{{ t.nombre }}</h3>
+            <p class="text-xs text-slate-400 font-medium mb-4">{{ t.descripcion|truncatechars:90|default:"Sin descripción" }}</p>
+            <div class="flex items-center gap-5 pt-3 border-t border-slate-50">
+                <div><p class="text-lg font-black text-slate-800">{{ t.n_tareas }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Tareas</p></div>
+                <div><p class="text-lg font-black text-emerald-600">{{ t.n_comp }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Completas</p></div>
+                {% if t.responsable %}<div class="ml-auto text-right"><p class="text-xs font-bold text-slate-600">{{ t.responsable.get_full_name|default:t.responsable.username }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Responsable</p></div>{% endif %}
+            </div>
+        </a>
+        {% empty %}
+        <div class="col-span-full bg-white rounded-[2rem] border border-slate-100 p-12 text-center text-slate-400 italic">
+            Aún no hay tableros. Crea el primero con <b>Nuevo tablero</b>.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal nuevo tablero -->
+<div id="modalTablero" class="hidden fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
+        <div class="flex items-center justify-between px-8 pt-8 pb-2">
+            <h3 class="text-lg font-black text-slate-800 italic uppercase">Nuevo tablero</h3>
+            <button type="button" onclick="document.getElementById('modalTablero').classList.add('hidden')" class="text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <form method="POST" class="px-8 pb-8 pt-4 space-y-3">
+            {% csrf_token %}
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Nombre</label>
+                <input type="text" name="nombre" required placeholder="Ej. Implementación iERP — Insermed" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+            </div>
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Descripción (opcional)</label>
+                <textarea name="descripcion" rows="2" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Tipo</label>
+                    <select name="tipo" class="w-full mt-1 no-select2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+                        {% for k,v in tipos %}<option value="{{ k }}">{{ v }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Modo de cierre</label>
+                    <select name="modo_cierre" class="w-full mt-1 no-select2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+                        {% for k,v in modos %}<option value="{{ k }}">{{ v }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Responsable</label>
+                <select name="responsable" data-placeholder="Sin responsable" class="w-full mt-1">
+                    <option value=""></option>
+                    {% for u in usuarios %}<option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Inicio</label><input type="date" name="fecha_inicio" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold"></div>
+                <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Fin</label><input type="date" name="fecha_fin" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold"></div>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('modalTablero').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cancelar</button>
+                <button type="submit" class="bg-brand text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Crear tablero</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,150 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+{% block main_content %}
+<div class="max-w-screen-2xl mx-auto p-8">
+    <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <a href="{% url 'admon_tareas:tableros' %}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"><i class="fa-solid fa-arrow-left mr-1"></i> Tableros</a>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase mt-1">{{ tablero.nombre }}</h1>
+            <p class="text-slate-500 mt-1 font-medium text-sm">
+                <span class="font-mono text-slate-400">{{ tablero.codigo }}</span> ·
+                {{ tablero.get_tipo_display }} · Cierre: {{ tablero.get_modo_cierre_display }}
+                {% if tablero.responsable %}· Resp.: {{ tablero.responsable.get_full_name|default:tablero.responsable.username }}{% endif %}
+            </p>
+        </div>
+        <button type="button" onclick="abrirCrear('')" class="bg-brand text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Nueva tarea</button>
+    </div>
+
+    <div class="flex flex-wrap gap-6 mb-6">
+        <div><p class="text-2xl font-black text-slate-800">{{ resumen.total }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Tareas</p></div>
+        <div><p class="text-2xl font-black text-slate-800">{{ resumen.avance|floatformat:0 }}%</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Avance</p></div>
+        <div><p class="text-2xl font-black text-emerald-600">{{ resumen.comp }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Completas</p></div>
+        <div><p class="text-2xl font-black {% if resumen.bloq %}text-rose-600{% else %}text-slate-300{% endif %}">{{ resumen.bloq }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Bloqueadas</p></div>
+    </div>
+
+    <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50/70 border-b border-slate-100">
+                <tr class="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    <th class="px-4 py-3 w-14">WBS</th>
+                    <th class="px-4 py-3">Tarea</th>
+                    <th class="px-4 py-3">Asignados</th>
+                    <th class="px-4 py-3">Estado</th>
+                    <th class="px-4 py-3">Prioridad</th>
+                    <th class="px-4 py-3 w-32">Avance</th>
+                    <th class="px-4 py-3 whitespace-nowrap">Fin plan</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in tareas %}
+                <tr onclick="abrirTarea({{ t.id }})" class="border-b border-slate-50 hover:bg-slate-50/60 cursor-pointer {% if t.es_resumen %}bg-slate-50/40{% endif %} {% if t.es_bloqueante %}bg-rose-50/40{% endif %}">
+                    <td class="px-4 py-3 text-[11px] font-mono text-slate-400">{% if t.es_bloqueante %}<span class="text-rose-400">⛔</span>{% else %}{{ t.ruta_wbs }}{% endif %}</td>
+                    <td class="px-4 py-3">
+                        <div style="padding-left:{{ t.nivel|add:t.nivel }}0px" class="min-w-0">
+                            <span class="text-sm {% if t.es_resumen %}font-black text-slate-800{% else %}font-bold text-slate-600{% endif %}">{% if t.es_hito %}<i class="fa-solid fa-diamond text-violet-500 text-[10px] mr-1"></i>{% endif %}{{ t.titulo }}</span>
+                            <span class="text-[10px] font-mono text-slate-300 ml-1">{{ t.folio }}</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex -space-x-1.5">
+                            {% for a in t.asignaciones.all %}
+                            <span title="{{ a.usuario.get_full_name|default:a.usuario.username }}{% if a.completado %} · confirmó{% endif %}" class="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-black text-white border-2 border-white {% if a.completado %}bg-emerald-500{% else %}bg-slate-400{% endif %}">{{ a.usuario.get_full_name|default:a.usuario.username|slice:":2"|upper }}</span>
+                            {% empty %}<span class="text-[10px] text-slate-300">—</span>{% endfor %}
+                        </div>
+                    </td>
+                    <td class="px-4 py-3">
+                        {% include 'admon_tareas/_estado_badge.html' with estado=t.estado display=t.get_estado_display %}
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="text-[11px] font-black uppercase {% if t.prioridad == 'URGE' or t.prioridad == 'ALTA' %}text-rose-500{% elif t.prioridad == 'MEDIA' %}text-amber-500{% else %}text-slate-400{% endif %}">{{ t.get_prioridad_display }}</span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full {% if t.estado == 'COMP' %}bg-emerald-500{% elif t.estado == 'BLOQ' %}bg-rose-500{% else %}bg-brand{% endif %}" style="width:{{ t.avance|floatformat:0 }}%"></div></div>
+                            <span class="text-[10px] font-bold text-slate-400 w-8 text-right">{{ t.avance|floatformat:0 }}%</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-[11px] font-bold text-slate-400 whitespace-nowrap">{{ t.fecha_fin_plan|date:"d/m/Y"|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="px-8 py-16 text-center text-slate-400 italic">Este tablero aún no tiene tareas. Crea la primera con <b>Nueva tarea</b>.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="text-[11px] text-slate-400 mt-3 italic">Da clic en cualquier tarea para abrir su detalle: asignados, subtareas, comentarios y archivos.</p>
+</div>
+
+<!-- Modal nueva tarea / subtarea -->
+<div id="modalCrear" class="hidden fixed inset-0 bg-slate-900/50 z-[60] flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg">
+        <div class="flex items-center justify-between px-8 pt-8 pb-2">
+            <h3 class="text-lg font-black text-slate-800 italic uppercase" id="crearTitulo">Nueva tarea</h3>
+            <button type="button" onclick="document.getElementById('modalCrear').classList.add('hidden')" class="text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <form method="POST" class="px-8 pb-8 pt-4 space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="crear_tarea">
+            <input type="hidden" name="padre" id="crearPadre" value="">
+            <p id="crearSubDe" class="hidden text-[11px] font-bold text-brand"></p>
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Título</label>
+                <input type="text" name="titulo" required placeholder="¿Qué hay que hacer?" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Prioridad</label>
+                    <select name="prioridad" class="w-full mt-1 no-select2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+                        {% for k,v in prioridades %}<option value="{{ k }}" {% if k == 'MEDIA' %}selected{% endif %}>{{ v }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="flex items-end pb-1">
+                    <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" name="es_hito" class="w-4 h-4"> Es hito</label>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Inicio plan</label><input type="date" name="fecha_inicio_plan" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold"></div>
+                <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Fin plan</label><input type="date" name="fecha_fin_plan" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold"></div>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('modalCrear').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cancelar</button>
+                <button type="submit" class="bg-brand text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Agregar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Drawer detalle -->
+<div id="scrim" onclick="cerrarTarea()" class="hidden fixed inset-0 bg-slate-900/40 z-[55]"></div>
+<aside id="drawer" class="fixed top-0 right-0 bottom-0 w-full max-w-xl bg-white shadow-2xl z-[56] translate-x-full transition-transform duration-200 overflow-y-auto">
+    <div id="drawerBody"></div>
+</aside>
+
+<script>
+const TAB_PK = {{ tablero.pk }};
+function abrirCrear(padreId){
+    document.getElementById('crearPadre').value = padreId || '';
+    const sub = document.getElementById('crearSubDe');
+    document.getElementById('crearTitulo').textContent = padreId ? 'Nueva subtarea' : 'Nueva tarea';
+    sub.classList.toggle('hidden', !padreId);
+    if(padreId) sub.textContent = '↳ Subtarea de la tarea seleccionada';
+    document.getElementById('modalCrear').classList.remove('hidden');
+}
+function abrirTarea(id){
+    const dr = document.getElementById('drawer'), sc = document.getElementById('scrim');
+    document.getElementById('drawerBody').innerHTML = '<div class="p-10 text-center text-slate-400 italic">Cargando…</div>';
+    sc.classList.remove('hidden');
+    dr.classList.remove('translate-x-full');
+    fetch(`/tareas/tarea/${id}/panel/`, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+        .then(r=>r.text()).then(html=>{ document.getElementById('drawerBody').innerHTML = html;
+            history.replaceState(null,'',`?t=${id}`); });
+}
+function cerrarTarea(){
+    document.getElementById('drawer').classList.add('translate-x-full');
+    document.getElementById('scrim').classList.add('hidden');
+    history.replaceState(null,'', location.pathname);
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') cerrarTarea(); });
+(function(){ const p=new URLSearchParams(location.search).get('t'); if(p) abrirTarea(p); })();
+</script>
+{% endblock %}

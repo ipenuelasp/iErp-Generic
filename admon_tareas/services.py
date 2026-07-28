@@ -1,0 +1,193 @@
+"""
+Lógica derivada del módulo de tareas. TODO aquí, nunca en señales:
+- folio consecutivo por empresa
+- recálculo de WBS / nivel / es_resumen
+- rollup de avance del padre desde los hijos (ponderado por peso)
+- derivación del estado de la tarea desde las confirmaciones + modo_cierre
+- bitácora de actividad
+Se llama explícito desde las vistas.
+"""
+import decimal
+
+from django.db import transaction
+from django.db.models import Max
+from django.utils import timezone
+
+from .models import Tablero, Tarea, TareaAsignacion, TareaActividad
+
+
+# --------------------------------------------------------------------------
+# Folio
+# --------------------------------------------------------------------------
+def siguiente_folio(empresa):
+    """TSK + consecutivo de 10 dígitos, por empresa."""
+    ultimo = (Tarea.objects.filter(empresa=empresa)
+              .exclude(folio='').order_by('-folio').values_list('folio', flat=True).first())
+    n = 0
+    if ultimo and ultimo.startswith('TSK'):
+        try:
+            n = int(ultimo[3:])
+        except ValueError:
+            n = 0
+    return f"TSK{n + 1:010d}"
+
+
+# --------------------------------------------------------------------------
+# Actividad (bitácora)
+# --------------------------------------------------------------------------
+def registrar_actividad(tarea, usuario, accion, *, campo='', valor_ant='', valor_nue='', detalle=''):
+    return TareaActividad.objects.create(
+        tarea=tarea, usuario=usuario if getattr(usuario, 'pk', None) else None,
+        accion=accion, campo=campo or '', valor_ant=str(valor_ant or ''),
+        valor_nue=str(valor_nue or ''), detalle=detalle or '')
+
+
+# --------------------------------------------------------------------------
+# Recalcular estructura (WBS, nivel, es_resumen) + avance
+# --------------------------------------------------------------------------
+def recalcular_tablero(tablero):
+    """Recalcula ruta_wbs, nivel y es_resumen de todas las tareas del tablero, y
+    hace el rollup de avance. Las tareas bloqueantes (es_bloqueante) viven fuera
+    del WBS: ruta_wbs='' y no entran en la numeración ni en el rollup del padre."""
+    tareas = list(Tarea.objects.filter(tablero=tablero))
+    por_padre = {}
+    for t in tareas:
+        por_padre.setdefault(t.padre_id, []).append(t)
+    for hijos in por_padre.values():
+        hijos.sort(key=lambda x: (x.orden, x.id))
+
+    cambiadas = []
+
+    def _num(lista, prefijo, nivel):
+        i = 0
+        for t in lista:
+            if t.es_bloqueante:
+                # Fuera del WBS
+                if t.ruta_wbs != '' or t.nivel != nivel:
+                    t.ruta_wbs = ''
+                    t.nivel = nivel
+                    cambiadas.append(t)
+                continue
+            i += 1
+            wbs = f"{prefijo}{i}" if not prefijo else f"{prefijo}.{i}"
+            hijos = [h for h in por_padre.get(t.id, []) if not h.es_bloqueante]
+            es_res = bool(hijos)
+            if t.ruta_wbs != wbs or t.nivel != nivel or t.es_resumen != es_res:
+                t.ruta_wbs = wbs
+                t.nivel = nivel
+                t.es_resumen = es_res
+                cambiadas.append(t)
+            _num(por_padre.get(t.id, []), wbs, nivel + 1)
+
+    _num(por_padre.get(None, []), '', 0)
+
+    if cambiadas:
+        # Puede haber duplicados en la lista; dedup por id conservando el objeto.
+        vistos = {}
+        for t in cambiadas:
+            vistos[t.id] = t
+        Tarea.objects.bulk_update(vistos.values(), ['ruta_wbs', 'nivel', 'es_resumen'])
+
+    _rollup_avance(tablero)
+
+
+def _rollup_avance(tablero):
+    """Avance del padre = promedio ponderado por peso de sus hijos (no bloqueantes),
+    recursivo. En hojas se respeta el avance capturado."""
+    tareas = list(Tarea.objects.filter(tablero=tablero))
+    por_id = {t.id: t for t in tareas}
+    hijos_de = {}
+    for t in tareas:
+        if t.padre_id and not t.es_bloqueante:
+            hijos_de.setdefault(t.padre_id, []).append(t)
+
+    memo = {}
+
+    def _av(t):
+        if t.id in memo:
+            return memo[t.id]
+        hijos = hijos_de.get(t.id, [])
+        if not hijos:
+            val = decimal.Decimal(t.avance)
+        else:
+            peso_total = sum((decimal.Decimal(h.peso) for h in hijos), decimal.Decimal('0'))
+            if peso_total <= 0:
+                val = decimal.Decimal('0')
+            else:
+                val = sum((_av(h) * decimal.Decimal(h.peso) for h in hijos),
+                          decimal.Decimal('0')) / peso_total
+            val = val.quantize(decimal.Decimal('0.01'))
+        memo[t.id] = val
+        return val
+
+    a_guardar = []
+    for t in tareas:
+        if t.es_resumen and not t.es_bloqueante:
+            nuevo = _av(t)
+            if decimal.Decimal(t.avance) != nuevo:
+                t.avance = nuevo
+                a_guardar.append(t)
+    if a_guardar:
+        Tarea.objects.bulk_update(a_guardar, ['avance'])
+
+
+# --------------------------------------------------------------------------
+# Derivación del estado desde las confirmaciones
+# --------------------------------------------------------------------------
+def evaluar_cierre(tarea):
+    """Deriva el estado de una tarea HOJA según sus confirmaciones y el modo de
+    cierre del tablero. No toca tareas resumen, bloqueadas, canceladas ni ya
+    completadas (esas las cierra el responsable con cerrar_tarea)."""
+    if tarea.es_resumen or tarea.estado in ('BLOQ', 'CANC', 'COMP'):
+        return tarea.estado
+    asigs = list(tarea.asignaciones.all())
+    if not asigs:
+        return tarea.estado
+
+    modo = tarea.tablero.modo_cierre
+    if modo == 'RESPONSABLE':
+        resp = [a for a in asigs if a.rol == 'RESP'] or asigs
+        listo = all(a.completado for a in resp)
+    elif modo == 'CUALQUIERA':
+        listo = any(a.completado for a in asigs)
+    else:  # TODOS
+        listo = all(a.completado for a in asigs)
+
+    nuevo = 'REVI' if listo else ('PROC' if any(a.completado for a in asigs) else tarea.estado)
+    if nuevo != tarea.estado:
+        tarea.estado = nuevo
+        tarea.save(update_fields=['estado'])
+    return tarea.estado
+
+
+def confirmar_asignacion(asignacion, usuario, *, completado=True, nota=''):
+    """Marca (o desmarca) la confirmación individual de una persona y re-evalúa
+    el cierre de la tarea."""
+    asignacion.completado = completado
+    asignacion.completado_en = timezone.now() if completado else None
+    if nota:
+        asignacion.nota_cierre = nota[:500]
+    asignacion.save(update_fields=['completado', 'completado_en', 'nota_cierre'])
+    registrar_actividad(
+        asignacion.tarea, usuario, 'CONFIRMO' if completado else 'DESCONFIRMO',
+        detalle=f"{usuario} {'confirmó' if completado else 'quitó su confirmación de'} su parte")
+    evaluar_cierre(asignacion.tarea)
+
+
+# --------------------------------------------------------------------------
+# Alta de tarea
+# --------------------------------------------------------------------------
+@transaction.atomic
+def crear_tarea(*, tablero, usuario, titulo, padre=None, **campos):
+    empresa = tablero.empresa
+    orden = campos.pop('orden', None)
+    if orden is None:
+        agg = Tarea.objects.filter(tablero=tablero, padre=padre).aggregate(m=Max('orden'))
+        orden = (agg['m'] or 0) + 1
+    tarea = Tarea.objects.create(
+        empresa=empresa, tablero=tablero, padre=padre, titulo=titulo.strip(),
+        folio=siguiente_folio(empresa), orden=orden, creado_por=usuario, **campos)
+    recalcular_tablero(tablero)
+    registrar_actividad(tarea, usuario, 'CREADA', detalle=f"Tarea creada: {tarea.titulo}")
+    tarea.refresh_from_db()
+    return tarea

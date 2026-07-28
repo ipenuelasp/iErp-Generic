@@ -265,6 +265,19 @@
     </div>
     {% endif %}
 
+    <!-- TAREAS -->
+    {% if 'tareas' in modulos_visibles %}
+    <div class="pt-2">
+        <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Tareas</p>
+        {% if 'tareas.tableros' not in secciones_ocultas %}
+        <a href="{% url 'admon_tareas:tableros' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'tareas' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-list-check mr-3"></i> Tableros
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <!-- Espaciador para empujar lo siguiente al fondo -->
     <div class="flex-1"></div>
 

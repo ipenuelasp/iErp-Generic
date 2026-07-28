@@ -15,8 +15,8 @@ MODULOS = [
     {'clave': 'cirugias', 'nombre': 'Cirugías', 'icono': 'fa-syringe', 'disponible': True},
     {'clave': 'rrhh', 'nombre': 'Recursos Humanos', 'icono': 'fa-users', 'disponible': False},
     # Módulo contratable extra de tareas/proyectos (Tableros, WBS, Gantt, kanban).
-    # disponible=False hasta que lleguen las pantallas (Fase 2). Ver docs/modulo_tareas/.
-    {'clave': 'tareas', 'nombre': 'Tareas', 'icono': 'fa-list-check', 'disponible': False},
+    # Fase 2: vista Lista + detalle. Gantt y kanban vienen después. Ver docs/modulo_tareas/.
+    {'clave': 'tareas', 'nombre': 'Tareas', 'icono': 'fa-list-check', 'disponible': True},
     # Capacidad (no navegable): habilita el ajuste/prorrateo del monto de venta
     # en los pedidos. No tiene pantalla propia; solo enciende la herramienta.
     {'clave': 'ajuste_precio', 'nombre': 'Ajuste de precio de venta', 'icono': 'fa-sliders',
@@ -86,6 +86,9 @@ SECCIONES = [
     {'clave': 'produccion.recetas', 'nombre': 'Recetas', 'modulo': 'produccion', 'urls': ['recetas']},
     {'clave': 'produccion.ordenes', 'nombre': 'Órdenes de Producción', 'modulo': 'produccion',
      'urls': ['ordenes_produccion', 'orden_produccion_detalle']},
+    # Tareas
+    {'clave': 'tareas.tableros', 'nombre': 'Tableros', 'modulo': 'tareas',
+     'urls': ['tableros', 'tablero_detalle', 'tarea_panel', 'adjunto_descarga']},
 ]
 
 # Índice url_name -> clave de sección (para el bloqueo en middleware)

@@ -1,0 +1,167 @@
+{% load humanize %}
+{% url 'admon_tareas:tablero_detalle' tablero.pk as post_url %}
+<div class="px-6 pt-6 pb-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+    <div class="flex items-center gap-2 mb-2">
+        <span class="text-[11px] font-mono text-slate-400">{{ t.folio }}</span>
+        {% if t.ruta_wbs %}<span class="text-[11px] font-mono text-slate-300">· WBS {{ t.ruta_wbs }}</span>{% endif %}
+        {% if t.es_bloqueante %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-rose-50 text-rose-500">Bloqueante</span>{% endif %}
+        <button type="button" onclick="cerrarTarea()" class="ml-auto text-slate-300 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+    </div>
+    <h2 class="text-xl font-black text-slate-800 leading-tight mb-2">{% if t.es_hito %}<i class="fa-solid fa-diamond text-violet-500 text-sm mr-1"></i>{% endif %}{{ t.titulo }}</h2>
+    <div class="flex items-center gap-2 flex-wrap">
+        {% include 'admon_tareas/_estado_badge.html' with estado=t.estado display=t.get_estado_display %}
+        <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Prioridad {{ t.get_prioridad_display }}</span>
+        {% if t.es_resumen %}<span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Fase</span>{% endif %}
+    </div>
+</div>
+
+<div class="px-6 py-5 space-y-6">
+    <!-- Datos -->
+    <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-[13px]">
+        <span class="text-slate-400">Tablero</span><span class="font-bold text-slate-700 text-right">{{ tablero.nombre }}</span>
+        <span class="text-slate-400">Inicio plan</span><span class="font-bold text-slate-700 text-right">{{ t.fecha_inicio_plan|date:"d/m/Y"|default:"—" }}</span>
+        <span class="text-slate-400">Fin plan</span><span class="font-bold text-slate-700 text-right">{{ t.fecha_fin_plan|date:"d/m/Y"|default:"—" }}</span>
+        <span class="text-slate-400">Avance</span>
+        <span class="font-bold text-slate-700 text-right">{{ t.avance|floatformat:0 }}%{% if t.es_resumen %} <span class="text-[10px] text-slate-400 font-medium">(calculado)</span>{% endif %}</span>
+    </div>
+
+    <!-- Estado -->
+    <form method="POST" action="{{ post_url }}" class="flex items-center gap-2">{% csrf_token %}
+        <input type="hidden" name="accion" value="cambiar_estado"><input type="hidden" name="tarea_id" value="{{ t.id }}">
+        <label class="text-[10px] font-black text-slate-400 uppercase">Estado</label>
+        <select name="estado" class="no-select2 flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold">
+            {% for k,v in estados %}<option value="{{ k }}" {% if k == t.estado %}selected{% endif %}>{{ v }}</option>{% endfor %}
+        </select>
+        <button class="bg-slate-700 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">Aplicar</button>
+    </form>
+
+    {% if mi_asignacion %}
+    <form method="POST" action="{{ post_url }}">{% csrf_token %}
+        <input type="hidden" name="accion" value="confirmar"><input type="hidden" name="tarea_id" value="{{ t.id }}">
+        <button class="w-full {% if mi_asignacion.completado %}bg-white border border-emerald-200 text-emerald-600{% else %}bg-emerald-600 text-white{% endif %} py-3 rounded-xl font-black text-[11px] uppercase tracking-widest hover:-translate-y-0.5 transition-all">
+            <i class="fa-solid fa-circle-check mr-1"></i> {% if mi_asignacion.completado %}Quitar mi confirmación{% else %}Confirmar mi parte{% endif %}
+        </button>
+    </form>
+    {% endif %}
+
+    <!-- Asignados -->
+    <div>
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Asignados · {{ tablero.get_modo_cierre_display }}</p>
+        {% for a in asignaciones %}
+        <div class="flex items-center gap-3 py-2 border-b border-slate-50">
+            <span class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black text-white {% if a.completado %}bg-emerald-500{% else %}bg-slate-400{% endif %}">{{ a.usuario.get_full_name|default:a.usuario.username|slice:":2"|upper }}</span>
+            <div class="min-w-0"><p class="text-sm font-bold text-slate-700 truncate">{{ a.usuario.get_full_name|default:a.usuario.username }}</p>
+                <p class="text-[10px] text-slate-400">{{ a.get_rol_display }}{% if a.completado %} · confirmó {{ a.completado_en|date:"d/m H:i" }}{% endif %}</p></div>
+            <form method="POST" action="{{ post_url }}" class="ml-auto">{% csrf_token %}
+                <input type="hidden" name="accion" value="quitar_asignacion"><input type="hidden" name="tarea_id" value="{{ t.id }}"><input type="hidden" name="asignacion_id" value="{{ a.id }}">
+                <button class="text-slate-300 hover:text-rose-500 text-xs" title="Quitar"><i class="fa-solid fa-xmark"></i></button>
+            </form>
+        </div>
+        {% empty %}<p class="text-[12px] text-slate-400 italic">Nadie asignado todavía.</p>{% endfor %}
+        <form method="POST" action="{{ post_url }}" class="flex items-center gap-2 mt-3">{% csrf_token %}
+            <input type="hidden" name="accion" value="asignar"><input type="hidden" name="tarea_id" value="{{ t.id }}">
+            <select name="usuario" required class="no-select2 flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold">
+                <option value="">Agregar persona…</option>
+                {% for u in usuarios %}<option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+            </select>
+            <select name="rol" class="no-select2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold">
+                {% for k,v in roles %}<option value="{{ k }}">{{ v }}</option>{% endfor %}
+            </select>
+            <button class="bg-brand text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase"><i class="fa-solid fa-plus"></i></button>
+        </form>
+    </div>
+
+    <!-- Subtareas -->
+    <div>
+        <div class="flex items-center justify-between mb-2">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subtareas · {{ subtareas|length }}</p>
+            {% if not t.es_bloqueante %}<button type="button" onclick="abrirCrear('{{ t.id }}')" class="text-[11px] font-black text-brand uppercase">+ Subtarea</button>{% endif %}
+        </div>
+        {% for s in subtareas %}
+        <div onclick="abrirTarea({{ s.id }})" class="flex items-center gap-2 py-2 border-b border-slate-50 cursor-pointer hover:bg-slate-50/60 rounded px-1">
+            <span class="text-[10px] font-mono text-slate-300">{{ s.ruta_wbs }}</span>
+            <span class="text-[13px] font-bold text-slate-600 flex-1 truncate">{{ s.titulo }}</span>
+            {% include 'admon_tareas/_estado_badge.html' with estado=s.estado display=s.get_estado_display %}
+            <span class="text-[10px] font-bold text-slate-400 w-9 text-right">{{ s.avance|floatformat:0 }}%</span>
+        </div>
+        {% empty %}<p class="text-[12px] text-slate-400 italic">Sin subtareas. Divide el trabajo con <b>+ Subtarea</b>.</p>{% endfor %}
+    </div>
+
+    <!-- Archivos -->
+    <div>
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Archivos · {{ adjuntos|length }}</p>
+        {% for f in adjuntos %}
+        <div class="flex items-center gap-3 py-2 border-b border-slate-50">
+            <i class="fa-solid {% if f.es_imagen %}fa-file-image{% else %}fa-file{% endif %} text-slate-300"></i>
+            <div class="min-w-0 flex-1"><a href="{% url 'admon_tareas:adjunto_descarga' f.id %}" class="text-[13px] font-bold text-slate-700 hover:underline truncate block">{{ f.nombre_original }}</a>
+                <p class="text-[10px] text-slate-400">{{ f.tamano_legible }} · {{ f.subido_por.get_full_name|default:f.subido_por.username }}</p></div>
+            <form method="POST" action="{{ post_url }}">{% csrf_token %}
+                <input type="hidden" name="accion" value="eliminar_adjunto"><input type="hidden" name="tarea_id" value="{{ t.id }}"><input type="hidden" name="adjunto_id" value="{{ f.id }}">
+                <button class="text-slate-300 hover:text-rose-500 text-xs"><i class="fa-solid fa-trash-can"></i></button>
+            </form>
+        </div>
+        {% endfor %}
+        <form method="POST" action="{{ post_url }}" enctype="multipart/form-data" class="mt-2">{% csrf_token %}
+            <input type="hidden" name="accion" value="subir_adjunto"><input type="hidden" name="tarea_id" value="{{ t.id }}">
+            <div class="relative h-[52px]">
+                <input type="file" name="archivos" multiple onchange="this.form.submit()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                <div class="absolute inset-0 flex items-center justify-center gap-2 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs font-bold z-10 hover:border-brand"><i class="fa-solid fa-paperclip"></i> Adjuntar archivo(s)</div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Comentarios y actividad -->
+    <div>
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Comentarios y actividad</p>
+        <form method="POST" action="{{ post_url }}" enctype="multipart/form-data" class="mb-4">{% csrf_token %}
+            <input type="hidden" name="accion" value="comentar"><input type="hidden" name="tarea_id" value="{{ t.id }}">
+            <textarea name="texto" rows="2" required placeholder="Escribe un comentario…" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[13px] font-medium"></textarea>
+            <div class="flex items-center gap-2 mt-2">
+                <label class="text-[11px] font-bold text-slate-400 cursor-pointer"><i class="fa-solid fa-paperclip mr-1"></i>Adjuntar<input type="file" name="archivos" multiple class="hidden"></label>
+                <button class="ml-auto bg-brand text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">Comentar</button>
+            </div>
+        </form>
+        {% for c in comentarios %}
+        <div class="flex gap-3 py-2">
+            <span class="w-7 h-7 rounded-full bg-slate-400 flex items-center justify-center text-[9px] font-black text-white flex-none">{{ c.autor.get_full_name|default:c.autor.username|slice:":2"|upper }}</span>
+            <div class="min-w-0"><p class="text-[13px] text-slate-700"><b>{{ c.autor.get_full_name|default:c.autor.username }}</b> {{ c.texto }}</p>
+                {% for f in c.adjuntos.all %}<a href="{% url 'admon_tareas:adjunto_descarga' f.id %}" class="text-[11px] text-brand hover:underline"><i class="fa-solid fa-paperclip mr-1"></i>{{ f.nombre_original }}</a> {% endfor %}
+                <p class="text-[10px] text-slate-400 mt-0.5">{{ c.creado_en|date:"d/m/Y H:i" }}</p></div>
+        </div>
+        {% endfor %}
+        {% for a in actividad %}
+        <div class="flex gap-3 py-1.5 text-[11px] text-slate-400">
+            <i class="fa-solid fa-circle text-[5px] mt-1.5 flex-none"></i>
+            <p>{% if a.usuario %}<b class="text-slate-500">{{ a.usuario.get_full_name|default:a.usuario.username }}</b> {% endif %}{{ a.detalle|default:a.accion }} · {{ a.creado_en|date:"d/m H:i" }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Editar / eliminar -->
+    <details class="border-t border-slate-100 pt-4">
+        <summary class="text-[11px] font-black text-slate-400 uppercase tracking-widest cursor-pointer">Editar tarea</summary>
+        <form method="POST" action="{{ post_url }}" class="mt-3 space-y-3">{% csrf_token %}
+            <input type="hidden" name="accion" value="editar_tarea"><input type="hidden" name="tarea_id" value="{{ t.id }}">
+            <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Título</label>
+                <input type="text" name="titulo" value="{{ t.titulo }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold"></div>
+            <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Descripción</label>
+                <textarea name="descripcion" rows="2" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[13px] font-medium">{{ t.descripcion }}</textarea></div>
+            <div class="grid grid-cols-3 gap-2">
+                <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Prioridad</label>
+                    <select name="prioridad" class="no-select2 w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs font-bold">
+                        {% for k,v in t.PRIORIDAD %}<option value="{{ k }}" {% if k == t.prioridad %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+                <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Inicio</label><input type="date" name="fecha_inicio_plan" value="{{ t.fecha_inicio_plan|date:'Y-m-d' }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs font-bold"></div>
+                <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Fin</label><input type="date" name="fecha_fin_plan" value="{{ t.fecha_fin_plan|date:'Y-m-d' }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs font-bold"></div>
+            </div>
+            {% if not t.es_resumen %}
+            <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Avance %</label>
+                <input type="number" name="avance" min="0" max="100" value="{{ t.avance|floatformat:0 }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-right"></div>
+            {% endif %}
+            <button class="bg-brand text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">Guardar</button>
+        </form>
+        <form method="POST" action="{{ post_url }}" data-confirm="¿Eliminar {{ t.folio }} y sus subtareas? No se puede deshacer." data-confirm-title="Eliminar tarea" data-confirm-ok="Sí, eliminar" class="mt-3">{% csrf_token %}
+            <input type="hidden" name="accion" value="eliminar_tarea"><input type="hidden" name="tarea_id" value="{{ t.id }}">
+            <button class="text-rose-400 hover:text-rose-600 text-[10px] font-black uppercase tracking-widest"><i class="fa-solid fa-trash-can mr-1"></i>Eliminar tarea</button>
+        </form>
+    </details>
+</div>

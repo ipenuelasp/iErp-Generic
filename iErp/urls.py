@@ -31,6 +31,7 @@ urlpatterns = [
     path('finanzas/', include('admon_finanzas.urls')),
     path('ventas/', include('admon_ventas.urls')),
     path('cirugias/', include('admon_cirugias.urls')),
+    path('tareas/', include('admon_tareas.urls')),
     path('', include('admon_empresas.urls')),
     # Sirve archivos subidos (logos, isotipos, constancias) también en producción
     # (static() solo funciona con DEBUG=True; esta ruta funciona siempre).
