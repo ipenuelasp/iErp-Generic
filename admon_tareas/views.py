@@ -17,7 +17,7 @@ from django.utils import timezone
 
 from admon_comunes.models import Adjunto
 from .models import (Tablero, Tarea, Seccion, TareaAsignacion, TareaComentario,
-                     TipoTablero, tipos_de)
+                     TareaDependencia, TipoTablero, tipos_de)
 from . import services
 
 
@@ -173,6 +173,16 @@ class TableroDetalleView(LoginRequiredMixin, View):
                       .order_by('orden', 'ruta_wbs', 'id'))
         # Orden jerárquico para la Lista: raíces por orden, luego sus hijos (WBS).
         ordenadas = _orden_jerarquico(tareas)
+        # Marca las tareas bloqueadas por dependencias no cumplidas.
+        deps = (TareaDependencia.objects.filter(sucesora__tablero=tablero)
+                .select_related('predecesora'))
+        espera = {}
+        for d in deps:
+            if services._bloquea(d):
+                espera.setdefault(d.sucesora_id, []).append(
+                    d.predecesora.ruta_wbs or d.predecesora.folio)
+        for t in ordenadas:
+            t.espera = espera.get(t.id)
         hojas = [t for t in tareas if not t.es_resumen and not t.es_bloqueante]
         resumen = {
             'total': len(hojas),
@@ -260,6 +270,11 @@ class TableroDetalleView(LoginRequiredMixin, View):
 
         elif accion == 'cambiar_estado' and tarea:
             nuevo = request.POST.get('estado')
+            if nuevo in ('PROC', 'REVI', 'COMP') and services.bloqueada_por(tarea):
+                bloq = services.bloqueada_por(tarea)
+                nombres = ", ".join(f"{d.predecesora.ruta_wbs or d.predecesora.folio}" for d in bloq)
+                messages.error(request, f"No puede avanzar: espera a {nombres}.")
+                return volver
             if nuevo in dict(Tarea.ESTADO):
                 ant = tarea.estado
                 tarea.estado = nuevo
@@ -338,10 +353,39 @@ class TableroDetalleView(LoginRequiredMixin, View):
             services.evaluar_cierre(tarea)
             messages.info(request, "Asignación quitada.")
 
+        elif accion == 'agregar_dependencia' and tarea:
+            pred = tablero.tareas.filter(id=request.POST.get('predecesora')).first()
+            tipo = request.POST.get('tipo_dep') or 'FS'
+            if tipo not in dict(TareaDependencia.TIPO):
+                tipo = 'FS'
+            if not pred or pred.id == tarea.id:
+                messages.error(request, "Elige una tarea válida.")
+            elif TareaDependencia.objects.filter(predecesora=pred, sucesora=tarea).exists():
+                messages.info(request, "Esa dependencia ya existe.")
+            elif services.crearia_ciclo(pred, tarea):
+                messages.error(request, "No se puede: crearía un ciclo de dependencias.")
+            else:
+                TareaDependencia.objects.create(
+                    predecesora=pred, sucesora=tarea, tipo=tipo,
+                    origen='PLANEADA', creado_por=request.user)
+                services.registrar_actividad(
+                    tarea, request.user, 'DEPENDENCIA',
+                    detalle=f"Ahora depende de {pred.folio} · {pred.titulo} ({tipo})")
+                messages.success(request, "Dependencia agregada.")
+
+        elif accion == 'quitar_dependencia' and tarea:
+            TareaDependencia.objects.filter(
+                id=request.POST.get('dep_id'), sucesora=tarea).delete()
+            messages.info(request, "Dependencia quitada.")
+
         elif accion == 'confirmar' and tarea:
             asig = TareaAsignacion.objects.filter(
                 tarea=tarea, usuario=request.user).first()
-            if not asig:
+            bloq = services.bloqueada_por(tarea)
+            if bloq:
+                nombres = ", ".join(f"{d.predecesora.ruta_wbs or d.predecesora.folio}" for d in bloq)
+                messages.error(request, f"No puedes confirmar todavía: esta tarea espera a {nombres}.")
+            elif not asig:
                 messages.error(request, "No estás asignado a esta tarea.")
             else:
                 services.confirmar_asignacion(
@@ -394,6 +438,11 @@ class TareaPanelView(LoginRequiredMixin, View):
                          .prefetch_related('asignaciones__usuario').order_by('orden', 'ruta_wbs'))
         ct = ContentType.objects.get_for_model(Tarea)
         adjuntos = Adjunto.objects.filter(content_type=ct, object_id=tarea.id)
+        dependencias = (TareaDependencia.objects.filter(sucesora=tarea)
+                        .select_related('predecesora'))
+        # Candidatas a predecesora: otras tareas del tablero (no la misma).
+        candidatas = (tarea.tablero.tareas.exclude(id=tarea.id)
+                      .order_by('orden', 'ruta_wbs').values('id', 'folio', 'ruta_wbs', 'titulo'))
         context = {
             'tablero': tarea.tablero,
             't': tarea,
@@ -407,6 +456,10 @@ class TareaPanelView(LoginRequiredMixin, View):
             'estados': Tarea.ESTADO,
             'mi_asignacion': tarea.asignaciones.filter(usuario=request.user).first(),
             'puede_cerrar': _puede_cerrar(request.user, tarea.tablero),
+            'dependencias': dependencias,
+            'candidatas': candidatas,
+            'tipos_dep': TareaDependencia.TIPO,
+            'bloqueada': services.bloqueada_por(tarea),
         }
         return render(request, self.template_name, context)
 

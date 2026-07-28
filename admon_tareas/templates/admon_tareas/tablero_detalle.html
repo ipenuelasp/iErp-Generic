@@ -43,6 +43,7 @@
                         <div style="padding-left:{{ t.nivel|add:t.nivel }}0px" class="min-w-0">
                             <span class="text-sm {% if t.es_resumen %}font-black text-slate-800{% else %}font-bold text-slate-600{% endif %}">{% if t.es_hito %}<i class="fa-solid fa-diamond text-violet-500 text-[10px] mr-1"></i>{% endif %}{{ t.titulo }}</span>
                             <span class="text-[10px] font-mono text-slate-300 ml-1">{{ t.folio }}</span>
+                            {% if t.espera %}<span class="text-[9px] font-black uppercase text-rose-500 ml-1" title="Espera a: {{ t.espera|join:', ' }}"><i class="fa-solid fa-lock mr-0.5"></i>espera {{ t.espera|join:", " }}</span>{% endif %}
                         </div>
                     </td>
                     <td class="px-4 py-3">

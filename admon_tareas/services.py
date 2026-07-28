@@ -13,7 +13,7 @@ from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
 
-from .models import Tablero, Tarea, TareaAsignacion, TareaActividad
+from .models import Tablero, Tarea, TareaAsignacion, TareaActividad, TareaDependencia
 
 
 import datetime
@@ -52,6 +52,46 @@ def calcular_fin_plan(inicio, dias, horas):
     while inicio_habil.weekday() >= 5:   # si cae en finde, arranca el lunes
         inicio_habil = inicio_habil + datetime.timedelta(days=1)
     return sumar_dias_habiles(inicio_habil, dias - 1)
+
+
+# --------------------------------------------------------------------------
+# Dependencias (secuencia entre tareas)
+# --------------------------------------------------------------------------
+def _bloquea(dep):
+    """¿Esta dependencia impide que la sucesora avance ahora?
+    FS: la predecesora debe estar COMPLETADA. SS: debe haber ARRANCADO (no PEND).
+    FF/SF: sólo informativas (no bloquean el arranque)."""
+    p = dep.predecesora
+    if dep.tipo == 'FS':
+        return p.estado != 'COMP'
+    if dep.tipo == 'SS':
+        return p.estado == 'PEND'
+    return False
+
+
+def bloqueada_por(tarea):
+    """Lista de dependencias (predecesoras) que impiden avanzar la tarea."""
+    deps = TareaDependencia.objects.filter(sucesora=tarea).select_related('predecesora')
+    return [d for d in deps if _bloquea(d)]
+
+
+def crearia_ciclo(predecesora, sucesora):
+    """True si agregar predecesora→sucesora cerraría un ciclo (ya hay camino
+    sucesora→…→predecesora siguiendo las dependencias existentes)."""
+    objetivo = predecesora.id
+    visto = set()
+    frontera = [sucesora.id]
+    while frontera:
+        actual = frontera.pop()
+        if actual == objetivo:
+            return True
+        if actual in visto:
+            continue
+        visto.add(actual)
+        frontera.extend(
+            TareaDependencia.objects.filter(predecesora_id=actual)
+            .values_list('sucesora_id', flat=True))
+    return False
 
 
 # --------------------------------------------------------------------------
