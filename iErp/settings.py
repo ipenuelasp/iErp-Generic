@@ -75,6 +75,8 @@ INSTALLED_APPS = [
     'admon_finanzas',
     'admon_ventas',
     'admon_cirugias',
+    'admon_comunes',
+    'admon_tareas',
 ]
 
 MIDDLEWARE = [

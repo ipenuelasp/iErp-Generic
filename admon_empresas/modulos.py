@@ -14,6 +14,9 @@ MODULOS = [
     {'clave': 'ventas', 'nombre': 'Ventas', 'icono': 'fa-cash-register', 'disponible': True},
     {'clave': 'cirugias', 'nombre': 'Cirugías', 'icono': 'fa-syringe', 'disponible': True},
     {'clave': 'rrhh', 'nombre': 'Recursos Humanos', 'icono': 'fa-users', 'disponible': False},
+    # Módulo contratable extra de tareas/proyectos (Tableros, WBS, Gantt, kanban).
+    # disponible=False hasta que lleguen las pantallas (Fase 2). Ver docs/modulo_tareas/.
+    {'clave': 'tareas', 'nombre': 'Tareas', 'icono': 'fa-list-check', 'disponible': False},
     # Capacidad (no navegable): habilita el ajuste/prorrateo del monto de venta
     # en los pedidos. No tiene pantalla propia; solo enciende la herramienta.
     {'clave': 'ajuste_precio', 'nombre': 'Ajuste de precio de venta', 'icono': 'fa-sliders',
