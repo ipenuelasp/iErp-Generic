@@ -565,13 +565,42 @@ def _datos_gantt(ordenadas, tablero, deps):
             x += _dt.timedelta(days=1)
         return idx_map.get(x)
 
+    # Span propio (por fechas) de cada tarea, en índices de día.
+    propio = {}
+    for t in ordenadas:
+        si = idx_de(t.fecha_inicio_plan)
+        ei = idx_de(t.fecha_fin_plan) if not t.es_hito else si
+        propio[t.id] = (si, ei)
+
+    # Hijos por padre (las bloqueantes viven fuera de la jerarquía).
+    hijos_de = {}
+    for t in ordenadas:
+        if t.padre_id and not t.es_bloqueante:
+            hijos_de.setdefault(t.padre_id, []).append(t)
+
+    # Span efectivo: una FASE (resumen) abarca de la primera a la última de sus
+    # subtareas; recursivo. Una hoja usa sus propias fechas.
+    span = {}
+
+    def _span(t):
+        if t.id in span:
+            return span[t.id]
+        if t.es_resumen and hijos_de.get(t.id):
+            partes = [p for p in (_span(h) for h in hijos_de[t.id]) if p]
+            if partes:
+                span[t.id] = (min(p[0] for p in partes), max(p[1] for p in partes))
+                return span[t.id]
+        si, ei = propio[t.id]
+        span[t.id] = (si, ei) if (si is not None and ei is not None) else None
+        return span[t.id]
+
     fila = {}
     for row, t in enumerate(ordenadas):
         t.grow = row
         t.gy = row * ROWH + BAR_TOP
-        si = idx_de(t.fecha_inicio_plan)
-        ei = idx_de(t.fecha_fin_plan) if not t.es_hito else si
-        if si is not None and ei is not None:
+        sp = _span(t)
+        if sp:
+            si, ei = sp
             if ei < si:
                 ei = si
             t.gvis = True
