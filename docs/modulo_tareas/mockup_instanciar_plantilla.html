@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instanciar plantilla — iErpGeneric v2.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f9fafb;--card:#fff;--line:#e5e7eb;--line-soft:#f1f2f4;
+  --ink:#111827;--ink-2:#374151;--muted:#6b7280;--faint:#9ca3af;
+  --primary:#4f46e5;--primary-soft:#eef2ff;--primary-line:#c7d2fe;
+  --gray-soft:#f3f4f6;
+  --blue:#2563eb;--blue-soft:#eff6ff;
+  --red:#dc2626;--red-soft:#fef2f2;--red-line:#fecaca;
+  --amber:#d97706;--amber-soft:#fffbeb;--amber-line:#fde68a;
+  --green:#059669;--green-soft:#ecfdf5;--green-line:#a7f3d0;
+  --violet:#7c3aed;--rose:#e11d48;
+  --r:8px;--r-sm:6px;--shadow:0 1px 2px rgba(16,24,40,.05);
+  --shadow-lg:0 10px 28px -10px rgba(16,24,40,.2);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13.5px;line-height:1.55}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+.spacer{flex:1}
+
+/* Barra superior */
+.topbar{background:var(--card);border-bottom:1px solid var(--line);padding:0 20px}
+.topbar-row{display:flex;align-items:center;gap:14px;height:58px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.02em}
+.brand-mark{width:26px;height:26px;border-radius:7px;background:var(--primary);color:#fff;
+  display:grid;place-items:center;font-size:12px;font-weight:700}
+.crumb{color:var(--faint);font-size:12px}
+.crumb b{color:var(--ink-2);font-weight:600}
+.tenant{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:6px 10px;font-size:12.5px;font-weight:500}
+.tenant .dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.staff{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;
+  background:#f5f3ff;color:var(--violet);border:1px solid #ddd6fe;border-radius:99px;padding:3px 9px}
+
+/* Pasos */
+.steps{display:flex;align-items:center;gap:0;padding:16px 20px 0;max-width:1080px;margin:0 auto}
+.step{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--faint);font-weight:500}
+.step-n{width:23px;height:23px;border-radius:50%;display:grid;place-items:center;font-size:11px;
+  font-weight:700;background:var(--gray-soft);color:var(--muted);flex:none}
+.step.is-on{color:var(--ink);font-weight:600}
+.step.is-on .step-n{background:var(--primary);color:#fff}
+.step.is-done .step-n{background:var(--green-soft);color:var(--green)}
+.step.is-done{color:var(--muted)}
+.step-bar{flex:1;height:1.5px;background:var(--line);margin:0 13px;min-width:24px}
+
+.wrap{max-width:1080px;margin:0 auto;padding:20px 20px 70px}
+.view{display:none}.view.is-on{display:block}
+
+h1{font-size:20px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 20px;max-width:72ch}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);overflow:hidden}
+.panel-h{padding:13px 16px;border-bottom:1px solid var(--line);background:#fcfcfd;
+  display:flex;align-items:center;gap:9px}
+.panel-t{font-size:13px;font-weight:650}
+.panel-b{padding:16px}
+
+/* Botones */
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);
+  padding:8px 14px;border-radius:var(--r-sm);font-size:12.5px;font-weight:500;box-shadow:var(--shadow)}
+.btn:hover{background:var(--gray-soft)}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn-primary:hover{background:#4338ca}
+.btn-lg{padding:10px 18px;font-size:13px;font-weight:600}
+.actions{display:flex;align-items:center;gap:9px;margin-top:20px}
+
+/* ══ PASO 1 · catálogo ══ */
+.cat{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:13px}
+.plt{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:15px;
+  box-shadow:var(--shadow);cursor:pointer;transition:border-color .12s,box-shadow .12s}
+.plt:hover{border-color:var(--primary-line);box-shadow:var(--shadow-lg)}
+.plt.is-sel{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.plt-top{display:flex;align-items:center;gap:7px;margin-bottom:9px}
+.plt-code{font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums;letter-spacing:.03em}
+.plt-t{font-size:14.5px;font-weight:650;letter-spacing:-.01em;margin:0 0 5px;line-height:1.3}
+.plt-d{font-size:12px;color:var(--muted);margin:0 0 12px;line-height:1.45}
+.plt-stats{display:flex;gap:15px;padding-top:11px;border-top:1px solid var(--line-soft)}
+.plt-stat{display:flex;flex-direction:column}
+.plt-stat b{font-size:14px;font-weight:700;letter-spacing:-.02em}
+.plt-stat span{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em}
+
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2.5px 8px;border-radius:99px;
+  font-size:10.5px;font-weight:700;white-space:nowrap}
+.b-global{background:#f5f3ff;color:var(--violet)}
+.b-empresa{background:var(--gray-soft);color:var(--muted)}
+.b-arranque{background:var(--blue-soft);color:var(--blue)}
+.b-impl{background:var(--green-soft);color:var(--green)}
+.b-sop{background:var(--amber-soft);color:var(--amber)}
+
+/* ══ PASO 2 · formulario ══ */
+.two{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
+.field{margin-bottom:14px}
+.field:last-child{margin-bottom:0}
+label{display:block;font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);margin-bottom:5px}
+.inp,select.inp{width:100%;border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 10px;
+  font-size:13px;background:var(--card)}
+.inp:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.hlp{font-size:11px;color:var(--faint);margin-top:4px}
+.chk{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-top:1px solid var(--line-soft)}
+.chk input{margin-top:2px;width:15px;height:15px;accent-color:var(--primary)}
+.chk-t{font-size:12.5px;font-weight:500}
+.chk-d{font-size:11px;color:var(--faint);line-height:1.4}
+
+/* Vista previa árbol */
+.prev{max-height:430px;overflow-y:auto}
+.prow{display:flex;align-items:center;gap:10px;padding:7px 16px;border-bottom:1px solid var(--line-soft);
+  font-size:12.5px}
+.prow:last-child{border-bottom:0}
+.prow.lvl-0{background:#fbfbfd;font-weight:600}
+.prow .pwbs{width:34px;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;flex:none}
+.prow .ptxt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow.lvl-1 .ptxt{padding-left:16px;font-weight:500}
+.prow.lvl-2 .ptxt{padding-left:32px;font-weight:400}
+.perfil{font-size:10.5px;color:var(--muted);background:var(--gray-soft);border-radius:99px;
+  padding:2px 8px;white-space:nowrap;flex:none}
+.pfecha{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;width:118px;
+  text-align:right;flex:none}
+.pfecha b{color:var(--ink-2);font-weight:600}
+
+/* ══ PASO 3 · reparto ══ */
+.rep-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--primary-soft);
+  border:1px solid var(--primary-line);border-radius:var(--r);margin-bottom:14px;flex-wrap:wrap}
+.rep-bar-t{font-size:12.5px;font-weight:600;color:#3730a3}
+.rep-bar-d{font-size:11.5px;color:#4338ca}
+.bulk{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2)}
+.bulk select{border:1px solid var(--primary-line);border-radius:var(--r-sm);padding:5px 8px;
+  font-size:12px;background:var(--card)}
+
+table{width:100%;border-collapse:collapse}
+thead th{text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);padding:9px 14px;background:#fcfcfd;border-bottom:1px solid var(--line);white-space:nowrap}
+tbody td{padding:7px 14px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+tbody tr.lvl-0 td{background:#fbfbfd}
+tbody tr:hover td{background:#fafbfc}
+tbody tr.lvl-0:hover td{background:#f6f7fa}
+tbody tr.sin-asignar td{background:#fffdf5}
+.twbs{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;width:40px}
+.ttxt{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:290px}
+.lvl-0 .ttxt{font-weight:650}
+.ind-1{padding-left:18px}.ind-2{padding-left:36px}
+
+.picker{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:30px}
+.av{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;color:#fff;
+  font-size:9.5px;font-weight:700;flex:none}
+.av-IP{background:var(--primary)}.av-LM{background:var(--rose)}.av-CR{background:var(--green)}
+.av-DS{background:var(--amber)}.av-JT{background:var(--blue)}.av-MV{background:var(--violet)}
+.av-RQ{background:#0891b2}.av-AN{background:#be185d}
+.pill{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:99px;
+  padding:2px 8px 2px 3px;font-size:11.5px;background:var(--card)}
+.pill .x{color:var(--faint);font-size:13px;line-height:1;margin-left:1px}
+.pill .x:hover{color:var(--red)}
+.pill .av{width:19px;height:19px;font-size:8px}
+.add-btn{width:26px;height:26px;border-radius:50%;border:1.5px dashed #d1d5db;color:var(--faint);
+  display:grid;place-items:center;font-size:14px;line-height:1;flex:none}
+.add-btn:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+.falta{font-size:10.5px;font-weight:700;color:var(--amber);white-space:nowrap}
+
+/* Menú de personas */
+.menu{position:absolute;z-index:60;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);box-shadow:var(--shadow-lg);padding:5px;min-width:230px;display:none}
+.menu.is-on{display:block}
+.menu-h{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--faint);padding:6px 9px 4px}
+.menu-i{display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:var(--r-sm);
+  font-size:12.5px;cursor:pointer;width:100%;text-align:left}
+.menu-i:hover{background:var(--primary-soft)}
+.menu-i .nm{font-weight:500}
+.menu-i .rl{font-size:10.5px;color:var(--faint);display:block;line-height:1.3}
+
+/* Avisos */
+.note{border-radius:var(--r);padding:12px 14px;margin-bottom:15px;border:1px solid;font-size:12.5px}
+.n-tip{background:var(--amber-soft);border-color:var(--amber-line);color:#78350f}
+.n-ok{background:var(--green-soft);border-color:var(--green-line);color:#065f46}
+.n-info{background:var(--blue-soft);border-color:#bfdbfe;color:#1e3a8a}
+.note b{font-weight:700}
+
+/* Barra fija inferior */
+.sticky{position:sticky;bottom:0;background:var(--card);border-top:1px solid var(--line);
+  padding:12px 16px;display:flex;align-items:center;gap:12px;margin-top:0;
+  box-shadow:0 -3px 12px -6px rgba(16,24,40,.12);border-radius:0 0 var(--r) var(--r)}
+.prog-txt{font-size:12.5px;color:var(--muted)}
+.prog-txt b{color:var(--ink)}
+.hint{font-size:11.5px;color:var(--faint);margin:14px 0 0}
+@media (max-width:860px){.two{grid-template-columns:1fr}.steps{flex-wrap:wrap;gap:8px}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-row">
+    <div class="brand"><span class="brand-mark">iE</span>iErpGeneric</div>
+    <div class="crumb">Tableros&nbsp; /&nbsp; <b>Crear desde plantilla</b></div>
+    <div class="spacer"></div>
+    <span class="staff">◆ PH Analytics · staff</span>
+    <div class="tenant"><span class="dot"></span>Ferretería del Valle</div>
+  </div>
+</div>
+
+<div class="steps">
+  <div class="step is-on" id="st1"><span class="step-n">1</span>Elegir plantilla</div>
+  <div class="step-bar"></div>
+  <div class="step" id="st2"><span class="step-n">2</span>Configurar</div>
+  <div class="step-bar"></div>
+  <div class="step" id="st3"><span class="step-n">3</span>Repartir asignados</div>
+</div>
+
+<div class="wrap">
+
+<!-- ══════════ PASO 1 ══════════ -->
+<div class="view is-on" id="v1">
+  <h1>Elegir plantilla</h1>
+  <p class="sub">Catálogo de PH Analytics más las plantillas propias de la empresa. Al instanciar se
+  copia la estructura completa; las personas se asignan después.</p>
+
+  <div class="cat">
+    <div class="plt is-sel" onclick="pick(this)">
+      <div class="plt-top">
+        <span class="plt-code">PLT-001</span>
+        <span class="badge b-global">Global</span>
+        <span class="badge b-arranque">Arranque</span>
+      </div>
+      <h3 class="plt-t">Plan de arranque estándar</h3>
+      <p class="plt-d">Implementación completa del iERP: levantamiento, migración de catálogos,
+        configuración de módulos, capacitación y salida a producción.</p>
+      <div class="plt-stats">
+        <div class="plt-stat"><b>38</b><span>Tareas</span></div>
+        <div class="plt-stat"><b>5</b><span>Fases</span></div>
+        <div class="plt-stat"><b>30</b><span>Días hábiles</span></div>
+        <div class="plt-stat"><b>4</b><span>Instancias</span></div>
+      </div>
+    </div>
+
+    <div class="plt" onclick="pick(this)">
+      <div class="plt-top">
+        <span class="plt-code">PLT-002</span>
+        <span class="badge b-global">Global</span>
+        <span class="badge b-impl">Implementación</span>
+      </div>
+      <h3 class="plt-t">Módulo de compras aislado</h3>
+      <p class="plt-d">Para clientes que ya tienen el ERP y solo contratan compras y órdenes de compra.</p>
+      <div class="plt-stats">
+        <div class="plt-stat"><b>14</b><span>Tareas</span></div>
+        <div class="plt-stat"><b>3</b><span>Fases</span></div>
+        <div class="plt-stat"><b>12</b><span>Días hábiles</span></div>
+        <div class="plt-stat"><b>2</b><span>Instancias</span></div>
+      </div>
+    </div>
+
+    <div class="plt" onclick="pick(this)">
+      <div class="plt-top">
+        <span class="plt-code">PLT-003</span>
+        <span class="badge b-empresa">Empresa</span>
+        <span class="badge b-sop">Soporte</span>
+      </div>
+      <h3 class="plt-t">Cierre mensual contable</h3>
+      <p class="plt-d">Checklist recurrente de cierre. Plantilla propia, no sale de esta empresa.</p>
+      <div class="plt-stats">
+        <div class="plt-stat"><b>11</b><span>Tareas</span></div>
+        <div class="plt-stat"><b>2</b><span>Fases</span></div>
+        <div class="plt-stat"><b>5</b><span>Días hábiles</span></div>
+        <div class="plt-stat"><b>7</b><span>Instancias</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary btn-lg" onclick="ir(2)">Continuar</button>
+    <button class="btn">Cancelar</button>
+  </div>
+</div>
+
+<!-- ══════════ PASO 2 ══════════ -->
+<div class="view" id="v2">
+  <h1>Configurar el tablero nuevo</h1>
+  <p class="sub">Las fechas de la plantilla se recorren en días hábiles a partir del arranque que
+  elijas. Ninguna tarea cae en sábado ni domingo.</p>
+
+  <div class="two">
+    <div class="panel">
+      <div class="panel-h"><span class="panel-t">Datos del tablero</span></div>
+      <div class="panel-b">
+        <div class="field">
+          <label>Nombre</label>
+          <input class="inp" value="Arranque iERP — Ferretería del Valle">
+        </div>
+        <div class="field">
+          <label>Empresa destino</label>
+          <select class="inp">
+            <option>Ferretería del Valle · Matriz</option>
+            <option>Acuagro · Matriz</option>
+            <option>Insermed · Matriz</option>
+            <option>PH Analytics · Interno</option>
+          </select>
+          <div class="hlp">Instanciar en otra empresa requiere el permiso de plantillas globales.</div>
+        </div>
+        <div class="field">
+          <label>Fecha de arranque</label>
+          <input class="inp" type="date" value="2026-10-12">
+          <div class="hlp">La plantilla arranca en día 1. Todo se recorre desde aquí.</div>
+        </div>
+        <div class="field">
+          <label>Responsable del tablero</label>
+          <select class="inp">
+            <option>Ivan Peñuelas — PH Analytics</option>
+            <option>Carlos Ríos — PH Analytics</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Modo de cierre</label>
+          <select class="inp">
+            <option>Todos los asignados confirman</option>
+            <option>Solo el responsable cierra</option>
+            <option>El primero que confirme</option>
+          </select>
+        </div>
+
+        <div class="chk">
+          <input type="checkbox" checked id="c1">
+          <label for="c1" style="text-transform:none;letter-spacing:0;margin:0;font-weight:400">
+            <span class="chk-t">Copiar archivos de la plantilla</span>
+            <span class="chk-d">Formatos, actas y checklists adjuntos a las tareas. Se copian al
+              bucket de la empresa destino, no se comparten.</span>
+          </label>
+        </div>
+        <div class="chk">
+          <input type="checkbox" id="c2">
+          <label for="c2" style="text-transform:none;letter-spacing:0;margin:0;font-weight:400">
+            <span class="chk-t">Notificar al asignar</span>
+            <span class="chk-d">Manda correo a cada persona en cuanto se reparta el trabajo.</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h">
+        <span class="panel-t">Vista previa</span>
+        <span class="badge b-empresa">38 tareas · 5 fases</span>
+        <div class="spacer"></div>
+        <span style="font-size:11.5px;color:var(--muted)">12 oct → 20 nov 2026</span>
+      </div>
+      <div class="prev">
+        <div class="prow lvl-0"><span class="pwbs">1</span><span class="ptxt">Levantamiento de requerimientos</span><span class="pfecha"><b>12 oct</b> – 23 oct</span></div>
+        <div class="prow lvl-1"><span class="pwbs">1.1</span><span class="ptxt">Entrevistas con el área de compras</span><span class="perfil">Consultor funcional</span><span class="pfecha">12 – 16 oct</span></div>
+        <div class="prow lvl-1"><span class="pwbs">1.2</span><span class="ptxt">Mapeo de procesos actuales</span><span class="perfil">Consultor funcional</span><span class="pfecha">15 – 23 oct</span></div>
+        <div class="prow lvl-1"><span class="pwbs">1.3</span><span class="ptxt">Acta de alcance firmada</span><span class="perfil">Contacto del cliente</span><span class="pfecha">23 oct</span></div>
+        <div class="prow lvl-0"><span class="pwbs">2</span><span class="ptxt">Migración de catálogos</span><span class="pfecha"><b>26 oct</b> – 6 nov</span></div>
+        <div class="prow lvl-1"><span class="pwbs">2.1</span><span class="ptxt">Catálogo de proveedores</span><span class="perfil">Analista de datos</span><span class="pfecha">26 – 30 oct</span></div>
+        <div class="prow lvl-1"><span class="pwbs">2.2</span><span class="ptxt">Catálogo de artículos y precios</span><span class="perfil">Analista de datos</span><span class="pfecha">28 oct – 6 nov</span></div>
+        <div class="prow lvl-1"><span class="pwbs">2.3</span><span class="ptxt">Validación con el cliente</span><span class="perfil">Contacto del cliente</span><span class="pfecha">5 – 6 nov</span></div>
+        <div class="prow lvl-0"><span class="pwbs">3</span><span class="ptxt">Configuración de módulos</span><span class="pfecha"><b>2 nov</b> – 13 nov</span></div>
+        <div class="prow lvl-1"><span class="pwbs">3.1</span><span class="ptxt">Compras y órdenes de compra</span><span class="perfil">Desarrollador</span><span class="pfecha">2 – 9 nov</span></div>
+        <div class="prow lvl-1"><span class="pwbs">3.2</span><span class="ptxt">Cuentas por pagar</span><span class="perfil">Desarrollador</span><span class="pfecha">6 – 13 nov</span></div>
+        <div class="prow lvl-1"><span class="pwbs">3.3</span><span class="ptxt">Permisos y perfiles de usuario</span><span class="perfil">Administrador</span><span class="pfecha">10 – 13 nov</span></div>
+        <div class="prow lvl-0"><span class="pwbs">4</span><span class="ptxt">Capacitación a usuarios</span><span class="pfecha"><b>16 nov</b> – 19 nov</span></div>
+        <div class="prow lvl-1"><span class="pwbs">4.1</span><span class="ptxt">Sesión compras y almacén</span><span class="perfil">Consultor funcional</span><span class="pfecha">16 – 17 nov</span></div>
+        <div class="prow lvl-1"><span class="pwbs">4.2</span><span class="ptxt">Sesión administración</span><span class="perfil">Consultor funcional</span><span class="pfecha">18 – 19 nov</span></div>
+        <div class="prow lvl-0"><span class="pwbs">5</span><span class="ptxt">◆ Salida a producción</span><span class="pfecha"><b>20 nov</b></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary btn-lg" onclick="ir(3)">Crear tablero</button>
+    <button class="btn" onclick="ir(1)">Atrás</button>
+  </div>
+</div>
+
+<!-- ══════════ PASO 3 ══════════ -->
+<div class="view" id="v3">
+  <h1>Repartir asignados</h1>
+  <p class="sub">Es lo único que la plantilla no puede resolver sola. El perfil sugerido viene del
+  molde; a la derecha eliges quién lo hace en este cliente.</p>
+
+  <div class="note n-ok">
+    <b>Tablero creado.</b> 38 tareas con folios TSK0000000412 a TSK0000000449, fechas recorridas al
+    arranque del 12 de octubre y 6 archivos copiados. Todo arranca en Pendiente con avance 0.
+  </div>
+
+  <div class="rep-bar">
+    <div>
+      <div class="rep-bar-t">Asignación masiva por perfil</div>
+      <div class="rep-bar-d">Elige una persona por perfil y se aplica a todas sus tareas de un jalón.</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="bulk">
+      <span>Consultor funcional</span>
+      <select onchange="masivo('Consultor funcional',this.value)">
+        <option value="">— elegir —</option>
+        <option value="IP">Ivan Peñuelas</option>
+        <option value="CR">Carlos Ríos</option>
+      </select>
+    </div>
+    <div class="bulk">
+      <span>Analista de datos</span>
+      <select onchange="masivo('Analista de datos',this.value)">
+        <option value="">— elegir —</option>
+        <option value="DS">Diana Soto</option>
+        <option value="RQ">Raúl Quintero</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="panel">
+    <table>
+      <thead>
+        <tr><th class="twbs">WBS</th><th>Tarea</th><th>Perfil sugerido</th>
+            <th style="width:300px">Asignados</th><th>Fechas</th></tr>
+      </thead>
+      <tbody id="tb"></tbody>
+    </table>
+
+    <div class="sticky">
+      <span class="prog-txt"><b id="n-asig">0</b> de <b id="n-total">16</b> tareas asignadas</span>
+      <span class="falta" id="alerta">Faltan 16</span>
+      <div class="spacer"></div>
+      <button class="btn">Guardar y seguir después</button>
+      <button class="btn btn-primary btn-lg">Terminar y abrir tablero</button>
+    </div>
+  </div>
+
+  <p class="hint">Las tareas resumen (las fases) no se asignan: su avance se calcula desde las subtareas.</p>
+</div>
+
+</div>
+
+<div class="menu" id="menu"></div>
+
+<script>
+const P={
+  IP:{n:'Ivan Peñuelas',   r:'PH Analytics · Líder de proyecto'},
+  CR:{n:'Carlos Ríos',     r:'PH Analytics · Desarrollo'},
+  DS:{n:'Diana Soto',      r:'PH Analytics · Datos'},
+  RQ:{n:'Raúl Quintero',   r:'PH Analytics · Datos'},
+  LM:{n:'Lorena Márquez',  r:'Ferretería del Valle · Compras'},
+  JT:{n:'Jorge Tapia',     r:'Ferretería del Valle · Almacén'},
+  MV:{n:'Marisol Vega',    r:'Ferretería del Valle · Dirección'},
+  AN:{n:'Ana Nieto',       r:'Ferretería del Valle · Contabilidad'}
+};
+
+const T=[
+ {wbs:'1',  lvl:0,t:'Levantamiento de requerimientos',perfil:null,f:'12 – 23 oct',resumen:true},
+ {wbs:'1.1',lvl:1,t:'Entrevistas con el área de compras',perfil:'Consultor funcional',f:'12 – 16 oct'},
+ {wbs:'1.2',lvl:1,t:'Mapeo de procesos actuales',perfil:'Consultor funcional',f:'15 – 23 oct'},
+ {wbs:'1.3',lvl:1,t:'Acta de alcance firmada',perfil:'Contacto del cliente',f:'23 oct'},
+ {wbs:'2',  lvl:0,t:'Migración de catálogos',perfil:null,f:'26 oct – 6 nov',resumen:true},
+ {wbs:'2.1',lvl:1,t:'Catálogo de proveedores',perfil:'Analista de datos',f:'26 – 30 oct'},
+ {wbs:'2.2',lvl:1,t:'Catálogo de artículos y precios',perfil:'Analista de datos',f:'28 oct – 6 nov'},
+ {wbs:'2.3',lvl:1,t:'Validación con el cliente',perfil:'Contacto del cliente',f:'5 – 6 nov'},
+ {wbs:'3',  lvl:0,t:'Configuración de módulos',perfil:null,f:'2 – 13 nov',resumen:true},
+ {wbs:'3.1',lvl:1,t:'Compras y órdenes de compra',perfil:'Desarrollador',f:'2 – 9 nov'},
+ {wbs:'3.2',lvl:1,t:'Cuentas por pagar',perfil:'Desarrollador',f:'6 – 13 nov'},
+ {wbs:'3.3',lvl:1,t:'Permisos y perfiles de usuario',perfil:'Administrador',f:'10 – 13 nov'},
+ {wbs:'4',  lvl:0,t:'Capacitación a usuarios',perfil:null,f:'16 – 19 nov',resumen:true},
+ {wbs:'4.1',lvl:1,t:'Sesión compras y almacén',perfil:'Consultor funcional',f:'16 – 17 nov'},
+ {wbs:'4.2',lvl:1,t:'Sesión administración',perfil:'Consultor funcional',f:'18 – 19 nov'},
+ {wbs:'5',  lvl:0,t:'◆ Salida a producción',perfil:'Líder de proyecto',f:'20 nov',hito:true}
+];
+T.forEach(t=>t.asig=[]);
+
+const asignables=i=>T.filter(t=>!t.resumen);
+
+function render(){
+  const tb=document.getElementById('tb'); tb.innerHTML='';
+  T.forEach((t,i)=>{
+    const tr=document.createElement('tr');
+    const sin=!t.resumen && t.asig.length===0;
+    tr.className='lvl-'+t.lvl+(sin?' sin-asignar':'');
+    tr.innerHTML=`
+      <td class="twbs">${t.wbs}</td>
+      <td><div class="ttxt ind-${t.lvl}">${t.t}</div></td>
+      <td>${t.perfil?`<span class="perfil">${t.perfil}</span>`:'<span style="color:var(--faint);font-size:11px">—</span>'}</td>
+      <td>${t.resumen
+          ? '<span style="color:var(--faint);font-size:11px">Se calcula desde las subtareas</span>'
+          : `<div class="picker">
+              ${t.asig.map(k=>`<span class="pill"><span class="av av-${k}">${k}</span>${P[k].n.split(' ')[0]}
+                 <button class="x" onclick="quitar(${i},'${k}')">×</button></span>`).join('')}
+              <button class="add-btn" onclick="abrirMenu(event,${i})">+</button>
+              ${sin?'<span class="falta">falta</span>':''}
+             </div>`}</td>
+      <td style="font-size:11.5px;color:var(--muted);white-space:nowrap">${t.f}</td>`;
+    tb.appendChild(tr);
+  });
+  const tot=asignables().length;
+  const hechas=asignables().filter(t=>t.asig.length).length;
+  document.getElementById('n-asig').textContent=hechas;
+  document.getElementById('n-total').textContent=tot;
+  const al=document.getElementById('alerta');
+  if(hechas===tot){al.textContent='Todo repartido';al.style.color='var(--green)';}
+  else{al.textContent=`Faltan ${tot-hechas}`;al.style.color='var(--amber)';}
+}
+
+let idx=null;
+function abrirMenu(e,i){
+  e.stopPropagation(); idx=i;
+  const m=document.getElementById('menu');
+  m.innerHTML='<div class="menu-h">PH Analytics</div>'+
+    ['IP','CR','DS','RQ'].map(k=>item(k)).join('')+
+    '<div class="menu-h">Ferretería del Valle</div>'+
+    ['LM','JT','MV','AN'].map(k=>item(k)).join('');
+  const r=e.target.getBoundingClientRect();
+  m.style.left=Math.min(r.left,window.innerWidth-250)+'px';
+  m.style.top=(r.bottom+window.scrollY+5)+'px';
+  m.classList.add('is-on');
+}
+const item=k=>`<button class="menu-i" onclick="agregar('${k}')">
+  <span class="av av-${k}">${k}</span>
+  <span><span class="nm">${P[k].n}</span><span class="rl">${P[k].r}</span></span></button>`;
+
+function agregar(k){
+  if(idx!==null && !T[idx].asig.includes(k)) T[idx].asig.push(k);
+  document.getElementById('menu').classList.remove('is-on'); render();
+}
+function quitar(i,k){ T[i].asig=T[i].asig.filter(x=>x!==k); render(); }
+function masivo(perfil,k){
+  if(!k) return;
+  T.forEach(t=>{ if(t.perfil===perfil && !t.resumen && !t.asig.includes(k)) t.asig.push(k); });
+  render();
+}
+document.addEventListener('click',()=>document.getElementById('menu').classList.remove('is-on'));
+
+function pick(el){
+  document.querySelectorAll('.plt').forEach(x=>x.classList.remove('is-sel'));
+  el.classList.add('is-sel');
+}
+function ir(n){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('is-on'));
+  document.getElementById('v'+n).classList.add('is-on');
+  [1,2,3].forEach(i=>{
+    const s=document.getElementById('st'+i);
+    s.classList.toggle('is-on',i===n);
+    s.classList.toggle('is-done',i<n);
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+render();
+</script>
+</body>
+</html>

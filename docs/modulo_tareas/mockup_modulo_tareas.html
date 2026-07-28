@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tareas — iErpGeneric v2.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f9fafb; --card:#ffffff; --line:#e5e7eb; --line-soft:#f1f2f4;
+  --ink:#111827; --ink-2:#374151; --muted:#6b7280; --faint:#9ca3af;
+  --primary:#4f46e5; --primary-soft:#eef2ff; --primary-line:#c7d2fe;
+  --gray:#6b7280;   --gray-soft:#f3f4f6;
+  --blue:#2563eb;   --blue-soft:#eff6ff;
+  --red:#dc2626;    --red-soft:#fef2f2;   --red-line:#fecaca;
+  --amber:#d97706;  --amber-soft:#fffbeb;
+  --green:#059669;  --green-soft:#ecfdf5;
+  --violet:#7c3aed;
+  --rose:#e11d48;
+  --r:8px; --r-sm:6px;
+  --shadow:0 1px 2px rgba(16,24,40,.05);
+  --shadow-lg:0 12px 32px -8px rgba(16,24,40,.18);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13.5px;line-height:1.5}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+
+/* ---------- Barra superior ---------- */
+.topbar{background:var(--card);border-bottom:1px solid var(--line);padding:0 20px}
+.topbar-row{display:flex;align-items:center;gap:14px;height:58px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.02em}
+.brand-mark{width:26px;height:26px;border-radius:7px;background:var(--primary);color:#fff;
+  display:grid;place-items:center;font-size:12px;font-weight:700}
+.crumb{color:var(--faint);font-size:12px}
+.crumb b{color:var(--ink-2);font-weight:600}
+.spacer{flex:1}
+.tenant{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:6px 10px;font-size:12.5px;font-weight:500;background:var(--card)}
+.tenant .dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);
+  padding:7px 12px;border-radius:var(--r-sm);font-size:12.5px;font-weight:500;box-shadow:var(--shadow)}
+.btn:hover{background:var(--gray-soft)}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn-primary:hover{background:#4338ca}
+
+/* ---------- Pestañas de vista ---------- */
+.tabs{display:flex;gap:2px;border-top:1px solid var(--line-soft)}
+.tab{padding:11px 14px;font-size:13px;font-weight:500;color:var(--muted);
+  border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab:hover{color:var(--ink-2)}
+.tab.is-on{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+
+/* ---------- Encabezado del tablero ---------- */
+.board-head{padding:18px 20px 0}
+.board-title{font-size:19px;font-weight:700;letter-spacing:-.02em;margin:0 0 3px}
+.board-sub{color:var(--muted);font-size:12.5px;margin:0}
+.stats{display:flex;gap:22px;margin:14px 0 0;flex-wrap:wrap}
+.stat{display:flex;flex-direction:column;gap:1px}
+.stat-n{font-size:17px;font-weight:700;letter-spacing:-.02em}
+.stat-l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+
+/* ---------- Filtros ---------- */
+.filters{display:flex;align-items:center;gap:8px;padding:14px 20px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);
+  padding:5px 10px;border-radius:99px;font-size:12px;color:var(--ink-2);box-shadow:var(--shadow)}
+.chip:hover{border-color:#d1d5db}
+.chip .x{color:var(--faint);font-size:14px;line-height:1}
+.search{border:1px solid var(--line);background:var(--card);border-radius:var(--r-sm);
+  padding:6px 10px;font-size:12.5px;width:220px;box-shadow:var(--shadow)}
+.search:focus{outline:2px solid var(--primary-line);outline-offset:0;border-color:var(--primary)}
+
+/* ---------- Contenedor de vistas ---------- */
+.view{display:none;padding:0 20px 40px}
+.view.is-on{display:block}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);overflow:hidden}
+
+/* ---------- VISTA LISTA ---------- */
+table{width:100%;border-collapse:collapse}
+thead th{text-align:left;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);padding:9px 12px;background:#fcfcfd;border-bottom:1px solid var(--line);white-space:nowrap}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+tbody tr:hover{background:#fafbfc;cursor:pointer}
+tbody tr.lvl-0 td{background:#fbfbfd}
+tbody tr.lvl-0:hover td{background:#f6f7fa}
+tbody tr.is-sel td{background:var(--primary-soft) !important}
+.wbs{font-variant-numeric:tabular-nums;color:var(--faint);font-size:11.5px;font-weight:500;width:46px}
+.tname{display:flex;align-items:center;gap:8px;min-width:0}
+.tname .caret{color:var(--faint);font-size:10px;width:10px;flex:none}
+.tname .txt{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lvl-0 .tname .txt{font-weight:600}
+.indent-1{padding-left:22px}
+.indent-2{padding-left:44px}
+.milestone{color:var(--violet);font-weight:600}
+
+/* Avatares */
+.avs{display:flex;align-items:center}
+.av{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#fff;
+  font-size:9.5px;font-weight:700;border:2px solid var(--card);margin-left:-6px;flex:none;letter-spacing:.01em}
+.av:first-child{margin-left:0}
+.av.lg{width:30px;height:30px;font-size:11px;margin-left:0;border-width:0}
+.av-IP{background:var(--primary)} .av-LM{background:var(--rose)} .av-CR{background:var(--green)}
+.av-DS{background:var(--amber)} .av-JT{background:var(--blue)} .av-MV{background:var(--violet)}
+
+/* Insignias */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2.5px 8px;border-radius:99px;
+  font-size:11px;font-weight:600;white-space:nowrap}
+.badge .pip{width:5px;height:5px;border-radius:50%;background:currentColor}
+.b-pend{background:var(--gray-soft);color:#4b5563}
+.b-proc{background:var(--blue-soft);color:var(--blue)}
+.b-bloq{background:var(--red-soft);color:var(--red)}
+.b-revi{background:var(--amber-soft);color:var(--amber)}
+.b-comp{background:var(--green-soft);color:var(--green)}
+.prio{font-size:11px;font-weight:600}
+.p-alta{color:var(--red)} .p-media{color:var(--amber)} .p-baja{color:var(--muted)}
+
+/* Barra de avance */
+.prog{display:flex;align-items:center;gap:8px;width:118px}
+.prog-track{flex:1;height:5px;border-radius:99px;background:#eceef1;overflow:hidden}
+.prog-fill{height:100%;border-radius:99px;background:var(--primary)}
+.prog-fill.done{background:var(--green)}
+.prog-fill.stuck{background:var(--red)}
+.prog-n{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;width:30px;text-align:right}
+.dates{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dep{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.dep.block{color:var(--red);font-weight:600}
+
+/* ---------- VISTA CRONOGRAMA ---------- */
+.gantt{display:flex;overflow:hidden}
+.g-left{width:290px;flex:none;border-right:1px solid var(--line);background:var(--card);z-index:2}
+.g-right{flex:1;overflow-x:auto}
+.g-head{height:52px;border-bottom:1px solid var(--line);background:#fcfcfd;display:flex;align-items:flex-end}
+.g-left .g-head{padding:0 12px 9px;font-size:10.5px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--muted)}
+.g-scale{position:relative}
+.g-weeks{display:flex;height:26px;border-bottom:1px solid var(--line-soft)}
+.g-week{border-right:1px solid var(--line);font-size:10.5px;font-weight:600;color:var(--muted);
+  display:flex;align-items:center;padding-left:8px;text-transform:uppercase;letter-spacing:.04em}
+.g-days{display:flex;height:26px}
+.g-day{width:30px;flex:none;border-right:1px solid var(--line-soft);font-size:10px;color:var(--faint);
+  display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.g-day.wk-start{border-left:1px solid var(--line)}
+.g-day.today{background:var(--primary-soft);color:var(--primary);font-weight:700}
+.g-row{height:34px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center}
+.g-left .g-row{padding:0 12px;gap:7px;font-size:12.5px}
+.g-left .g-row .txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.g-left .g-row.lvl-0 .txt{font-weight:600}
+.g-left .g-row:hover,.g-track:hover{background:#fafbfc;cursor:pointer}
+.g-track{position:relative;height:34px;border-bottom:1px solid var(--line-soft)}
+.g-grid{position:absolute;inset:0;display:flex;pointer-events:none}
+.g-cell{width:30px;flex:none;border-right:1px solid var(--line-soft)}
+.g-cell.wk-start{border-left:1px solid var(--line)}
+.g-bar{position:absolute;top:9px;height:16px;border-radius:4px;background:var(--primary);
+  display:flex;align-items:center;padding:0 6px;font-size:10px;font-weight:600;color:#fff;
+  overflow:hidden;white-space:nowrap}
+.g-bar.summary{background:#374151;height:10px;top:12px;border-radius:2px}
+.g-bar.done{background:var(--green)}
+.g-bar.blocked{background:var(--red)}
+.g-bar.pending{background:#9ca3af}
+.g-bar.blocker{background:repeating-linear-gradient(45deg,var(--red),var(--red) 5px,#ef4444 5px,#ef4444 10px)}
+.g-bar-inner{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.32);border-radius:4px}
+.g-milestone{position:absolute;top:9px;width:16px;height:16px;background:var(--violet);
+  transform:rotate(45deg);border-radius:2px}
+.g-today{position:absolute;top:0;bottom:0;width:2px;background:var(--primary);opacity:.35;z-index:1}
+.g-legend{display:flex;gap:16px;padding:11px 14px;border-top:1px solid var(--line);
+  background:#fcfcfd;font-size:11px;color:var(--muted);flex-wrap:wrap}
+.g-legend span{display:inline-flex;align-items:center;gap:6px}
+.g-swatch{width:16px;height:8px;border-radius:2px;flex:none}
+
+/* ---------- VISTA TABLERO ---------- */
+.kanban{display:grid;grid-template-columns:repeat(5,minmax(215px,1fr));gap:12px;align-items:start}
+.col{background:#f3f4f6;border-radius:var(--r);padding:10px;min-height:170px}
+.col-head{display:flex;align-items:center;gap:7px;padding:1px 3px 10px;font-size:12px;font-weight:600}
+.col-head .n{margin-left:auto;color:var(--muted);font-weight:500;font-size:11.5px;
+  background:#fff;border-radius:99px;padding:1px 7px}
+.kcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r-sm);padding:10px;
+  margin-bottom:8px;box-shadow:var(--shadow)}
+.kcard:hover{border-color:#cbd5e1;cursor:pointer}
+.kcard.blocked{border-left:3px solid var(--red)}
+.kcard-id{font-size:10px;color:var(--faint);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.kcard-t{font-size:12.5px;font-weight:500;margin:3px 0 8px;line-height:1.35}
+.kcard-meta{display:flex;align-items:center;gap:8px}
+.kcard-note{font-size:10.5px;color:var(--red);margin-top:7px;display:flex;gap:5px;align-items:flex-start;line-height:1.35}
+.kcard-sub{font-size:10.5px;color:var(--muted);margin-top:6px}
+
+/* ---------- Panel de detalle ---------- */
+.scrim{position:fixed;inset:0;background:rgba(17,24,39,.32);opacity:0;pointer-events:none;
+  transition:opacity .18s ease;z-index:40}
+.scrim.is-on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(520px,94vw);background:var(--card);
+  box-shadow:var(--shadow-lg);transform:translateX(100%);transition:transform .22s cubic-bezier(.32,.72,0,1);
+  z-index:50;display:flex;flex-direction:column}
+.drawer.is-on{transform:none}
+.d-head{padding:16px 18px 13px;border-bottom:1px solid var(--line)}
+.d-top{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.d-id{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;letter-spacing:.03em}
+.d-close{margin-left:auto;color:var(--faint);font-size:17px;line-height:1;padding:2px 5px;border-radius:4px}
+.d-close:hover{background:var(--gray-soft);color:var(--ink)}
+.d-title{font-size:16.5px;font-weight:650;letter-spacing:-.01em;margin:0 0 9px;line-height:1.3}
+.d-badges{display:flex;gap:6px;flex-wrap:wrap}
+.d-body{flex:1;overflow-y:auto;padding:16px 18px 26px}
+.d-sec{margin-bottom:20px}
+.d-sec-h{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--muted);margin-bottom:9px}
+.d-sec-h .add{margin-left:auto;color:var(--primary);font-size:11px;font-weight:600;text-transform:none;letter-spacing:0}
+.d-grid{display:grid;grid-template-columns:104px 1fr;gap:8px 10px;font-size:12.5px;align-items:center}
+.d-grid dt{color:var(--muted);font-size:12px}
+.d-grid dd{margin:0;font-weight:500;font-variant-numeric:tabular-nums}
+
+/* Asignados */
+.mode-note{font-size:11px;color:var(--muted);background:var(--gray-soft);border-radius:var(--r-sm);
+  padding:6px 9px;margin-bottom:9px}
+.mode-note b{color:var(--ink-2)}
+.asig{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-soft)}
+.asig:last-child{border-bottom:0}
+.asig-n{font-size:12.5px;font-weight:500}
+.asig-r{font-size:11px;color:var(--faint)}
+.asig-s{margin-left:auto;text-align:right}
+.check{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600}
+.check.on{color:var(--green)} .check.off{color:var(--muted)}
+.asig-when{font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums;display:block;margin-top:1px}
+.tick{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:9px;
+  border:1.5px solid currentColor;flex:none}
+.check.on .tick{background:var(--green);border-color:var(--green);color:#fff}
+
+/* Subtareas */
+.sub{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px}
+.sub:last-child{border-bottom:0}
+.sub .box{width:15px;height:15px;border-radius:4px;border:1.5px solid #d1d5db;flex:none;
+  display:grid;place-items:center;font-size:9px;color:#fff}
+.sub.done .box{background:var(--green);border-color:var(--green)}
+.sub.done .lbl{color:var(--faint);text-decoration:line-through}
+.sub .lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Bloqueo */
+.block-card{background:var(--red-soft);border:1px solid var(--red-line);border-radius:var(--r-sm);padding:11px}
+.block-h{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--red);margin-bottom:6px}
+.block-why{font-size:12px;color:#7f1d1d;margin-bottom:10px;line-height:1.45}
+.block-task{background:var(--card);border:1px solid var(--red-line);border-radius:var(--r-sm);padding:9px}
+.block-task-id{font-size:10px;color:var(--faint);font-variant-numeric:tabular-nums}
+.block-task-t{font-size:12.5px;font-weight:600;margin:2px 0 7px}
+.block-task-m{display:flex;align-items:center;gap:8px}
+.btn-block{margin-top:9px;width:100%;justify-content:center;border-color:var(--red-line);color:var(--red);background:var(--card)}
+.btn-block:hover{background:#fff1f2}
+
+/* Dependencias */
+.deprow{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px}
+.deprow:last-child{border-bottom:0}
+.deptype{font-size:10px;font-weight:700;color:var(--muted);background:var(--gray-soft);
+  border-radius:4px;padding:2px 5px;letter-spacing:.03em;flex:none}
+.deprow .lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Actividad */
+.act{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+.act:last-child{border-bottom:0}
+.act-b{flex:1;min-width:0}
+.act-t{font-size:12.5px;line-height:1.45}
+.act-t b{font-weight:600}
+.act-w{font-size:10.5px;color:var(--faint);margin-top:2px}
+
+/* Fila de tarea bloqueante: vive fuera del WBS */
+tbody tr.blocker td{background:#fffbfb}
+tbody tr.blocker:hover td{background:#fff5f5}
+tbody tr.blocker .tname{position:relative}
+.blk-mark{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;
+  color:var(--red);background:var(--red-soft);border:1px dashed var(--red-line);
+  border-radius:99px;padding:1px 7px;white-space:nowrap;flex:none}
+.wbs-none{color:#d1d5db;font-size:13px}
+
+/* ---------- Adjuntos ---------- */
+.clip{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--faint);
+  font-variant-numeric:tabular-nums}
+.clip.has{color:var(--muted);font-weight:600}
+
+.drop{border:1.5px dashed #d1d5db;border-radius:var(--r-sm);background:#fcfcfd;
+  padding:16px 12px;text-align:center;transition:all .15s ease}
+.drop:hover,.drop.over{border-color:var(--primary);background:var(--primary-soft)}
+.drop-i{font-size:19px;line-height:1;margin-bottom:5px;opacity:.5}
+.drop-t{font-size:12.5px;font-weight:600;margin-bottom:2px}
+.drop-t u{color:var(--primary);text-decoration:none}
+.drop-s{font-size:11px;color:var(--faint)}
+
+.files{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}
+.file{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:8px 10px;background:var(--card)}
+.file:hover{border-color:#cbd5e1;background:#fcfcfd}
+.ftype{width:32px;height:36px;border-radius:4px;flex:none;display:grid;place-items:center;
+  font-size:8.5px;font-weight:800;color:#fff;letter-spacing:.03em;position:relative}
+.ftype::after{content:'';position:absolute;top:0;right:0;border-width:0 7px 7px 0;border-style:solid;
+  border-color:rgba(255,255,255,.55) transparent}
+.f-pdf{background:#dc2626}   .f-xlsx{background:#059669}  .f-docx{background:#2563eb}
+.f-img{background:#7c3aed}   .f-dwg{background:#d97706}   .f-zip{background:#6b7280}
+.f-csv{background:#0891b2}   .f-any{background:#475569}
+.fthumb{width:32px;height:36px;border-radius:4px;flex:none;object-fit:cover;
+  background:linear-gradient(135deg,#a78bfa,#6366f1)}
+.fmeta{flex:1;min-width:0}
+.fname{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsub{font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+.fact{display:flex;gap:3px;flex:none}
+.fbtn{width:26px;height:26px;border-radius:5px;display:grid;place-items:center;
+  color:var(--faint);font-size:12px}
+.fbtn:hover{background:var(--gray-soft);color:var(--ink-2)}
+.fbtn.del:hover{background:var(--red-soft);color:var(--red)}
+.fscan{font-size:9.5px;font-weight:700;color:var(--green);display:inline-flex;align-items:center;gap:3px}
+
+/* Adjuntos dentro de comentarios */
+.act-files{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.fpill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);
+  border-radius:99px;padding:3px 9px 3px 4px;font-size:11px;background:#fcfcfd}
+.fpill:hover{border-color:#cbd5e1;background:var(--card)}
+.fpill .dot{width:15px;height:15px;border-radius:3px;flex:none;display:grid;place-items:center;
+  font-size:6px;font-weight:800;color:#fff}
+.fpill .sz{color:var(--faint);font-variant-numeric:tabular-nums}
+
+/* Compositor de comentario */
+.composer{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--card);overflow:hidden}
+.composer:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.composer textarea{width:100%;border:0;padding:10px 11px;font:inherit;font-size:12.5px;
+  resize:vertical;min-height:60px;outline:none;background:none;color:var(--ink)}
+.composer textarea::placeholder{color:var(--faint)}
+.composer-bar{display:flex;align-items:center;gap:5px;padding:7px 8px;border-top:1px solid var(--line-soft);
+  background:#fcfcfd}
+.cbtn{width:28px;height:28px;border-radius:5px;display:grid;place-items:center;color:var(--muted);font-size:13px}
+.cbtn:hover{background:var(--gray-soft);color:var(--ink-2)}
+.composer-hint{font-size:10.5px;color:var(--faint);margin-left:2px}
+
+.hint{padding:10px 20px 0;font-size:11.5px;color:var(--faint)}
+@media (max-width:960px){
+  .kanban{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .g-left{width:180px}
+  .stats{gap:16px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════ BARRA SUPERIOR ══════════ -->
+<div class="topbar">
+  <div class="topbar-row">
+    <div class="brand"><span class="brand-mark">iE</span>iErpGeneric</div>
+    <div class="crumb">Tableros&nbsp; /&nbsp; <b>Implementación iERP — Insermed</b></div>
+    <div class="spacer"></div>
+    <div class="tenant"><span class="dot"></span>Insermed · Matriz</div>
+    <button class="btn">Filtros guardados</button>
+    <button class="btn btn-primary">+ Nueva tarea</button>
+  </div>
+  <div class="tabs">
+    <button class="tab is-on" data-view="lista">Lista</button>
+    <button class="tab" data-view="crono">Cronograma</button>
+    <button class="tab" data-view="tablero">Tablero</button>
+    <button class="tab" data-view="lista">Carga de trabajo</button>
+  </div>
+</div>
+
+<!-- ══════════ ENCABEZADO ══════════ -->
+<div class="board-head">
+  <h1 class="board-title">Implementación iERP — Insermed</h1>
+  <p class="board-sub">Responsable del tablero: Ivan Peñuelas · 3 ago – 18 sep 2026 · Cierre de tareas: todos los asignados confirman</p>
+  <div class="stats">
+    <div class="stat"><span class="stat-n">13</span><span class="stat-l">Tareas</span></div>
+    <div class="stat"><span class="stat-n">42%</span><span class="stat-l">Avance</span></div>
+    <div class="stat"><span class="stat-n" style="color:var(--red)">1</span><span class="stat-l">Bloqueada</span></div>
+    <div class="stat"><span class="stat-n" style="color:var(--amber)">2</span><span class="stat-l">Vencen esta semana</span></div>
+    <div class="stat"><span class="stat-n">6</span><span class="stat-l">Personas</span></div>
+  </div>
+</div>
+
+<!-- ══════════ FILTROS ══════════ -->
+<div class="filters">
+  <input class="search" placeholder="Buscar tarea…">
+  <button class="chip">Responsable: Todos ▾</button>
+  <button class="chip">Estado: Todos ▾</button>
+  <button class="chip">Prioridad: Todas ▾</button>
+  <button class="chip" style="background:var(--primary-soft);border-color:var(--primary-line);color:var(--primary);font-weight:600">
+    Solo con bloqueo <span class="x">×</span></button>
+  <div class="spacer"></div>
+  <button class="chip">Agrupar por: Fase ▾</button>
+  <button class="chip">Exportar</button>
+</div>
+
+<p class="hint">Da clic en cualquier tarea para abrir el panel de detalle.</p>
+
+<!-- ══════════ VISTA: LISTA ══════════ -->
+<div class="view is-on" id="v-lista">
+  <div class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th class="wbs">WBS</th>
+          <th>Tarea</th>
+          <th>Asignados</th>
+          <th>Estado</th>
+          <th>Prioridad</th>
+          <th>Avance</th>
+          <th>Inicio</th>
+          <th>Fin plan</th>
+          <th>Archivos</th>
+          <th>Depende de</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-lista"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════ VISTA: CRONOGRAMA ══════════ -->
+<div class="view" id="v-crono">
+  <div class="panel">
+    <div class="gantt">
+      <div class="g-left">
+        <div class="g-head">Tarea</div>
+        <div id="g-names"></div>
+      </div>
+      <div class="g-right">
+        <div class="g-scale">
+          <div class="g-head" style="display:block;height:52px;padding:0">
+            <div class="g-weeks" id="g-weeks"></div>
+            <div class="g-days" id="g-days"></div>
+          </div>
+        </div>
+        <div id="g-rows" style="position:relative"></div>
+      </div>
+    </div>
+    <div class="g-legend">
+      <span><i class="g-swatch" style="background:#374151"></i>Fase (resumen)</span>
+      <span><i class="g-swatch" style="background:var(--primary)"></i>En proceso</span>
+      <span><i class="g-swatch" style="background:var(--green)"></i>Completada</span>
+      <span><i class="g-swatch" style="background:#9ca3af"></i>Pendiente</span>
+      <span><i class="g-swatch" style="background:var(--red)"></i>Bloqueada</span>
+      <span><i class="g-swatch" style="background:repeating-linear-gradient(45deg,#dc2626,#dc2626 4px,#ef4444 4px,#ef4444 8px)"></i>Tarea bloqueante</span>
+      <span><i class="g-swatch" style="background:var(--violet);width:9px;height:9px;transform:rotate(45deg)"></i>Hito</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ VISTA: TABLERO ══════════ -->
+<div class="view" id="v-tablero">
+  <div class="kanban" id="kanban"></div>
+</div>
+
+<!-- ══════════ PANEL DE DETALLE ══════════ -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <div class="d-head">
+    <div class="d-top">
+      <span class="d-id" id="d-id">TSK0000000007</span>
+      <span class="dep" id="d-wbs">· WBS 2.2</span>
+      <button class="d-close" id="d-close">✕</button>
+    </div>
+    <h2 class="d-title" id="d-title">Catálogo de artículos y precios</h2>
+    <div class="d-badges" id="d-badges"></div>
+  </div>
+
+  <div class="d-body" id="d-body"></div>
+</aside>
+
+<script>
+/* ═══════════ DATOS DE DEMOSTRACIÓN ═══════════ */
+const P = { // personas
+  IP:{i:'IP',n:'Ivan Peñuelas',    r:'PH Analytics · Líder'},
+  LM:{i:'LM',n:'Laura Medina',     r:'Insermed · Compras'},
+  CR:{i:'CR',n:'Carlos Ríos',      r:'PH Analytics · Desarrollo'},
+  DS:{i:'DS',n:'Diana Soto',       r:'PH Analytics · Datos'},
+  JT:{i:'JT',n:'Jorge Tapia',      r:'Insermed · Almacén'},
+  MV:{i:'MV',n:'Mónica Valdez',    r:'Insermed · Dirección'}
+};
+const EST = {
+  PEND:{k:'PEND',l:'Pendiente',  c:'b-pend'},
+  PROC:{k:'PROC',l:'En proceso', c:'b-proc'},
+  BLOQ:{k:'BLOQ',l:'Bloqueada',  c:'b-bloq'},
+  REVI:{k:'REVI',l:'En revisión',c:'b-revi'},
+  COMP:{k:'COMP',l:'Completada', c:'b-comp'}
+};
+
+/* startIdx / endIdx = índice de día hábil dentro del calendario del Gantt (0 = lun 3 ago 2026) */
+const TAREAS = [
+  {id:'TSK0000000001',wbs:'1',  lvl:0,t:'Levantamiento de requerimientos',res:0,ini:0, fin:9,
+   est:'COMP',pri:'media',av:100,asig:[['IP',1],['LM',1]],deps:[],resumen:true},
+  {id:'TSK0000000002',wbs:'1.1',lvl:1,t:'Entrevistas con el área de compras',ini:0,fin:4,
+   est:'COMP',pri:'media',av:100,asig:[['IP',1],['LM',1]],deps:[]},
+  {id:'TSK0000000003',wbs:'1.2',lvl:1,t:'Mapeo de procesos actuales',ini:3,fin:9,
+   est:'COMP',pri:'alta',av:100,asig:[['CR',1],['DS',1]],deps:[['TSK0000000002','FS']],
+   adj:[{n:'Diagrama_procesos_compras.dwg',t:'dwg',s:'1.8 MB',by:'CR',w:'10 ago, 14:22'},
+        {n:'Minuta_levantamiento.pdf',     t:'pdf',s:'340 KB',by:'IP',w:'10 ago, 18:00'},
+        {n:'evidencias_junta.zip',         t:'zip',s:'12.6 MB',by:'DS',w:'11 ago, 09:05'}]},
+
+  {id:'TSK0000000004',wbs:'2',  lvl:0,t:'Migración de catálogos',ini:10,fin:19,
+   est:'BLOQ',pri:'alta',av:45,asig:[['DS',0]],deps:[['TSK0000000001','FS']],resumen:true},
+  {id:'TSK0000000005',wbs:'2.1',lvl:1,t:'Catálogo de proveedores',ini:10,fin:14,
+   est:'COMP',pri:'media',av:100,asig:[['DS',1],['LM',1]],deps:[]},
+  {id:'TSK0000000006',wbs:'2.2',lvl:1,t:'Catálogo de artículos y precios',ini:12,fin:19,
+   est:'BLOQ',pri:'alta',av:30,asig:[['DS',0],['JT',0]],deps:[['TSK0000000005','SS']],
+   bloqueo:{por:'TSK0000000099',motivo:'Insermed aún no entrega el layout de precios de lista con las columnas acordadas. Sin eso no se puede cargar el catálogo.'},
+   adj:[
+     {n:'Layout_articulos_v3.xlsx',      t:'xlsx',s:'842 KB', by:'DS',w:'12 ago, 10:04'},
+     {n:'Mapeo_campos_Insermed.docx',    t:'docx',s:'126 KB', by:'IP',w:'12 ago, 16:30'},
+     {n:'Muestra_lista_precios.pdf',     t:'pdf', s:'2.4 MB', by:'JT',w:'13 ago, 08:12'},
+     {n:'catalogo_actual_export.csv',    t:'csv', s:'5.1 MB', by:'DS',w:'13 ago, 09:47'},
+     {n:'pantalla_error_carga.png',      t:'img', s:'318 KB', by:'DS',w:'Hoy, 09:15'}
+   ]},
+  {id:'TSK0000000099',wbs:'',lvl:2,t:'Solicitar layout de precios a Dirección',ini:12,fin:14,
+   est:'PROC',pri:'alta',av:50,asig:[['MV',0]],deps:[],bloqueante:true,bloquea:'2.2'},
+
+  {id:'TSK0000000007',wbs:'3',  lvl:0,t:'Configuración de módulos',ini:15,fin:24,
+   est:'PROC',pri:'alta',av:35,asig:[['CR',0]],deps:[['TSK0000000004','FS']],resumen:true},
+  {id:'TSK0000000008',wbs:'3.1',lvl:1,t:'Compras y órdenes de compra',ini:15,fin:20,
+   est:'PROC',pri:'alta',av:60,asig:[['CR',0],['LM',1]],deps:[['TSK0000000005','FS']],
+   adj:[{n:'Flujo_autorizacion_OC.png',t:'img',s:'452 KB',by:'CR',w:'Ayer, 12:10'},
+        {n:'Politica_compras_Insermed.pdf',t:'pdf',s:'890 KB',by:'LM',w:'Ayer, 15:40'}]},
+  {id:'TSK0000000009',wbs:'3.2',lvl:1,t:'Cuentas por pagar',ini:19,fin:24,
+   est:'PEND',pri:'media',av:0,asig:[['CR',0]],deps:[['TSK0000000008','FS']]},
+
+  {id:'TSK0000000010',wbs:'4',  lvl:0,t:'Capacitación a usuarios',ini:25,fin:29,
+   est:'PEND',pri:'media',av:0,asig:[['IP',0],['LM',0],['JT',0]],deps:[['TSK0000000007','FS']],resumen:true},
+  {id:'TSK0000000011',wbs:'4.1',lvl:1,t:'Sesión compras y almacén',ini:25,fin:27,
+   est:'PEND',pri:'baja',av:0,asig:[['IP',0],['JT',0]],deps:[]},
+  {id:'TSK0000000012',wbs:'5',  lvl:0,t:'Salida a producción',ini:30,fin:30,
+   est:'PEND',pri:'alta',av:0,asig:[['IP',0],['MV',0]],deps:[['TSK0000000010','FS']],hito:true}
+];
+
+/* Calendario: 7 semanas de días hábiles desde lun 3 ago 2026 */
+const MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const DIAS=[];
+(function(){ let d=new Date(2026,7,3);
+  while(DIAS.length<35){ const wd=d.getDay();
+    if(wd>=1&&wd<=5) DIAS.push({n:d.getDate(),m:d.getMonth(),wd,start:wd===1});
+    d.setDate(d.getDate()+1); } })();
+const CW=30, HOY=6; // "hoy" = jue 13 ago (índice 8) → usamos 8
+const HOY_IDX=8;
+const fdate=i=>DIAS[i]?`${DIAS[i].n} ${MESES[DIAS[i].m]}`:'—';
+const byId=id=>TAREAS.find(t=>t.id===id);
+
+/* --- Adjuntos --- */
+const ETIQ={pdf:'PDF',xlsx:'XLS',docx:'DOC',img:'IMG',dwg:'DWG',zip:'ZIP',csv:'CSV',any:'FILE'};
+const ftipo=t=>ETIQ[t]?t:'any';
+const fbadge=t=>`<span class="ftype f-${ftipo(t)}">${ETIQ[ftipo(t)]}</span>`;
+const nadj=t=>(t.adj||[]).length;
+const clip=t=>nadj(t)?`<span class="clip has">📎 ${nadj(t)}</span>`:'<span class="clip">—</span>';
+
+function fileRow(f){
+  const vista=f.t==='img'
+    ? '<div class="fthumb" title="Vista previa"></div>'
+    : fbadge(f.t);
+  return `<div class="file">
+    ${vista}
+    <div class="fmeta">
+      <div class="fname">${f.n}</div>
+      <div class="fsub">${f.s} · ${P[f.by].n.split(' ')[0]} ${P[f.by].n.split(' ')[1]} · ${f.w}
+        &nbsp;<span class="fscan">✓ analizado</span></div>
+    </div>
+    <div class="fact">
+      <button class="fbtn" title="Ver">👁</button>
+      <button class="fbtn" title="Descargar">⤓</button>
+      <button class="fbtn del" title="Quitar">✕</button>
+    </div>
+  </div>`;
+}
+function filePill(f){
+  const c=f.t==='img'?'f-img':'f-'+ftipo(f.t);
+  return `<span class="fpill"><i class="dot ${c}">${ETIQ[ftipo(f.t)]}</i>${f.n}<span class="sz">${f.s}</span></span>`;
+}
+
+/* ═══════════ VISTA LISTA ═══════════ */
+const tb=document.getElementById('tbody-lista');
+TAREAS.forEach(t=>{
+  const tr=document.createElement('tr');
+  tr.className='lvl-'+t.lvl+(t.bloqueante?' blocker':''); tr.dataset.id=t.id;
+  const caret=t.resumen?'▾':'';
+  const depTxt=t.bloqueo
+    ? `<span class="dep block">⛔ bloqueada</span>`
+    : (t.deps.length?`<span class="dep">${t.deps.map(d=>byId(d[0]).wbs+' '+d[1]).join(', ')}</span>`:'<span class="dep">—</span>');
+  const fillCls=t.est==='COMP'?'done':(t.est==='BLOQ'?'stuck':'');
+  tr.innerHTML=`
+    <td class="wbs">${t.wbs||'<span class="wbs-none">·</span>'}</td>
+    <td><div class="tname indent-${t.lvl}">
+      <span class="caret">${caret}</span>
+      ${t.bloqueante?`<span class="blk-mark">⛔ bloquea ${t.bloquea}</span>`:''}
+      <span class="txt ${t.hito?'milestone':''}">${t.hito?'◆ ':''}${t.t}</span></div></td>
+    <td><div class="avs">${t.asig.map(a=>`<span class="av av-${a[0]}" title="${P[a[0]].n}">${a[0]}</span>`).join('')}</div></td>
+    <td><span class="badge ${EST[t.est].c}"><i class="pip"></i>${EST[t.est].l}</span></td>
+    <td><span class="prio p-${t.pri}">${t.pri[0].toUpperCase()+t.pri.slice(1)}</span></td>
+    <td><div class="prog"><div class="prog-track"><div class="prog-fill ${fillCls}" style="width:${t.av}%"></div></div>
+        <span class="prog-n">${t.av}%</span></div></td>
+    <td class="dates">${fdate(t.ini)}</td>
+    <td class="dates">${fdate(t.fin)}</td>
+    <td>${clip(t)}</td>
+    <td>${depTxt}</td>`;
+  tr.onclick=()=>abrir(t.id);
+  tb.appendChild(tr);
+});
+
+/* ═══════════ VISTA CRONOGRAMA ═══════════ */
+(function(){
+  const gw=document.getElementById('g-weeks'), gd=document.getElementById('g-days');
+  for(let w=0;w<7;w++){
+    const d0=DIAS[w*5];
+    const el=document.createElement('div'); el.className='g-week'; el.style.width=(CW*5)+'px';
+    el.textContent=`Sem ${w+1} · ${d0.n} ${MESES[d0.m]}`; gw.appendChild(el);
+  }
+  DIAS.forEach((d,i)=>{
+    const el=document.createElement('div');
+    el.className='g-day'+(d.start?' wk-start':'')+(i===HOY_IDX?' today':'');
+    el.textContent=d.n; gd.appendChild(el);
+  });
+
+  const gn=document.getElementById('g-names'), gr=document.getElementById('g-rows');
+  const line=document.createElement('div'); line.className='g-today';
+  line.style.left=(HOY_IDX*CW+CW/2)+'px'; gr.appendChild(line);
+
+  TAREAS.forEach(t=>{
+    const nm=document.createElement('div');
+    nm.className='g-row lvl-'+t.lvl;
+    nm.innerHTML=`<span class="wbs" style="width:34px">${t.wbs||'<span class="wbs-none">·</span>'}</span>
+      <span class="txt" style="padding-left:${t.lvl*10}px">${t.hito?'◆ ':''}${t.bloqueante?'⛔ ':''}${t.t}</span>`;
+    nm.onclick=()=>abrir(t.id); gn.appendChild(nm);
+
+    const tr=document.createElement('div'); tr.className='g-track'; tr.onclick=()=>abrir(t.id);
+    const grid=document.createElement('div'); grid.className='g-grid';
+    DIAS.forEach(d=>{const c=document.createElement('div');c.className='g-cell'+(d.start?' wk-start':'');grid.appendChild(c);});
+    tr.appendChild(grid);
+
+    if(t.hito){
+      const m=document.createElement('div'); m.className='g-milestone';
+      m.style.left=(t.ini*CW+7)+'px'; m.title=t.t; tr.appendChild(m);
+    }else{
+      const bar=document.createElement('div');
+      const cls=t.resumen?'summary':(t.bloqueante?'blocker':
+        t.est==='COMP'?'done':t.est==='BLOQ'?'blocked':t.est==='PEND'?'pending':'');
+      bar.className='g-bar '+cls;
+      bar.style.left=(t.ini*CW+2)+'px';
+      bar.style.width=((t.fin-t.ini+1)*CW-4)+'px';
+      if(!t.resumen&&t.av>0&&t.av<100){
+        const inner=document.createElement('div'); inner.className='g-bar-inner';
+        inner.style.width=(100-t.av)+'%'; inner.style.left=t.av+'%'; bar.appendChild(inner);
+      }
+      if(!t.resumen) bar.insertAdjacentHTML('beforeend',
+        `<span style="position:relative;z-index:1">${t.asig.map(a=>a[0]).join(' ')}${t.est==='BLOQ'?' ⛔':''}</span>`);
+      bar.title=`${t.t} · ${fdate(t.ini)} – ${fdate(t.fin)} · ${t.av}%`;
+      tr.appendChild(bar);
+    }
+    gr.appendChild(tr);
+  });
+})();
+
+/* ═══════════ VISTA TABLERO ═══════════ */
+(function(){
+  const k=document.getElementById('kanban');
+  ['PEND','PROC','BLOQ','REVI','COMP'].forEach(est=>{
+    const items=TAREAS.filter(t=>t.est===est&&!t.resumen);
+    const col=document.createElement('div'); col.className='col';
+    col.innerHTML=`<div class="col-head"><span class="badge ${EST[est].c}"><i class="pip"></i>${EST[est].l}</span>
+      <span class="n">${items.length}</span></div>`;
+    items.forEach(t=>{
+      const c=document.createElement('div');
+      c.className='kcard'+(t.est==='BLOQ'?' blocked':'');
+      const hechos=t.asig.filter(a=>a[1]).length;
+      c.innerHTML=`<div class="kcard-id">${t.id} · WBS ${t.wbs}</div>
+        <div class="kcard-t">${t.hito?'◆ ':''}${t.t}</div>
+        <div class="kcard-meta">
+          <div class="avs">${t.asig.map(a=>`<span class="av av-${a[0]}">${a[0]}</span>`).join('')}</div>
+          <span class="prio p-${t.pri}" style="margin-left:auto">${t.pri[0].toUpperCase()+t.pri.slice(1)}</span>
+          ${nadj(t)?`<span class="clip has">📎 ${nadj(t)}</span>`:''}
+          <span class="dates">${fdate(t.fin)}</span></div>
+        ${t.asig.length>1?`<div class="kcard-sub">Confirmaron ${hechos} de ${t.asig.length} asignados</div>`:''}
+        ${t.bloqueo?`<div class="kcard-note">⛔ <span>Esperando ${byId(t.bloqueo.por).t}</span></div>`:''}`;
+      c.onclick=()=>abrir(t.id);
+      col.appendChild(c);
+    });
+    if(!items.length) col.insertAdjacentHTML('beforeend',
+      '<div style="font-size:11.5px;color:var(--faint);padding:8px 3px">Nada aquí todavía.</div>');
+    k.appendChild(col);
+  });
+})();
+
+/* ═══════════ PESTAÑAS ═══════════ */
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('is-on'));
+    tab.classList.add('is-on');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('is-on'));
+    document.getElementById('v-'+tab.dataset.view).classList.add('is-on');
+  };
+});
+
+/* ═══════════ PANEL DE DETALLE ═══════════ */
+const drawer=document.getElementById('drawer'), scrim=document.getElementById('scrim');
+function cerrar(){drawer.classList.remove('is-on');scrim.classList.remove('is-on');
+  document.querySelectorAll('tbody tr').forEach(r=>r.classList.remove('is-sel'));}
+document.getElementById('d-close').onclick=cerrar;
+scrim.onclick=cerrar;
+document.addEventListener('keydown',e=>{if(e.key==='Escape')cerrar();});
+
+function abrir(id){
+  const t=byId(id);
+  document.querySelectorAll('tbody tr').forEach(r=>r.classList.toggle('is-sel',r.dataset.id===id));
+  document.getElementById('d-id').textContent=t.id;
+  document.getElementById('d-wbs').textContent='· WBS '+t.wbs;
+  document.getElementById('d-title').textContent=(t.hito?'◆ ':'')+t.t;
+  document.getElementById('d-badges').innerHTML=
+    `<span class="badge ${EST[t.est].c}"><i class="pip"></i>${EST[t.est].l}</span>
+     <span class="badge b-pend">Prioridad ${t.pri}</span>
+     ${t.resumen?'<span class="badge b-pend">Fase</span>':''}
+     ${t.hito?'<span class="badge b-pend" style="color:var(--violet);background:#f5f3ff">Hito</span>':''}`;
+
+  const subs=TAREAS.filter(s=>s.lvl===t.lvl+1&&s.wbs.startsWith(t.wbs+'.')&&!s.bloqueante);
+  const hechos=t.asig.filter(a=>a[1]).length;
+
+  document.getElementById('d-body').innerHTML=`
+    <div class="d-sec">
+      <dl class="d-grid">
+        <dt>Tablero</dt><dd>Implementación iERP — Insermed</dd>
+        <dt>Empresa</dt><dd>Insermed · Matriz</dd>
+        <dt>Inicio plan</dt><dd>${fdate(t.ini)} 2026</dd>
+        <dt>Fin plan</dt><dd>${fdate(t.fin)} 2026</dd>
+        <dt>Duración</dt><dd>${t.fin-t.ini+1} días hábiles</dd>
+        <dt>Avance</dt><dd><div class="prog" style="width:150px">
+          <div class="prog-track"><div class="prog-fill ${t.est==='COMP'?'done':t.est==='BLOQ'?'stuck':''}" style="width:${t.av}%"></div></div>
+          <span class="prog-n">${t.av}%</span></div>
+          ${t.resumen?'<div style="font-size:10.5px;color:var(--faint);margin-top:2px">Calculado desde las subtareas</div>':''}</dd>
+      </dl>
+    </div>
+
+    ${t.bloqueo?`
+    <div class="d-sec">
+      <div class="d-sec-h">Bloqueo activo</div>
+      <div class="block-card">
+        <div class="block-h">⛔ Esta tarea no puede avanzar</div>
+        <div class="block-why">${t.bloqueo.motivo}</div>
+        <div class="block-task">
+          <div class="block-task-id">${byId(t.bloqueo.por).id} · fuera del WBS</div>
+          <div class="block-task-t">${byId(t.bloqueo.por).t}</div>
+          <div class="block-task-m">
+            <div class="avs">${byId(t.bloqueo.por).asig.map(a=>`<span class="av av-${a[0]}">${a[0]}</span>`).join('')}</div>
+            <span class="badge ${EST[byId(t.bloqueo.por).est].c}"><i class="pip"></i>${EST[byId(t.bloqueo.por).est].l}</span>
+            <span class="dates" style="margin-left:auto">vence ${fdate(byId(t.bloqueo.por).fin)}</span>
+          </div>
+        </div>
+        <button class="btn btn-block">+ Crear otra tarea bloqueante</button>
+      </div>
+    </div>`:''}
+
+    <div class="d-sec">
+      <div class="d-sec-h">Asignados <span class="add">+ Agregar</span></div>
+      <div class="mode-note">Cierre: <b>todos los asignados confirman</b>. Van ${hechos} de ${t.asig.length}.
+        La tarea pasa a <b>En revisión</b> cuando el último confirme.</div>
+      ${t.asig.map(a=>`
+        <div class="asig">
+          <span class="av av-${a[0]} lg">${a[0]}</span>
+          <div><div class="asig-n">${P[a[0]].n}</div><div class="asig-r">${P[a[0]].r}</div></div>
+          <div class="asig-s">
+            ${a[1]
+              ? '<span class="check on"><i class="tick">✓</i>Terminé</span><span class="asig-when">14 ago, 11:42</span>'
+              : '<span class="check off"><i class="tick"></i>Sin confirmar</span>'}
+          </div>
+        </div>`).join('')}
+    </div>
+
+    ${subs.length?`
+    <div class="d-sec">
+      <div class="d-sec-h">Subtareas · ${subs.filter(s=>s.est==='COMP').length}/${subs.length} <span class="add">+ Agregar</span></div>
+      ${subs.map(s=>`<div class="sub ${s.est==='COMP'?'done':''}">
+        <span class="box">${s.est==='COMP'?'✓':''}</span>
+        <span class="lbl">${s.wbs} · ${s.t}</span>
+        <div class="avs">${s.asig.map(a=>`<span class="av av-${a[0]}">${a[0]}</span>`).join('')}</div>
+        <span class="dates">${fdate(s.fin)}</span></div>`).join('')}
+    </div>`:''}
+
+    <div class="d-sec">
+      <div class="d-sec-h">Archivos${nadj(t)?' · '+nadj(t):''}</div>
+      ${nadj(t)?`<div class="files">${t.adj.map(fileRow).join('')}</div>`:''}
+      <div class="drop" id="drop-tarea">
+        <div class="drop-i">⇪</div>
+        <div class="drop-t">Arrastra archivos aquí o <u>búscalos en tu equipo</u></div>
+        <div class="drop-s">Cualquier formato. Varios a la vez. Hasta 100 MB por archivo.</div>
+      </div>
+    </div>
+
+    <div class="d-sec">
+      <div class="d-sec-h">Dependencias <span class="add">+ Agregar</span></div>
+      ${t.deps.length?t.deps.map(d=>`<div class="deprow">
+        <span class="deptype">${d[1]}</span>
+        <span class="lbl">${byId(d[0]).wbs} · ${byId(d[0]).t}</span>
+        <span class="badge ${EST[byId(d[0]).est].c}"><i class="pip"></i>${EST[byId(d[0]).est].l}</span></div>`).join('')
+        :'<div style="font-size:12px;color:var(--faint)">Esta tarea no espera a ninguna otra. Puede arrancar en cuanto la fase abra.</div>'}
+    </div>
+
+    <div class="d-sec">
+      <div class="d-sec-h">Actividad y comentarios</div>
+
+      <div class="act"><span class="av av-DS lg">DS</span><div class="act-b">
+        <div class="act-t"><b>Diana Soto</b> marcó la tarea como <b>Bloqueada</b> y creó la tarea bloqueante ${t.bloqueo?byId(t.bloqueo.por).id:'—'}.</div>
+        <div class="act-files">${filePill({n:'pantalla_error_carga.png',t:'img',s:'318 KB'})}</div>
+        <div class="act-w">Hoy, 09:18 · adjuntó 1 archivo a la acción</div></div></div>
+
+      <div class="act"><span class="av av-IP lg">IP</span><div class="act-b">
+        <div class="act-t"><b>Ivan Peñuelas</b> movió el fin plan del 26 ago al ${fdate(t.fin)}.</div>
+        <div class="act-w">Ayer, 17:05</div></div></div>
+
+      <div class="act"><span class="av av-JT lg">JT</span><div class="act-b">
+        <div class="act-t"><b>Jorge Tapia</b> comentó: “Ya tengo las unidades de medida validadas, falta nada más el precio. Les dejo la muestra que me pasó el proveedor y el export de lo que hay hoy.”</div>
+        <div class="act-files">
+          ${filePill({n:'Muestra_lista_precios.pdf',t:'pdf',s:'2.4 MB'})}
+          ${filePill({n:'catalogo_actual_export.csv',t:'csv',s:'5.1 MB'})}
+        </div>
+        <div class="act-w">11 ago, 08:30</div></div></div>
+
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <span class="av av-IP lg">IP</span>
+        <div style="flex:1;min-width:0">
+          <div class="composer">
+            <textarea placeholder="Escribe un comentario, arrastra archivos o pega una captura…"></textarea>
+            <div class="composer-bar">
+              <button class="cbtn" title="Adjuntar archivo">📎</button>
+              <button class="cbtn" title="Mencionar a alguien">@</button>
+              <span class="composer-hint">Cualquier formato · varios archivos</span>
+              <div class="spacer" style="flex:1"></div>
+              <button class="btn btn-primary" style="padding:5px 12px">Comentar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  /* Zona de arrastre demostrativa */
+  const dz=document.getElementById('drop-tarea');
+  if(dz){
+    ['dragenter','dragover'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add('over');}));
+    ['dragleave','drop'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove('over');}));
+  }
+
+  drawer.classList.add('is-on'); scrim.classList.add('is-on');
+}
+
+abrir('TSK0000000006');
+</script>
+</body>
+</html>

@@ -1,0 +1,2307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Handoff técnico — Módulo Tareas · iErpGeneric v2.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f9fafb;--card:#fff;--line:#e5e7eb;--line-soft:#f1f2f4;
+  --ink:#111827;--ink-2:#374151;--muted:#6b7280;--faint:#9ca3af;
+  --primary:#4f46e5;--primary-soft:#eef2ff;--primary-line:#c7d2fe;
+  --red:#dc2626;--red-soft:#fef2f2;--red-line:#fecaca;
+  --amber:#d97706;--amber-soft:#fffbeb;--amber-line:#fde68a;
+  --green:#059669;--green-soft:#ecfdf5;--green-line:#a7f3d0;
+  --blue:#2563eb;--blue-soft:#eff6ff;--blue-line:#bfdbfe;
+  --code-bg:#0f172a;--code-ink:#e2e8f0;
+  --r:8px;--r-sm:6px;--shadow:0 1px 2px rgba(16,24,40,.05);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:14px;line-height:1.62;-webkit-font-smoothing:antialiased}
+.wrap{max-width:960px;margin:0 auto;padding:0 24px 90px}
+
+/* Portada */
+.cover{background:var(--card);border-bottom:1px solid var(--line);margin-bottom:28px}
+.cover-in{max-width:960px;margin:0 auto;padding:34px 24px 28px}
+.kicker{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.09em;color:var(--primary);
+  background:var(--primary-soft);border:1px solid var(--primary-line);
+  border-radius:99px;padding:4px 11px;margin-bottom:14px}
+h1{font-size:31px;font-weight:700;letter-spacing:-.03em;margin:0 0 8px;line-height:1.18}
+.lede{font-size:15px;color:var(--muted);margin:0 0 20px;max-width:70ch}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:14px;
+  border-top:1px solid var(--line-soft);padding-top:17px}
+.meta dt{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--faint)}
+.meta dd{margin:2px 0 0;font-size:13px;font-weight:500}
+
+/* Índice */
+.toc{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px 20px;box-shadow:var(--shadow);margin-bottom:34px}
+.toc-h{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--muted);margin-bottom:10px}
+.toc ol{margin:0;padding-left:19px;columns:2;column-gap:34px;font-size:13px}
+.toc li{margin-bottom:5px;break-inside:avoid}
+.toc a{color:var(--ink-2);text-decoration:none}
+.toc a:hover{color:var(--primary);text-decoration:underline}
+
+/* Secciones */
+section{margin-bottom:44px;scroll-margin-top:16px}
+h2{font-size:20px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px;
+  padding-bottom:9px;border-bottom:2px solid var(--ink);display:flex;align-items:baseline;gap:10px}
+h2 .num{font-size:12px;font-weight:700;color:var(--primary);font-variant-numeric:tabular-nums}
+h3{font-size:15px;font-weight:650;letter-spacing:-.01em;margin:26px 0 8px}
+h4{font-size:13px;font-weight:650;margin:18px 0 6px;color:var(--ink-2)}
+p{margin:0 0 11px}
+ul,ol{margin:0 0 12px;padding-left:21px}
+li{margin-bottom:4px}
+code{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:.875em;
+  background:#eef0f3;padding:1.5px 5px;border-radius:4px;color:#1e293b}
+
+/* Bloques de código */
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:var(--r);
+  padding:15px 17px;overflow-x:auto;margin:0 0 14px;
+  font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:12px;line-height:1.62}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+.pre-label{display:flex;align-items:center;gap:8px;background:#1e293b;color:#94a3b8;
+  border-radius:var(--r) var(--r) 0 0;padding:7px 15px;font-size:10.5px;font-weight:600;
+  font-family:"JetBrains Mono",monospace;letter-spacing:.03em;margin-bottom:0}
+.pre-label + pre{border-radius:0 0 var(--r) var(--r);margin-top:0}
+
+/* Tablas */
+table{width:100%;border-collapse:collapse;margin:0 0 15px;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--r);overflow:hidden;font-size:12.5px}
+th{text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);padding:9px 11px;background:#fcfcfd;border-bottom:1px solid var(--line)}
+td{padding:8px 11px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td code{font-size:11.5px}
+.nowrap{white-space:nowrap}
+
+/* Avisos */
+.note{border-radius:var(--r);padding:13px 15px;margin:0 0 15px;border:1px solid;font-size:13px}
+.note p:last-child{margin-bottom:0}
+.note-h{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em;
+  margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.n-warn{background:var(--red-soft);border-color:var(--red-line)}
+.n-warn .note-h{color:var(--red)}
+.n-tip{background:var(--amber-soft);border-color:var(--amber-line)}
+.n-tip .note-h{color:var(--amber)}
+.n-info{background:var(--blue-soft);border-color:var(--blue-line)}
+.n-info .note-h{color:var(--blue)}
+.n-ok{background:var(--green-soft);border-color:var(--green-line)}
+.n-ok .note-h{color:var(--green)}
+
+/* Diagrama */
+.diagram{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:18px;overflow-x:auto;margin-bottom:15px;box-shadow:var(--shadow)}
+.diagram pre{background:none;color:var(--ink-2);padding:0;margin:0;font-size:11.5px;line-height:1.5}
+
+/* Insignias */
+.tag{display:inline-block;padding:1.5px 7px;border-radius:99px;font-size:10.5px;font-weight:700;
+  letter-spacing:.02em;white-space:nowrap}
+.t-get{background:var(--green-soft);color:var(--green)}
+.t-post{background:var(--blue-soft);color:var(--blue)}
+.t-patch{background:var(--amber-soft);color:var(--amber)}
+.t-del{background:var(--red-soft);color:var(--red)}
+.t-f1{background:var(--primary-soft);color:var(--primary)}
+.t-f2{background:#f3e8ff;color:#7c3aed}
+.t-f3{background:#fce7f3;color:#be185d}
+
+/* Fases */
+.phase{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--primary);
+  border-radius:var(--r);padding:14px 17px;margin-bottom:11px;box-shadow:var(--shadow)}
+.phase-h{display:flex;align-items:baseline;gap:9px;margin-bottom:7px}
+.phase-n{font-size:10.5px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.06em}
+.phase-t{font-size:14px;font-weight:650}
+.phase-d{margin-left:auto;font-size:11px;color:var(--faint);font-weight:500}
+.phase ul{margin-bottom:0;font-size:12.5px}
+
+hr{border:0;border-top:1px solid var(--line);margin:30px 0}
+.foot{border-top:1px solid var(--line);padding-top:16px;margin-top:44px;
+  font-size:11.5px;color:var(--faint)}
+@media print{
+  body{background:#fff;font-size:11px}
+  pre{font-size:9.5px}
+  section{page-break-inside:avoid}
+  .toc{page-break-after:always}
+}
+@media (max-width:700px){.toc ol{columns:1}h1{font-size:25px}}
+</style>
+</head>
+<body>
+
+<div class="cover"><div class="cover-in">
+  <div class="kicker">Documento de handoff · Claude Code</div>
+  <h1>Módulo de Tareas y Proyectos</h1>
+  <p class="lede">Especificación técnica completa para implementar el módulo <code>tareas</code> en
+  iErpGeneric v2.0: jerarquía WBS, asignación múltiple con confirmación individual, dependencias tipo
+  MS Project, bloqueos que generan tareas, cronograma y adjuntos de cualquier formato.</p>
+  <dl class="meta">
+    <div><dt>Proyecto</dt><dd>iErpGeneric v2.0</dd></div>
+    <div><dt>Ruta local</dt><dd><code>~/Documents/iPenuelas/<br>docker_apps/iErp_generic_v2.0</code></dd></div>
+    <div><dt>App Django</dt><dd><code>tareas</code> + <code>comunes</code></dd></div>
+    <div><dt>Stack</dt><dd>Django 4.2 · SQL Server · DRF · django-unfold</dd></div>
+    <div><dt>Tenants destino</dt><dd>Acuagro · Insermed · PH</dd></div>
+    <div><dt>Fecha</dt><dd>27 julio 2026</dd></div>
+  </dl>
+</div></div>
+
+<div class="wrap">
+
+<nav class="toc">
+  <div class="toc-h">Contenido</div>
+  <ol>
+    <li><a href="#s1">Alcance y supuestos</a></li>
+    <li><a href="#s2">Decisiones de arquitectura</a></li>
+    <li><a href="#s3">Modelo de datos</a></li>
+    <li><a href="#s4">DDL de SQL Server</a></li>
+    <li><a href="#s5">Modelos Django</a></li>
+    <li><a href="#s6">Reglas de negocio</a></li>
+    <li><a href="#s7">API REST (DRF)</a></li>
+    <li><a href="#s8">Permisos y visibilidad</a></li>
+    <li><a href="#s9">Adjuntos: storage y seguridad</a></li>
+    <li><a href="#s10">Admin django-unfold</a></li>
+    <li><a href="#s11">Plan de implementación</a></li>
+    <li><a href="#s12">Casos de prueba</a></li>
+    <li><a href="#s13">Fuera de alcance v1</a></li>
+  </ol>
+</nav>
+
+<!-- ══════════════════ 1 ══════════════════ -->
+<section id="s1">
+<h2><span class="num">01</span> Alcance y supuestos</h2>
+
+<h3>Qué se construye</h3>
+<p>Un módulo de gestión de tareas multi-tenant, activable por cliente vía <code>EmpresaModulo</code>,
+con tres vistas sobre los mismos datos: <b>Lista</b> jerárquica, <b>Cronograma</b> (Gantt) y
+<b>Tablero</b> kanban. El mockup HTML aprobado acompaña este documento y es la referencia visual vinculante.</p>
+
+<h3>Capacidades obligatorias</h3>
+<ul>
+  <li>Tareas con subtareas anidadas (WBS de profundidad arbitraria, uso real hasta 3 niveles).</li>
+  <li>Varios asignados por tarea, cada uno confirma su parte por separado.</li>
+  <li>Dependencias entre tareas con tipo (FS / SS / FF / SF) y desfase en días.</li>
+  <li>Bloqueo declarativo: marcar una tarea como bloqueada <em>generando</em> la tarea bloqueante,
+      asignable a cualquier persona, incluso de otro tablero.</li>
+  <li>Adjuntos de cualquier formato, uno o varios, en tarea, comentario y acción del registro.</li>
+  <li>Cronograma con barras, hitos, ruta de dependencias y línea de hoy.</li>
+</ul>
+
+<div class="note n-info">
+  <div class="note-h">Supuestos que hay que verificar en el repo antes de codear</div>
+  <p>Este documento asume la base multi-tenant estándar. Si algo no coincide, <b>gana el repo</b> y hay que
+  adaptar, no forzar:</p>
+  <ul style="margin-bottom:0">
+    <li><code>TenantModel</code> aporta <code>empresa</code> (FK), <code>creado_en</code>,
+        <code>actualizado_en</code>, <code>creado_por</code> y un manager que filtra por la empresa activa.</li>
+    <li>Existen <code>ClienteSaaS</code>, <code>Empresa</code>, <code>Sucursal</code>,
+        <code>PerfilUsuario</code> y <code>EmpresaModulo</code>.</li>
+    <li>Existen los mixins <code>GroupRequiredMixin</code> y <code>StaffRequiredMixin</code>.</li>
+    <li>Hay un proyecto template base que se clona, nunca se modifica.</li>
+  </ul>
+</div>
+
+<div class="note n-warn">
+  <div class="note-h">Nombres reservados</div>
+  <p>No usar <code>Proyecto</code> como nombre de modelo. En iERPFerrominio v3.0 <code>Proyecto</code>
+  ya significa "obra", y este módulo eventualmente baja a ese sistema. El contenedor de tareas se llama
+  <b><code>Tablero</code></b>. Tampoco usar <code>Tarea</code> en singular dentro de otras apps sin prefijo.</p>
+</div>
+</section>
+
+<!-- ══════════════════ 2 ══════════════════ -->
+<section id="s2">
+<h2><span class="num">02</span> Decisiones de arquitectura</h2>
+
+<p>Estas seis decisiones ya están tomadas. No reinterpretarlas durante la implementación.</p>
+
+<h3>2.1 — Tres relaciones distintas, tres tablas distintas</h3>
+<table>
+  <thead><tr><th>Relación</th><th>Significado</th><th>Implementación</th></tr></thead>
+  <tbody>
+    <tr><td><b>Jerarquía</b></td><td>Descomposición del trabajo: una tarea se parte en subtareas</td>
+        <td><code>Tarea.padre</code> (FK a sí misma) + <code>ruta_wbs</code></td></tr>
+    <tr><td><b>Dependencia</b></td><td>Secuencia: A debe avanzar antes que B. Puede cruzar tableros</td>
+        <td>Tabla <code>TareaDependencia</code></td></tr>
+    <tr><td><b>Asignación</b></td><td>Quién trabaja en la tarea y si ya terminó su parte</td>
+        <td>Tabla <code>TareaAsignacion</code></td></tr>
+  </tbody>
+</table>
+<p>Meterlas en el mismo campo es el error clásico. Una subtarea no bloquea a su padre por naturaleza;
+lo condiciona por avance. Una bloqueante sí bloquea y puede vivir en otro tablero con otro responsable.
+Si se mezclan, el Gantt no puede calcular ruta crítica.</p>
+
+<h3>2.2 — El <code>completado</code> vive en la asignación, no en la tarea</h3>
+<p>Con varios asignados, "ya terminé" es una afirmación por persona. <code>TareaAsignacion.completado</code>
+guarda quién confirmó y cuándo. El estado de la tarea se <em>deriva</em> según
+<code>Tablero.modo_cierre</code>:</p>
+<table>
+  <thead><tr><th>Modo</th><th>La tarea cierra cuando…</th><th>Uso típico</th></tr></thead>
+  <tbody>
+    <tr><td><code>TODOS</code></td><td>todos los asignados confirmaron</td><td>Default. Trabajo repartido</td></tr>
+    <tr><td><code>RESPONSABLE</code></td><td>el asignado con rol <code>RESPONSABLE</code> confirma</td>
+        <td>Un dueño con apoyos</td></tr>
+    <tr><td><code>CUALQUIERA</code></td><td>el primero que confirme</td><td>Guardias, pool de soporte</td></tr>
+  </tbody>
+</table>
+<p>Al cumplirse la condición la tarea pasa a <code>REVI</code> (En revisión), no directo a
+<code>COMP</code>. Cierra a <code>COMP</code> el responsable del tablero o quien tenga
+<code>cerrar_tarea</code>.</p>
+
+<h3>2.3 — El avance del padre se calcula, no se captura</h3>
+<p>Si <code>Tarea.es_resumen</code> (tiene hijos), <code>avance</code> es de solo lectura y sale del
+promedio ponderado por <code>peso</code> de sus hijos directos, recursivo hacia arriba. En hojas se
+captura a mano o se infiere de las confirmaciones.</p>
+
+<h3>2.4 — El bloqueo es una tarea real, no una bandera</h3>
+<p>Marcar bloqueada abre un formulario que exige: motivo, título de la tarea bloqueante, asignados y
+fecha compromiso. La operación crea en una sola transacción la <code>Tarea</code> nueva, la
+<code>TareaDependencia</code> con <code>origen='BLOQUEO'</code>, y cambia el estado a <code>BLOQ</code>.
+Nunca se permite bloquear sin generar la bloqueante.</p>
+
+<div class="note n-warn">
+  <div class="note-h">La bloqueante va con <code>padre = None</code>. Sin excepción.</div>
+  <p>Es tentador colgarla de la tarea bloqueada para verla en contexto. <b>No hacerlo.</b> En cuanto
+  la bloqueada tiene un hijo se vuelve <code>es_resumen</code>, su avance deja de capturarse y se
+  calcula desde los hijos. Como su único hijo sería la solicitud, al cerrarse esa solicitud el sistema
+  reportaría la tarea real al 100% sin que nadie haya hecho el trabajo.</p>
+  <p>El WBS describe <b>el desglose del entregable</b>: la suma de los hijos de <code>2</code> es
+  exactamente el 100% de <code>2</code>. Pedirle un layout a Dirección no es una parte de construir el
+  catálogo; es un impedimento externo. Va en la dependencia, no en la jerarquía.</p>
+  <p style="margin-bottom:0">La bloqueante se relaciona <b>únicamente</b> por
+  <code>TareaDependencia</code>. Se muestra en el panel rojo de la tarea bloqueada y en el Gantt como
+  barra rayada sin número de WBS.</p>
+</div>
+
+<h3>2.5 — Un solo modelo de adjunto, genérico</h3>
+<p><code>comunes.Adjunto</code> con <code>GenericForeignKey</code>. Sirve para <code>Tarea</code>,
+<code>TareaComentario</code> y <code>TareaActividad</code> hoy, y para cualquier entidad del ERP mañana
+sin migración nueva. Tres tablas de adjuntos es deuda técnica desde el día uno.</p>
+
+<h3>2.6 — Lógica en <code>services.py</code>, no en señales</h3>
+<p>Toda la lógica derivada (recalcular avance, evaluar cierre, propagar estado, recalcular WBS, resolver
+bloqueos) vive en funciones explícitas de <code>tareas/services.py</code>, llamadas desde las vistas y el
+admin. Nada de <code>post_save</code>: con jerarquía recursiva las señales se disparan en cascada, son
+imposibles de testear aisladas y hacen que un <code>bulk_update</code> se comporte distinto que un
+<code>save()</code>.</p>
+
+<h3>2.7 — Una plantilla es un Tablero con una bandera, no un modelo aparte</h3>
+<p>PH Analytics repite la misma implementación con cada cliente. En vez de recapturar 40 tareas,
+se arma una vez el "Plan de arranque estándar" y se instancia. La plantilla es un
+<code>Tablero</code> con <code>es_plantilla=True</code>: mismo modelo, mismas tareas, mismo editor,
+mismo Gantt. Se diseña visualmente arrastrando barras, igual que cualquier tablero.</p>
+
+<table>
+  <thead><tr><th>Al instanciar</th><th>Sí se copia</th><th>No se copia</th></tr></thead>
+  <tbody>
+    <tr><td><b>Estructura</b></td><td>Secciones, árbol de tareas, jerarquía, orden, pesos, hitos</td>
+        <td>—</td></tr>
+    <tr><td><b>Relaciones</b></td><td>Dependencias con <code>origen='PLANEADA'</code></td>
+        <td>Dependencias <code>BLOQUEO</code> — son incidentes de ejecución, no diseño</td></tr>
+    <tr><td><b>Personas</b></td><td><code>perfil_sugerido</code> como texto ("Consultor funcional")</td>
+        <td>Asignaciones. Las personas cambian en cada cliente</td></tr>
+    <tr><td><b>Fechas</b></td><td>Recalculadas en días hábiles desde el arranque nuevo</td>
+        <td>Fechas reales, <code>cerrado_en</code></td></tr>
+    <tr><td><b>Progreso</b></td><td>—</td><td>Estado (todo a <code>PEND</code>), avance (a 0), folios</td></tr>
+    <tr><td><b>Archivos</b></td><td>Adjuntos de la tarea, opcional: formatos, actas, checklists</td>
+        <td>Comentarios y bitácora</td></tr>
+  </tbody>
+</table>
+
+<div class="note n-warn">
+  <div class="note-h">Las plantillas globales cruzan la frontera de tenant. Es la única excepción.</div>
+  <p>Una plantilla propiedad de PH Analytics que se instancia en la empresa de Acuagro <b>es</b> un
+  cruce entre clientes, justo lo que la sección 8 prohíbe. Por eso se controla con
+  <code>Tablero.alcance</code>:</p>
+  <ul style="margin-bottom:0">
+    <li><code>EMPRESA</code> — plantilla del cliente, solo instanciable dentro de su propia empresa.
+        Es el default.</li>
+    <li><code>GLOBAL</code> — catálogo del proveedor. Instanciable en cualquier empresa,
+        <b>únicamente</b> por quien tenga <code>gestionar_plantillas_globales</code>. La operación
+        deja registro de origen y destino.</li>
+  </ul>
+  <p style="margin-top:9px;margin-bottom:0">Una plantilla GLOBAL nunca es visible ni consultable desde
+  un tablero normal: solo aparece en el selector de "instanciar". Los datos van en un solo sentido,
+  del catálogo hacia el cliente, nunca al revés.</p>
+</div>
+</section>
+
+<!-- ══════════════════ 3 ══════════════════ -->
+<section id="s3">
+<h2><span class="num">03</span> Modelo de datos</h2>
+
+<div class="diagram"><pre>
+  Empresa (existente)
+     │
+     ├─── Tablero ─────────── modo_cierre, responsable, fechas marco
+     │       │                tipo, es_plantilla, alcance, plantilla_origen ──┐
+     │       │                          ▲                                     │
+     │       │                          └─── instanciar_plantilla() ──────────┘
+     │       │
+     │       ├─── Seccion ─────────────── agrupador visual del kanban
+     │       │
+     │       └─── Tarea ◄──────┐  padre (auto-FK, jerarquía WBS)
+     │              │          │
+     │              ├──────────┘
+     │              │
+     │              ├─── TareaAsignacion ──── usuario, rol, completado, completado_en
+     │              │
+     │              ├─── TareaDependencia ─── predecesora / sucesora, tipo, desfase,
+     │              │                          origen (PLANEADA | BLOQUEO), resuelta
+     │              │
+     │              ├─── TareaComentario ──── texto, autor
+     │              │
+     │              ├─── TareaActividad ───── campo, valor_ant, valor_nue, accion
+     │              │
+     │              └─── Etiqueta (M2M)
+     │
+     └─── Adjunto (comunes)  ◄── GenericForeignKey a Tarea | Comentario | Actividad
+</pre></div>
+
+<h3>Catálogo de tablas</h3>
+<table>
+  <thead><tr><th>Tabla</th><th>Modelo</th><th>Función</th></tr></thead>
+  <tbody>
+    <tr><td class="nowrap"><code>tareas_tablero</code></td><td><code>Tablero</code></td>
+        <td>Contenedor. Define modo de cierre y ventana de fechas</td></tr>
+    <tr><td class="nowrap"><code>tareas_seccion</code></td><td><code>Seccion</code></td>
+        <td>Columnas/grupos configurables del kanban</td></tr>
+    <tr><td class="nowrap"><code>tareas_tarea</code></td><td><code>Tarea</code></td>
+        <td>Entidad central. Jerárquica y opcionalmente ligada a un registro del ERP</td></tr>
+    <tr><td class="nowrap"><code>tareas_tareaasignacion</code></td><td><code>TareaAsignacion</code></td>
+        <td>M2M con datos: rol y confirmación individual</td></tr>
+    <tr><td class="nowrap"><code>tareas_tareadependencia</code></td><td><code>TareaDependencia</code></td>
+        <td>Grafo dirigido. Alimenta Gantt y bloqueos</td></tr>
+    <tr><td class="nowrap"><code>tareas_tareacomentario</code></td><td><code>TareaComentario</code></td>
+        <td>Hilo de conversación</td></tr>
+    <tr><td class="nowrap"><code>tareas_tareaactividad</code></td><td><code>TareaActividad</code></td>
+        <td>Bitácora inmutable de cambios</td></tr>
+    <tr><td class="nowrap"><code>tareas_etiqueta</code></td><td><code>Etiqueta</code></td>
+        <td>Catálogo de etiquetas por empresa</td></tr>
+    <tr><td class="nowrap"><code>comunes_adjunto</code></td><td><code>Adjunto</code></td>
+        <td>Archivos, genérico y reutilizable</td></tr>
+  </tbody>
+</table>
+
+<h3>Catálogos de valores</h3>
+<table>
+  <thead><tr><th>Campo</th><th>Valores</th></tr></thead>
+  <tbody>
+    <tr><td><code>Tarea.estado</code></td>
+        <td><code>PEND</code> Pendiente · <code>PROC</code> En proceso · <code>BLOQ</code> Bloqueada ·
+            <code>REVI</code> En revisión · <code>COMP</code> Completada · <code>CANC</code> Cancelada</td></tr>
+    <tr><td><code>Tarea.prioridad</code></td>
+        <td><code>BAJA</code> · <code>MEDIA</code> · <code>ALTA</code> · <code>URGE</code></td></tr>
+    <tr><td><code>TareaAsignacion.rol</code></td>
+        <td><code>RESP</code> Responsable · <code>COLA</code> Colaborador · <code>REVI</code> Revisor</td></tr>
+    <tr><td><code>TareaDependencia.tipo</code></td>
+        <td><code>FS</code> fin→inicio · <code>SS</code> inicio→inicio · <code>FF</code> fin→fin ·
+            <code>SF</code> inicio→fin</td></tr>
+    <tr><td><code>TareaDependencia.origen</code></td>
+        <td><code>PLANEADA</code> (del cronograma) · <code>BLOQUEO</code> (reportada en ejecución)</td></tr>
+    <tr><td><code>Tablero.modo_cierre</code></td>
+        <td><code>TODOS</code> · <code>RESPONSABLE</code> · <code>CUALQUIERA</code></td></tr>
+    <tr><td><code>Tablero.tipo</code></td>
+        <td><code>ARRANQUE</code> · <code>IMPLEMENTACION</code> · <code>SOPORTE</code> ·
+            <code>MEJORA</code> · <code>INTERNO</code></td></tr>
+    <tr><td><code>Tablero.alcance</code></td>
+        <td><code>EMPRESA</code> (default) · <code>GLOBAL</code> (catálogo del proveedor)</td></tr>
+    <tr><td><code>Adjunto.estado_scan</code></td>
+        <td><code>PEND</code> · <code>LIMPIO</code> · <code>INFECTADO</code> · <code>ERROR</code></td></tr>
+  </tbody>
+</table>
+</section>
+
+<!-- ══════════════════ 4 ══════════════════ -->
+<section id="s4">
+<h2><span class="num">04</span> DDL de SQL Server</h2>
+
+<div class="note n-warn">
+  <div class="note-h">Trampa de SQL Server que sí o sí vas a topar</div>
+  <p>SQL Server rechaza <code>ON DELETE CASCADE</code> en FK auto-referenciadas
+  (<code>tareas_tarea.padre_id</code>) y en tablas con dos FK a la misma tabla
+  (<code>tareas_tareadependencia</code>). Da el error <i>"may cause cycles or multiple cascade paths"</i>.
+  <b>Todas esas FK van con <code>ON DELETE NO ACTION</code></b> y el borrado en cascada se resuelve en
+  Python. Django ya genera las FK con NO ACTION por default —
+  <code>models.CASCADE</code> es lógica de aplicación, no del motor — así que esto solo importa si
+  escribes el DDL a mano o revisas migraciones.</p>
+</div>
+
+<div class="pre-label">sql · 001_tareas_schema.sql</div>
+<pre><code>-- ════════════ TABLERO ════════════
+CREATE TABLE tareas_tablero (
+    id                INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    empresa_id        INT            NOT NULL,
+    codigo            NVARCHAR(20)   NOT NULL,
+    nombre            NVARCHAR(180)  NOT NULL,
+    descripcion       NVARCHAR(MAX)  NULL,
+    tipo              NVARCHAR(14)   NOT NULL CONSTRAINT DF_tablero_tipo DEFAULT 'INTERNO',
+    modo_cierre       NVARCHAR(12)   NOT NULL CONSTRAINT DF_tablero_modo DEFAULT 'TODOS',
+    responsable_id    INT            NULL,
+    fecha_inicio      DATE           NULL,
+    fecha_fin         DATE           NULL,
+    color             NVARCHAR(7)    NOT NULL CONSTRAINT DF_tablero_color DEFAULT '#4f46e5',
+    activo            BIT            NOT NULL CONSTRAINT DF_tablero_act DEFAULT 1,
+
+    -- ---- Plantillas ----
+    es_plantilla      BIT            NOT NULL CONSTRAINT DF_tablero_plt  DEFAULT 0,
+    alcance           NVARCHAR(7)    NOT NULL CONSTRAINT DF_tablero_alc  DEFAULT 'EMPRESA',
+    plantilla_origen_id INT          NULL,       -- de que plantilla salio este tablero
+    instanciado_en    DATETIME2(3)   NULL,
+
+    creado_en         DATETIME2(3)   NOT NULL CONSTRAINT DF_tablero_ce DEFAULT SYSUTCDATETIME(),
+    actualizado_en    DATETIME2(3)   NOT NULL CONSTRAINT DF_tablero_ae DEFAULT SYSUTCDATETIME(),
+    creado_por_id     INT            NULL,
+    CONSTRAINT FK_tablero_empresa     FOREIGN KEY (empresa_id)     REFERENCES admon_sistema_empresa(id),
+    CONSTRAINT FK_tablero_responsable FOREIGN KEY (responsable_id) REFERENCES auth_user(id),
+    CONSTRAINT FK_tablero_creador     FOREIGN KEY (creado_por_id)  REFERENCES auth_user(id),
+    CONSTRAINT FK_tablero_plantilla   FOREIGN KEY (plantilla_origen_id) REFERENCES tareas_tablero(id)
+        ON DELETE NO ACTION ON UPDATE NO ACTION,   -- auto-FK: obligatorio en SQL Server
+    CONSTRAINT UQ_tablero_codigo      UNIQUE (empresa_id, codigo),
+    CONSTRAINT CK_tablero_modo        CHECK (modo_cierre IN ('TODOS','RESPONSABLE','CUALQUIERA')),
+    CONSTRAINT CK_tablero_tipo        CHECK (tipo IN ('ARRANQUE','IMPLEMENTACION','SOPORTE',
+                                                      'MEJORA','INTERNO')),
+    CONSTRAINT CK_tablero_alcance     CHECK (alcance IN ('EMPRESA','GLOBAL')),
+    -- Una plantilla no puede a su vez ser instancia de otra
+    CONSTRAINT CK_tablero_plt_origen  CHECK (es_plantilla = 0 OR plantilla_origen_id IS NULL)
+);
+CREATE INDEX IX_tablero_empresa_activo ON tareas_tablero (empresa_id, activo, es_plantilla);
+CREATE INDEX IX_tablero_plantillas     ON tareas_tablero (es_plantilla, alcance, tipo)
+    WHERE es_plantilla = 1;
+
+-- ════════════ SECCION ════════════
+CREATE TABLE tareas_seccion (
+    id          INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    tablero_id  INT           NOT NULL,
+    nombre      NVARCHAR(80)  NOT NULL,
+    orden       INT           NOT NULL CONSTRAINT DF_seccion_orden DEFAULT 0,
+    CONSTRAINT FK_seccion_tablero FOREIGN KEY (tablero_id) REFERENCES tareas_tablero(id)
+);
+CREATE INDEX IX_seccion_tablero ON tareas_seccion (tablero_id, orden);
+
+-- ════════════ TAREA ════════════
+CREATE TABLE tareas_tarea (
+    id                INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    empresa_id        INT            NOT NULL,
+    tablero_id        INT            NOT NULL,
+    seccion_id        INT            NULL,
+    padre_id          INT            NULL,
+
+    folio             NVARCHAR(13)   NOT NULL,   -- TSK0000000001
+    ruta_wbs          NVARCHAR(60)   NOT NULL,   -- '2.1.3'
+    nivel             SMALLINT       NOT NULL CONSTRAINT DF_tarea_nivel DEFAULT 0,
+    orden             INT            NOT NULL CONSTRAINT DF_tarea_orden DEFAULT 0,
+
+    titulo            NVARCHAR(255)  NOT NULL,
+    descripcion       NVARCHAR(MAX)  NULL,
+    estado            NVARCHAR(4)    NOT NULL CONSTRAINT DF_tarea_estado DEFAULT 'PEND',
+    prioridad         NVARCHAR(5)    NOT NULL CONSTRAINT DF_tarea_prio   DEFAULT 'MEDIA',
+    perfil_sugerido   NVARCHAR(80)   NULL,   -- solo util en plantillas: "Consultor funcional", "DBA"
+
+    fecha_inicio_plan DATE           NULL,
+    fecha_fin_plan    DATE           NULL,
+    fecha_inicio_real DATE           NULL,
+    fecha_fin_real    DATE           NULL,
+    duracion_dias     INT            NULL,
+
+    avance            DECIMAL(5,2)   NOT NULL CONSTRAINT DF_tarea_avance DEFAULT 0,
+    peso              DECIMAL(6,2)   NOT NULL CONSTRAINT DF_tarea_peso   DEFAULT 1,
+    es_hito           BIT            NOT NULL CONSTRAINT DF_tarea_hito   DEFAULT 0,
+    es_resumen        BIT            NOT NULL CONSTRAINT DF_tarea_res    DEFAULT 0,
+    es_bloqueante     BIT            NOT NULL CONSTRAINT DF_tarea_blq    DEFAULT 0,
+
+    -- Vinculo opcional a cualquier registro del ERP (OC, ticket, estimacion...)
+    origen_ct_id      INT            NULL,
+    origen_obj_id     INT            NULL,
+
+    creado_en         DATETIME2(3)   NOT NULL CONSTRAINT DF_tarea_ce DEFAULT SYSUTCDATETIME(),
+    actualizado_en    DATETIME2(3)   NOT NULL CONSTRAINT DF_tarea_ae DEFAULT SYSUTCDATETIME(),
+    creado_por_id     INT            NULL,
+    cerrado_en        DATETIME2(3)   NULL,
+    cerrado_por_id    INT            NULL,
+
+    CONSTRAINT FK_tarea_empresa FOREIGN KEY (empresa_id)     REFERENCES admon_sistema_empresa(id),
+    CONSTRAINT FK_tarea_tablero FOREIGN KEY (tablero_id)     REFERENCES tareas_tablero(id),
+    CONSTRAINT FK_tarea_seccion FOREIGN KEY (seccion_id)     REFERENCES tareas_seccion(id),
+    CONSTRAINT FK_tarea_padre   FOREIGN KEY (padre_id)       REFERENCES tareas_tarea(id)
+        ON DELETE NO ACTION ON UPDATE NO ACTION,     -- obligatorio en SQL Server
+    CONSTRAINT FK_tarea_ct      FOREIGN KEY (origen_ct_id)   REFERENCES django_content_type(id),
+    CONSTRAINT FK_tarea_creador FOREIGN KEY (creado_por_id)  REFERENCES auth_user(id),
+    CONSTRAINT FK_tarea_cierra  FOREIGN KEY (cerrado_por_id) REFERENCES auth_user(id),
+    CONSTRAINT UQ_tarea_folio   UNIQUE (empresa_id, folio),
+    CONSTRAINT CK_tarea_estado  CHECK (estado IN ('PEND','PROC','BLOQ','REVI','COMP','CANC')),
+    CONSTRAINT CK_tarea_prio    CHECK (prioridad IN ('BAJA','MEDIA','ALTA','URGE')),
+    CONSTRAINT CK_tarea_avance  CHECK (avance BETWEEN 0 AND 100),
+    CONSTRAINT CK_tarea_fechas  CHECK (fecha_fin_plan IS NULL OR fecha_inicio_plan IS NULL
+                                       OR fecha_fin_plan &gt;= fecha_inicio_plan)
+);
+CREATE INDEX IX_tarea_tablero_estado ON tareas_tarea (empresa_id, tablero_id, estado);
+CREATE INDEX IX_tarea_padre          ON tareas_tarea (padre_id);
+CREATE INDEX IX_tarea_wbs            ON tareas_tarea (tablero_id, ruta_wbs);
+CREATE INDEX IX_tarea_vencimiento    ON tareas_tarea (empresa_id, fecha_fin_plan)
+    WHERE estado NOT IN ('COMP','CANC');
+CREATE INDEX IX_tarea_origen         ON tareas_tarea (origen_ct_id, origen_obj_id);
+
+-- ════════════ ASIGNACION ════════════
+CREATE TABLE tareas_tareaasignacion (
+    id             INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    tarea_id       INT           NOT NULL,
+    usuario_id     INT           NOT NULL,
+    rol            NVARCHAR(4)   NOT NULL CONSTRAINT DF_asig_rol DEFAULT 'COLA',
+    completado     BIT           NOT NULL CONSTRAINT DF_asig_comp DEFAULT 0,
+    completado_en  DATETIME2(3)  NULL,
+    nota_cierre    NVARCHAR(500) NULL,
+    asignado_en    DATETIME2(3)  NOT NULL CONSTRAINT DF_asig_ae DEFAULT SYSUTCDATETIME(),
+    asignado_por_id INT          NULL,
+    CONSTRAINT FK_asig_tarea   FOREIGN KEY (tarea_id)   REFERENCES tareas_tarea(id),
+    CONSTRAINT FK_asig_usuario FOREIGN KEY (usuario_id) REFERENCES auth_user(id),
+    CONSTRAINT FK_asig_por     FOREIGN KEY (asignado_por_id) REFERENCES auth_user(id),
+    CONSTRAINT UQ_asig         UNIQUE (tarea_id, usuario_id),
+    CONSTRAINT CK_asig_rol     CHECK (rol IN ('RESP','COLA','REVI')),
+    CONSTRAINT CK_asig_fecha   CHECK ((completado = 0 AND completado_en IS NULL)
+                                   OR (completado = 1 AND completado_en IS NOT NULL))
+);
+CREATE INDEX IX_asig_usuario ON tareas_tareaasignacion (usuario_id, completado);
+
+-- ════════════ DEPENDENCIA ════════════
+CREATE TABLE tareas_tareadependencia (
+    id              INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    predecesora_id  INT            NOT NULL,
+    sucesora_id     INT            NOT NULL,
+    tipo            NVARCHAR(2)    NOT NULL CONSTRAINT DF_dep_tipo DEFAULT 'FS',
+    desfase_dias    INT            NOT NULL CONSTRAINT DF_dep_lag  DEFAULT 0,
+    origen          NVARCHAR(8)    NOT NULL CONSTRAINT DF_dep_orig DEFAULT 'PLANEADA',
+    motivo          NVARCHAR(MAX)  NULL,       -- obligatorio si origen='BLOQUEO'
+    resuelta        BIT            NOT NULL CONSTRAINT DF_dep_res  DEFAULT 0,
+    resuelta_en     DATETIME2(3)   NULL,
+    creado_en       DATETIME2(3)   NOT NULL CONSTRAINT DF_dep_ce DEFAULT SYSUTCDATETIME(),
+    creado_por_id   INT            NULL,
+    CONSTRAINT FK_dep_pred FOREIGN KEY (predecesora_id) REFERENCES tareas_tarea(id)
+        ON DELETE NO ACTION ON UPDATE NO ACTION,     -- obligatorio: doble FK al mismo destino
+    CONSTRAINT FK_dep_suc  FOREIGN KEY (sucesora_id)    REFERENCES tareas_tarea(id)
+        ON DELETE NO ACTION ON UPDATE NO ACTION,
+    CONSTRAINT FK_dep_por  FOREIGN KEY (creado_por_id)  REFERENCES auth_user(id),
+    CONSTRAINT UQ_dep      UNIQUE (predecesora_id, sucesora_id),
+    CONSTRAINT CK_dep_self CHECK (predecesora_id &lt;&gt; sucesora_id),
+    CONSTRAINT CK_dep_tipo CHECK (tipo IN ('FS','SS','FF','SF')),
+    CONSTRAINT CK_dep_orig CHECK (origen IN ('PLANEADA','BLOQUEO'))
+);
+CREATE INDEX IX_dep_sucesora   ON tareas_tareadependencia (sucesora_id, resuelta);
+CREATE INDEX IX_dep_predecesora ON tareas_tareadependencia (predecesora_id);
+
+-- ════════════ COMENTARIO ════════════
+CREATE TABLE tareas_tareacomentario (
+    id          INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    tarea_id    INT           NOT NULL,
+    autor_id    INT           NOT NULL,
+    texto       NVARCHAR(MAX) NOT NULL,
+    editado     BIT           NOT NULL CONSTRAINT DF_com_edit DEFAULT 0,
+    creado_en   DATETIME2(3)  NOT NULL CONSTRAINT DF_com_ce DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT FK_com_tarea FOREIGN KEY (tarea_id) REFERENCES tareas_tarea(id),
+    CONSTRAINT FK_com_autor FOREIGN KEY (autor_id) REFERENCES auth_user(id)
+);
+CREATE INDEX IX_com_tarea ON tareas_tareacomentario (tarea_id, creado_en DESC);
+
+-- ════════════ ACTIVIDAD (bitacora inmutable) ════════════
+CREATE TABLE tareas_tareaactividad (
+    id          INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    tarea_id    INT           NOT NULL,
+    usuario_id  INT           NULL,
+    accion      NVARCHAR(30)  NOT NULL,   -- CREADA, ESTADO, ASIGNO, BLOQUEO, FECHA, AVANCE, ADJUNTO...
+    campo       NVARCHAR(50)  NULL,
+    valor_ant   NVARCHAR(500) NULL,
+    valor_nue   NVARCHAR(500) NULL,
+    detalle     NVARCHAR(MAX) NULL,
+    creado_en   DATETIME2(3)  NOT NULL CONSTRAINT DF_act_ce DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT FK_act_tarea   FOREIGN KEY (tarea_id)   REFERENCES tareas_tarea(id),
+    CONSTRAINT FK_act_usuario FOREIGN KEY (usuario_id) REFERENCES auth_user(id)
+);
+CREATE INDEX IX_act_tarea ON tareas_tareaactividad (tarea_id, creado_en DESC);
+
+-- ════════════ ETIQUETAS ════════════
+CREATE TABLE tareas_etiqueta (
+    id         INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    empresa_id INT          NOT NULL,
+    nombre     NVARCHAR(50) NOT NULL,
+    color      NVARCHAR(7)  NOT NULL CONSTRAINT DF_etq_color DEFAULT '#6b7280',
+    CONSTRAINT FK_etq_empresa FOREIGN KEY (empresa_id) REFERENCES admon_sistema_empresa(id),
+    CONSTRAINT UQ_etq         UNIQUE (empresa_id, nombre)
+);
+
+CREATE TABLE tareas_tarea_etiquetas (
+    id          INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    tarea_id    INT NOT NULL,
+    etiqueta_id INT NOT NULL,
+    CONSTRAINT FK_te_tarea    FOREIGN KEY (tarea_id)    REFERENCES tareas_tarea(id),
+    CONSTRAINT FK_te_etiqueta FOREIGN KEY (etiqueta_id) REFERENCES tareas_etiqueta(id),
+    CONSTRAINT UQ_te          UNIQUE (tarea_id, etiqueta_id)
+);
+
+-- ════════════ ADJUNTO (app comunes, generico) ════════════
+CREATE TABLE comunes_adjunto (
+    id              INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    empresa_id      INT            NOT NULL,
+    content_type_id INT            NOT NULL,
+    object_id       INT            NOT NULL,
+
+    archivo         NVARCHAR(500)  NOT NULL,   -- ruta relativa en el storage
+    nombre_original NVARCHAR(255)  NOT NULL,
+    extension       NVARCHAR(12)   NOT NULL,
+    mime_detectado  NVARCHAR(120)  NOT NULL,   -- sniffeado del binario
+    tamano_bytes    BIGINT         NOT NULL,
+    hash_sha256     NVARCHAR(64)   NOT NULL,
+    es_imagen       BIT            NOT NULL CONSTRAINT DF_adj_img DEFAULT 0,
+    thumbnail       NVARCHAR(500)  NULL,
+    estado_scan     NVARCHAR(9)    NOT NULL CONSTRAINT DF_adj_scan DEFAULT 'PEND',
+    subido_por_id   INT            NULL,
+    subido_en       DATETIME2(3)   NOT NULL CONSTRAINT DF_adj_se DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT FK_adj_empresa FOREIGN KEY (empresa_id)      REFERENCES admon_sistema_empresa(id),
+    CONSTRAINT FK_adj_ct      FOREIGN KEY (content_type_id) REFERENCES django_content_type(id),
+    CONSTRAINT FK_adj_usuario FOREIGN KEY (subido_por_id)   REFERENCES auth_user(id),
+    CONSTRAINT CK_adj_scan    CHECK (estado_scan IN ('PEND','LIMPIO','INFECTADO','ERROR')),
+    CONSTRAINT CK_adj_tam     CHECK (tamano_bytes &gt; 0)
+);
+CREATE INDEX IX_adj_objeto  ON comunes_adjunto (content_type_id, object_id);
+CREATE INDEX IX_adj_hash    ON comunes_adjunto (empresa_id, hash_sha256);
+CREATE INDEX IX_adj_empresa ON comunes_adjunto (empresa_id, subido_en DESC);
+</code></pre>
+
+<div class="note n-tip">
+  <div class="note-h">Sobre el nombre de la tabla de Empresa</div>
+  <p>El DDL asume <code>admon_sistema_empresa</code>. Verifica el nombre real en el repo antes de
+  ejecutar y ajusta las nueve referencias. Si prefieres, genera el schema con
+  <code>python manage.py makemigrations tareas comunes</code> y usa este DDL solo como contrato de
+  revisión — es la ruta recomendada, porque mssql-django ya resuelve los detalles del dialecto.</p>
+</div>
+</section>
+
+<!-- ══════════════════ 5 ══════════════════ -->
+<section id="s5">
+<h2><span class="num">05</span> Modelos Django</h2>
+
+<div class="pre-label">python · comunes/models.py</div>
+<pre><code>import hashlib, os, uuid
+from django.db import models
+from django.contrib.auth.models import User
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
+
+
+def ruta_adjunto(instance, filename):
+    """
+    Nunca el nombre original en disco. Nunca la extension real en la ruta publica.
+    Aislado por cliente y empresa para que el prefijo del bucket sea el limite de tenant.
+    """
+    ext = os.path.splitext(filename)[1].lower()[:12]
+    cliente = instance.empresa.cliente.slug
+    return f"{cliente}/{instance.empresa_id}/adjuntos/{instance.subido_en:%Y/%m}/{uuid.uuid4().hex}{ext}"
+
+
+class Adjunto(models.Model):
+    """Adjunto generico. Se cuelga de cualquier modelo via GenericForeignKey."""
+
+    ESTADO_SCAN = [
+        ("PEND", "Pendiente de analisis"),
+        ("LIMPIO", "Limpio"),
+        ("INFECTADO", "Infectado"),
+        ("ERROR", "Error al analizar"),
+    ]
+
+    empresa = models.ForeignKey("admon_sistema.Empresa", on_delete=models.CASCADE,
+                                related_name="adjuntos")
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    contenido = GenericForeignKey("content_type", "object_id")
+
+    archivo = models.FileField(upload_to=ruta_adjunto, max_length=500)
+    nombre_original = models.CharField("Nombre", max_length=255)
+    extension = models.CharField(max_length=12, blank=True)
+    mime_detectado = models.CharField(max_length=120)
+    tamano_bytes = models.BigIntegerField()
+    hash_sha256 = models.CharField(max_length=64, db_index=True)
+    es_imagen = models.BooleanField(default=False)
+    thumbnail = models.ImageField(upload_to=ruta_adjunto, max_length=500, null=True, blank=True)
+    estado_scan = models.CharField(max_length=9, choices=ESTADO_SCAN, default="PEND")
+
+    subido_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    subido_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "comunes_adjunto"
+        verbose_name = "Adjunto"
+        verbose_name_plural = "Adjuntos"
+        ordering = ("-subido_en",)
+        indexes = [
+            models.Index(fields=["content_type", "object_id"], name="IX_adj_objeto"),
+        ]
+
+    def __str__(self):
+        return self.nombre_original
+
+    @property
+    def tamano_legible(self):
+        n = float(self.tamano_bytes)
+        for u in ("B", "KB", "MB", "GB"):
+            if n &lt; 1024:
+                return f"{n:.0f} {u}" if u == "B" else f"{n:.1f} {u}"
+            n /= 1024
+        return f"{n:.1f} TB"
+
+    @property
+    def puede_previsualizar(self):
+        """Solo imagenes y PDF se abren inline. Todo lo demas se descarga."""
+        return self.mime_detectado in (
+            "image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"
+        ) and self.estado_scan == "LIMPIO"
+
+
+class AdjuntableMixin(models.Model):
+    """Hereda esto en cualquier modelo que deba aceptar archivos."""
+    adjuntos = GenericRelation(Adjunto, related_query_name="%(class)s")
+
+    class Meta:
+        abstract = True
+</code></pre>
+
+<div class="pre-label">python · tareas/models.py</div>
+<pre><code>from django.db import models
+from django.contrib.auth.models import User
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
+
+from comunes.models import AdjuntableMixin
+from core.models import TenantModel        # ajustar import al repo real
+
+
+class TableroQuerySet(models.QuerySet):
+    def operativos(self):
+        """Tableros de trabajo real. Excluye plantillas."""
+        return self.filter(es_plantilla=False)
+
+    def plantillas_para(self, empresa):
+        """Plantillas instanciables en esta empresa: las suyas + el catalogo global."""
+        return self.filter(es_plantilla=True, activo=True).filter(
+            models.Q(empresa=empresa) | models.Q(alcance="GLOBAL")
+        )
+
+
+class Tablero(TenantModel):
+    MODO_CIERRE = [
+        ("TODOS", "Todos los asignados confirman"),
+        ("RESPONSABLE", "Solo el responsable cierra"),
+        ("CUALQUIERA", "El primero que confirme"),
+    ]
+    TIPO = [
+        ("ARRANQUE", "Arranque"),
+        ("IMPLEMENTACION", "Implementacion"),
+        ("SOPORTE", "Soporte"),
+        ("MEJORA", "Mejora"),
+        ("INTERNO", "Interno"),
+    ]
+    ALCANCE = [
+        ("EMPRESA", "Solo esta empresa"),
+        ("GLOBAL", "Catalogo del proveedor"),
+    ]
+
+    codigo = models.CharField(max_length=20)
+    nombre = models.CharField(max_length=180)
+    descripcion = models.TextField(blank=True)
+    tipo = models.CharField(max_length=14, choices=TIPO, default="INTERNO")
+    modo_cierre = models.CharField(max_length=12, choices=MODO_CIERRE, default="TODOS")
+    responsable = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                    related_name="tableros_a_cargo")
+    fecha_inicio = models.DateField(null=True, blank=True)
+    fecha_fin = models.DateField(null=True, blank=True)
+    color = models.CharField(max_length=7, default="#4f46e5")
+    activo = models.BooleanField(default=True)
+
+    # ---- Plantillas ----
+    es_plantilla = models.BooleanField(
+        "Es plantilla", default=False,
+        help_text="Un tablero plantilla no se trabaja: sirve de molde para crear otros.")
+    alcance = models.CharField(max_length=7, choices=ALCANCE, default="EMPRESA")
+    plantilla_origen = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="instancias", editable=False,
+        help_text="Plantilla de la que salio este tablero.")
+    instanciado_en = models.DateTimeField(null=True, blank=True, editable=False)
+
+    objects = TableroQuerySet.as_manager()
+
+    class Meta:
+        db_table = "tareas_tablero"
+        verbose_name = "Tablero"
+        verbose_name_plural = "Tableros"
+        constraints = [
+            models.UniqueConstraint(fields=["empresa", "codigo"], name="UQ_tablero_codigo"),
+            models.CheckConstraint(
+                check=models.Q(es_plantilla=False) | models.Q(plantilla_origen__isnull=True),
+                name="CK_tablero_plt_origen"),
+        ]
+        ordering = ("nombre",)
+        permissions = [
+            ("gestionar_plantillas_globales",
+             "Puede crear plantillas globales e instanciarlas en cualquier empresa"),
+        ]
+
+    def __str__(self):
+        etq = " [plantilla]" if self.es_plantilla else ""
+        return f"{self.codigo} · {self.nombre}{etq}"
+
+    def clean(self):
+        if self.es_plantilla and self.alcance == "GLOBAL" and not self.pk:
+            # El permiso se valida en la vista; aqui solo cuidamos coherencia
+            pass
+        if self.es_plantilla and self.plantilla_origen_id:
+            raise ValidationError(
+                {"es_plantilla": "Una plantilla no puede a su vez ser instancia de otra."})
+
+
+class Seccion(models.Model):
+    tablero = models.ForeignKey(Tablero, on_delete=models.CASCADE, related_name="secciones")
+    nombre = models.CharField(max_length=80)
+    orden = models.IntegerField(default=0)
+
+    class Meta:
+        db_table = "tareas_seccion"
+        ordering = ("orden", "nombre")
+
+    def __str__(self):
+        return self.nombre
+
+
+class Etiqueta(TenantModel):
+    nombre = models.CharField(max_length=50)
+    color = models.CharField(max_length=7, default="#6b7280")
+
+    class Meta:
+        db_table = "tareas_etiqueta"
+        constraints = [models.UniqueConstraint(fields=["empresa", "nombre"], name="UQ_etq")]
+
+    def __str__(self):
+        return self.nombre
+
+
+class Tarea(TenantModel, AdjuntableMixin):
+    ESTADO = [
+        ("PEND", "Pendiente"), ("PROC", "En proceso"), ("BLOQ", "Bloqueada"),
+        ("REVI", "En revision"), ("COMP", "Completada"), ("CANC", "Cancelada"),
+    ]
+    PRIORIDAD = [("BAJA", "Baja"), ("MEDIA", "Media"), ("ALTA", "Alta"), ("URGE", "Urgente")]
+
+    tablero = models.ForeignKey(Tablero, on_delete=models.CASCADE, related_name="tareas")
+    seccion = models.ForeignKey(Seccion, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name="tareas")
+    padre = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True,
+                              related_name="hijos")
+
+    folio = models.CharField(max_length=13, editable=False)
+    ruta_wbs = models.CharField(max_length=60, editable=False, default="")
+    nivel = models.SmallIntegerField(default=0, editable=False)
+    orden = models.IntegerField(default=0)
+
+    titulo = models.CharField(max_length=255)
+    descripcion = models.TextField(blank=True)
+    estado = models.CharField(max_length=4, choices=ESTADO, default="PEND", db_index=True)
+    prioridad = models.CharField(max_length=5, choices=PRIORIDAD, default="MEDIA")
+    perfil_sugerido = models.CharField(
+        "Perfil sugerido", max_length=80, blank=True,
+        help_text="Solo se usa en plantillas. Ej: 'Consultor funcional', 'Contacto del cliente'.")
+
+    fecha_inicio_plan = models.DateField(null=True, blank=True)
+    fecha_fin_plan = models.DateField(null=True, blank=True)
+    fecha_inicio_real = models.DateField(null=True, blank=True)
+    fecha_fin_real = models.DateField(null=True, blank=True)
+    duracion_dias = models.IntegerField(null=True, blank=True)
+
+    avance = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    peso = models.DecimalField(max_digits=6, decimal_places=2, default=1)
+    es_hito = models.BooleanField("Es hito", default=False)
+    es_resumen = models.BooleanField(default=False, editable=False)
+    es_bloqueante = models.BooleanField(default=False, editable=False)
+
+    etiquetas = models.ManyToManyField(Etiqueta, blank=True, db_table="tareas_tarea_etiquetas")
+
+    # Vinculo opcional a cualquier registro del ERP
+    origen_ct = models.ForeignKey(ContentType, on_delete=models.SET_NULL, null=True, blank=True)
+    origen_obj_id = models.PositiveIntegerField(null=True, blank=True)
+    origen = GenericForeignKey("origen_ct", "origen_obj_id")
+
+    cerrado_en = models.DateTimeField(null=True, blank=True, editable=False)
+    cerrado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name="tareas_cerradas", editable=False)
+
+    class Meta:
+        db_table = "tareas_tarea"
+        verbose_name = "Tarea"
+        verbose_name_plural = "Tareas"
+        ordering = ("tablero", "ruta_wbs")
+        constraints = [
+            models.UniqueConstraint(fields=["empresa", "folio"], name="UQ_tarea_folio"),
+            models.CheckConstraint(check=models.Q(avance__gte=0) &amp; models.Q(avance__lte=100),
+                                   name="CK_tarea_avance"),
+        ]
+        indexes = [
+            models.Index(fields=["empresa", "tablero", "estado"], name="IX_tarea_tab_est"),
+            models.Index(fields=["padre"], name="IX_tarea_padre"),
+            models.Index(fields=["origen_ct", "origen_obj_id"], name="IX_tarea_origen"),
+        ]
+        permissions = [
+            ("ver_todos_los_tableros", "Puede ver tableros donde no participa"),
+            ("gestionar_tablero", "Puede crear y configurar tableros"),
+            ("reasignar_tarea", "Puede cambiar asignados de tareas ajenas"),
+            ("cerrar_tarea", "Puede cerrar tareas en revision"),
+            ("cerrar_tarea_forzado", "Puede cerrar sin que todos confirmen"),
+            ("eliminar_adjunto_ajeno", "Puede borrar archivos subidos por otros"),
+            ("ver_cronograma", "Puede ver la vista de cronograma"),
+        ]
+
+    def __str__(self):
+        return f"{self.folio} · {self.titulo}"
+
+    def clean(self):
+        if self.padre_id and self.padre_id == self.pk:
+            raise ValidationError({"padre": "Una tarea no puede ser su propio padre."})
+        if self.padre_id and self.padre.tablero_id != self.tablero_id:
+            raise ValidationError({"padre": "La subtarea debe estar en el mismo tablero que su padre."})
+        if self.fecha_fin_plan and self.fecha_inicio_plan \
+           and self.fecha_fin_plan &lt; self.fecha_inicio_plan:
+            raise ValidationError({"fecha_fin_plan": "El fin no puede ser anterior al inicio."})
+
+    @property
+    def bloqueos_activos(self):
+        return self.dependencias_entrantes.filter(origen="BLOQUEO", resuelta=False)
+
+    @property
+    def confirmaciones(self):
+        total = self.asignaciones.count()
+        hechas = self.asignaciones.filter(completado=True).count()
+        return hechas, total
+
+
+class TareaAsignacion(models.Model):
+    ROL = [("RESP", "Responsable"), ("COLA", "Colaborador"), ("REVI", "Revisor")]
+
+    tarea = models.ForeignKey(Tarea, on_delete=models.CASCADE, related_name="asignaciones")
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tareas_asignadas")
+    rol = models.CharField(max_length=4, choices=ROL, default="COLA")
+    completado = models.BooleanField("Confirmo que termino", default=False)
+    completado_en = models.DateTimeField(null=True, blank=True)
+    nota_cierre = models.CharField(max_length=500, blank=True)
+    asignado_en = models.DateTimeField(auto_now_add=True)
+    asignado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                     related_name="asignaciones_hechas")
+
+    class Meta:
+        db_table = "tareas_tareaasignacion"
+        verbose_name = "Asignacion"
+        verbose_name_plural = "Asignaciones"
+        constraints = [models.UniqueConstraint(fields=["tarea", "usuario"], name="UQ_asig")]
+        indexes = [models.Index(fields=["usuario", "completado"], name="IX_asig_usuario")]
+
+    def __str__(self):
+        return f"{self.usuario.get_full_name()} en {self.tarea.folio}"
+
+
+class TareaDependencia(models.Model):
+    TIPO = [("FS", "Fin a Inicio"), ("SS", "Inicio a Inicio"),
+            ("FF", "Fin a Fin"), ("SF", "Inicio a Fin")]
+    ORIGEN = [("PLANEADA", "Planeada en el cronograma"),
+              ("BLOQUEO", "Bloqueo reportado en ejecucion")]
+
+    predecesora = models.ForeignKey(Tarea, on_delete=models.CASCADE,
+                                    related_name="dependencias_salientes")
+    sucesora = models.ForeignKey(Tarea, on_delete=models.CASCADE,
+                                 related_name="dependencias_entrantes")
+    tipo = models.CharField(max_length=2, choices=TIPO, default="FS")
+    desfase_dias = models.IntegerField("Desfase (dias)", default=0)
+    origen = models.CharField(max_length=8, choices=ORIGEN, default="PLANEADA")
+    motivo = models.TextField(blank=True)
+    resuelta = models.BooleanField(default=False)
+    resuelta_en = models.DateTimeField(null=True, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    creado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+    class Meta:
+        db_table = "tareas_tareadependencia"
+        verbose_name = "Dependencia"
+        verbose_name_plural = "Dependencias"
+        constraints = [
+            models.UniqueConstraint(fields=["predecesora", "sucesora"], name="UQ_dep"),
+            models.CheckConstraint(check=~models.Q(predecesora=models.F("sucesora")),
+                                   name="CK_dep_self"),
+        ]
+
+    def clean(self):
+        if self.origen == "BLOQUEO" and not self.motivo.strip():
+            raise ValidationError({"motivo": "Un bloqueo requiere explicar el motivo."})
+
+    def __str__(self):
+        return f"{self.predecesora.folio} {self.tipo} {self.sucesora.folio}"
+
+
+class TareaComentario(models.Model, AdjuntableMixin):
+    tarea = models.ForeignKey(Tarea, on_delete=models.CASCADE, related_name="comentarios")
+    autor = models.ForeignKey(User, on_delete=models.CASCADE)
+    texto = models.TextField()
+    editado = models.BooleanField(default=False)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "tareas_tareacomentario"
+        ordering = ("-creado_en",)
+
+
+class TareaActividad(models.Model, AdjuntableMixin):
+    """Bitacora inmutable. Nunca se edita ni se borra."""
+    tarea = models.ForeignKey(Tarea, on_delete=models.CASCADE, related_name="actividad")
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    accion = models.CharField(max_length=30)
+    campo = models.CharField(max_length=50, blank=True)
+    valor_ant = models.CharField(max_length=500, blank=True)
+    valor_nue = models.CharField(max_length=500, blank=True)
+    detalle = models.TextField(blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "tareas_tareaactividad"
+        ordering = ("-creado_en",)
+        verbose_name_plural = "Actividad"
+</code></pre>
+
+<div class="note n-warn">
+  <div class="note-h">Corrección obligatoria al copiar</div>
+  <p><code>class TareaComentario(models.Model, AdjuntableMixin)</code> está mal escrito arriba a
+  propósito de brevedad — <b>el mixin abstracto va primero</b>:
+  <code>class TareaComentario(AdjuntableMixin)</code>, porque <code>AdjuntableMixin</code> ya hereda de
+  <code>models.Model</code>. Lo mismo para <code>TareaActividad</code>. Heredar de ambos en ese orden
+  levanta <code>MRO</code> inconsistente.</p>
+</div>
+</section>
+
+<!-- ══════════════════ 6 ══════════════════ -->
+<section id="s6">
+<h2><span class="num">06</span> Reglas de negocio</h2>
+
+<p>Todo en <code>tareas/services.py</code>. Cada función es transaccional, recibe el usuario que ejecuta
+y escribe en <code>TareaActividad</code>.</p>
+
+<h3>6.1 — Folio</h3>
+<p>Formato <code>TSK</code> + 10 dígitos, único por empresa. Generar con
+<code>SELECT MAX</code> dentro de <code>transaction.atomic()</code> y
+<code>select_for_update()</code> sobre un registro contador por empresa, no con <code>COUNT</code>.
+Con <code>COUNT</code> se repiten folios cuando se borra una tarea.</p>
+
+<h3>6.2 — Ruta WBS</h3>
+<div class="note n-warn">
+  <div class="note-h">Las bloqueantes quedan fuera de la numeración</div>
+  <p>Poner <code>padre = None</code> en la bloqueante (decisión 2.4) no basta: al ser raíz, el
+  recorrido le asignaría un número de primer nivel y aparecería como si fuera un entregable del
+  proyecto, tipo "6. Solicitar layout a Dirección". Sigue siendo el mismo error, un piso más arriba.</p>
+  <p style="margin-bottom:0">Por eso el recorrido <b>excluye</b> <code>es_bloqueante=True</code>.
+  Esas tareas viven en el tablero, salen en el kanban y en el Gantt, pero con
+  <code>ruta_wbs = ''</code>. No son parte del desglose del entregable: son estorbos que hay que
+  quitar del camino.</p>
+</div>
+<pre><code>def recalcular_wbs(tablero, usuario=None):
+    """
+    Recorre el arbol en preorden y reescribe ruta_wbs, nivel y es_resumen.
+    Se llama al crear, mover o borrar una tarea. Un solo bulk_update al final.
+    Las tareas bloqueantes quedan fuera del WBS: no desglosan el entregable.
+    """
+    def caminar(padre_id, prefijo, nivel):
+        hijos = (Tarea.objects.filter(tablero=tablero, padre_id=padre_id)
+                              .exclude(es_bloqueante=True)
+                              .order_by("orden", "id"))
+        for i, t in enumerate(hijos, start=1):
+            t.ruta_wbs = f"{prefijo}{i}" if not prefijo else f"{prefijo}.{i}"
+            t.nivel = nivel
+            t.es_resumen = (Tarea.objects.filter(padre=t)
+                                         .exclude(es_bloqueante=True).exists())
+            pendientes.append(t)
+            caminar(t.id, t.ruta_wbs, nivel + 1)
+
+    pendientes = []
+    caminar(None, "", 0)
+
+    # Bloqueantes: sin WBS, nivel 0, nunca resumen
+    for b in Tarea.objects.filter(tablero=tablero, es_bloqueante=True):
+        b.ruta_wbs, b.nivel, b.es_resumen = "", 0, False
+        pendientes.append(b)
+
+    Tarea.objects.bulk_update(pendientes, ["ruta_wbs", "nivel", "es_resumen"])
+</code></pre>
+<p>En la vista Lista la bloqueante se dibuja igual justo debajo de la tarea que bloquea, con borde
+punteado y sin número, para no perder el contexto visual. Es una relación de dependencia renderizada
+en el lugar donde conviene verla, no un nodo del árbol.</p>
+
+<h3>6.3 — Avance</h3>
+<p>De la hoja hacia la raíz. Promedio ponderado por <code>peso</code>:</p>
+<pre><code>def recalcular_avance(tarea):
+    """Sube por la cadena de padres actualizando el avance calculado."""
+    nodo = tarea
+    while nodo is not None:
+        hijos = list(nodo.hijos.exclude(estado="CANC"))
+        if hijos:
+            peso_total = sum(h.peso for h in hijos) or 1
+            nodo.avance = sum(h.avance * h.peso for h in hijos) / peso_total
+            nodo.es_resumen = True
+            nodo.save(update_fields=["avance", "es_resumen"])
+        nodo = nodo.padre
+</code></pre>
+<p>Reglas fijas: una tarea en <code>COMP</code> tiene <code>avance = 100</code>. Un hito solo admite
+0 o 100. Una tarea <code>CANC</code> se excluye del cálculo del padre.</p>
+
+<h3>6.4 — Confirmación y cierre</h3>
+<pre><code>def confirmar_asignacion(asignacion, usuario, nota=""):
+    if asignacion.usuario_id != usuario.id:
+        raise PermissionDenied("Solo puedes confirmar tu propia asignacion.")
+    if asignacion.tarea.bloqueos_activos.exists():
+        raise ValidationError("No se puede confirmar una tarea bloqueada. Resuelve el bloqueo primero.")
+
+    asignacion.completado = True
+    asignacion.completado_en = timezone.now()
+    asignacion.nota_cierre = nota
+    asignacion.save(update_fields=["completado", "completado_en", "nota_cierre"])
+
+    registrar_actividad(asignacion.tarea, usuario, "CONFIRMO",
+                        detalle=nota or "Confirmo que termino su parte.")
+    evaluar_cierre(asignacion.tarea, usuario)
+
+
+def evaluar_cierre(tarea, usuario):
+    """Pasa la tarea a REVI cuando se cumple el modo_cierre del tablero. Nunca a COMP directo."""
+    modo = tarea.tablero.modo_cierre
+    asigs = list(tarea.asignaciones.all())
+    if not asigs:
+        return
+
+    if modo == "TODOS":
+        listo = all(a.completado for a in asigs)
+    elif modo == "RESPONSABLE":
+        listo = any(a.completado for a in asigs if a.rol == "RESP")
+    else:  # CUALQUIERA
+        listo = any(a.completado for a in asigs)
+
+    if listo and tarea.estado in ("PEND", "PROC", "BLOQ"):
+        cambiar_estado(tarea, "REVI", usuario, motivo="Todos los asignados confirmaron.")
+</code></pre>
+
+<h3>6.5 — Bloqueo</h3>
+<pre><code>@transaction.atomic
+def bloquear_tarea(tarea, usuario, *, motivo, titulo_bloqueante,
+                   asignados, fecha_compromiso, tablero_destino=None):
+    """
+    Un bloqueo SIEMPRE genera una tarea real. No existe la bandera suelta.
+    La bloqueante puede vivir en otro tablero (p.ej. una peticion a Direccion).
+    """
+    if not motivo.strip():
+        raise ValidationError("El motivo del bloqueo es obligatorio.")
+    if not asignados:
+        raise ValidationError("La tarea bloqueante necesita al menos un asignado.")
+
+    bloqueante = crear_tarea(
+        tablero=tablero_destino or tarea.tablero,
+        titulo=titulo_bloqueante,
+        padre=None,                        # NUNCA cuelga de la bloqueada: ver decision 2.4.
+                                           # Colgarla la volveria es_resumen y su avance se
+                                           # calcularia desde la solicitud, reportando 100%
+                                           # sin que el trabajo real se haya hecho.
+        prioridad="ALTA",
+        fecha_inicio_plan=timezone.localdate(),
+        fecha_fin_plan=fecha_compromiso,
+        asignados=asignados,
+        usuario=usuario,
+    )
+    bloqueante.es_bloqueante = True
+    bloqueante.save(update_fields=["es_bloqueante"])
+
+    TareaDependencia.objects.create(
+        predecesora=bloqueante, sucesora=tarea,
+        tipo="FS", origen="BLOQUEO", motivo=motivo, creado_por=usuario,
+    )
+    cambiar_estado(tarea, "BLOQ", usuario, motivo=motivo)
+    registrar_actividad(tarea, usuario, "BLOQUEO",
+                        detalle=f"Bloqueada. Se genero {bloqueante.folio}: {titulo_bloqueante}")
+    notificar_asignados(bloqueante, plantilla="bloqueante_nueva")
+    return bloqueante
+
+
+def resolver_bloqueo(dependencia, usuario):
+    """Al cerrar la bloqueante, si ya no quedan bloqueos activos la tarea vuelve a PROC."""
+    dependencia.resuelta = True
+    dependencia.resuelta_en = timezone.now()
+    dependencia.save(update_fields=["resuelta", "resuelta_en"])
+
+    tarea = dependencia.sucesora
+    if not tarea.bloqueos_activos.exists() and tarea.estado == "BLOQ":
+        cambiar_estado(tarea, "PROC", usuario, motivo="Se resolvieron todos los bloqueos.")
+</code></pre>
+
+<h3>6.6 — Validación de ciclos</h3>
+<div class="note n-warn">
+  <div class="note-h">Sin esto, el Gantt entra en recursión infinita</div>
+  <p>Antes de guardar cualquier <code>TareaDependencia</code>, verificar por DFS que no se cierre un
+  ciclo. Aplica también a la jerarquía: una tarea no puede ser descendiente de sí misma.</p>
+</div>
+<pre><code>def valida_sin_ciclo(predecesora, sucesora):
+    """DFS hacia adelante desde la sucesora. Si alcanzamos la predecesora, hay ciclo."""
+    visitados, pila = set(), [sucesora.id]
+    while pila:
+        actual = pila.pop()
+        if actual == predecesora.id:
+            raise ValidationError(
+                "Esa dependencia crea un ciclo: la tarea terminaria esperandose a si misma."
+            )
+        if actual in visitados:
+            continue
+        visitados.add(actual)
+        pila.extend(
+            TareaDependencia.objects
+            .filter(predecesora_id=actual)
+            .values_list("sucesora_id", flat=True)
+        )
+</code></pre>
+
+<h3>6.7 — Transiciones de estado permitidas</h3>
+<table>
+  <thead><tr><th>Desde</th><th>Puede pasar a</th><th>Condición</th></tr></thead>
+  <tbody>
+    <tr><td><code>PEND</code></td><td>PROC, BLOQ, CANC</td><td>Libre</td></tr>
+    <tr><td><code>PROC</code></td><td>BLOQ, REVI, CANC</td><td>A REVI solo por <code>evaluar_cierre</code></td></tr>
+    <tr><td><code>BLOQ</code></td><td>PROC</td><td>Solo cuando no quedan bloqueos activos</td></tr>
+    <tr><td><code>REVI</code></td><td>COMP, PROC</td><td>COMP requiere permiso <code>cerrar_tarea</code></td></tr>
+    <tr><td><code>COMP</code></td><td>PROC</td><td>Reapertura. Requiere motivo. Limpia <code>cerrado_en</code></td></tr>
+    <tr><td><code>CANC</code></td><td>PEND</td><td>Requiere permiso <code>gestionar_tablero</code></td></tr>
+  </tbody>
+</table>
+<p>Implementar como diccionario <code>TRANSICIONES</code> en <code>services.py</code> y validar en
+<code>cambiar_estado()</code>. No permitir saltos arbitrarios desde el admin ni desde la API.</p>
+
+<h3>6.8 — Regla de padre bloqueado</h3>
+<p>Si una tarea padre pasa a <code>BLOQ</code>, sus hijos <b>no</b> cambian de estado automáticamente.
+Se marcan visualmente como "en tablero bloqueado" en el frontend. Cascadear estados hacia abajo hace
+imposible saber quién bloqueó realmente qué.</p>
+
+<h3>6.9 — Instanciar una plantilla</h3>
+
+<div class="note n-warn">
+  <div class="note-h">Dos pasadas obligatorias por la FK auto-referenciada</div>
+  <p>No se puede clonar el árbol en un solo recorrido: al crear una tarea, su padre nuevo todavía no
+  existe. El patrón correcto es crear <b>todas</b> las tareas con <code>padre=None</code>, guardar un
+  mapa <code>id_viejo → objeto_nuevo</code>, y en una segunda pasada resolver la jerarquía. Lo mismo
+  para las dependencias. Intentarlo en una sola pasada produce árboles rotos o
+  <code>IntegrityError</code> intermitentes según el orden de iteración.</p>
+</div>
+
+<div class="pre-label">python · tareas/services.py</div>
+<pre><code>from datetime import timedelta
+from django.db import transaction
+from django.core.exceptions import ValidationError, PermissionDenied
+
+
+# ───────────── Helpers de calendario ─────────────
+
+def sumar_dias_habiles(fecha, n):
+    """Avanza n dias habiles (lun-vie) desde fecha. Sabado y domingo no cuentan."""
+    d = fecha
+    if n &lt;= 0:
+        while d.weekday() &gt;= 5:      # si cae en fin de semana, corre al lunes
+            d += timedelta(days=1)
+        return d
+    restantes = n
+    while restantes &gt; 0:
+        d += timedelta(days=1)
+        if d.weekday() &lt; 5:
+            restantes -= 1
+    return d
+
+
+def dias_habiles_entre(a, b):
+    """Dias habiles de a (exclusivo) a b (inclusivo). Negativo si b es anterior a a."""
+    if a == b:
+        return 0
+    paso = 1 if b &gt; a else -1
+    n, d = 0, a
+    while d != b:
+        d += timedelta(days=paso)
+        if d.weekday() &lt; 5:
+            n += paso
+    return n
+
+
+# ───────────── Instanciar plantilla ─────────────
+
+@transaction.atomic
+def instanciar_plantilla(plantilla, *, empresa_destino, nombre, fecha_inicio, usuario,
+                         responsable=None, clonar_adjuntos=True, codigo=None):
+    """
+    Crea un Tablero de trabajo a partir de una plantilla.
+
+    Copia    : secciones, arbol de tareas, dependencias PLANEADAS, adjuntos (opcional).
+    NO copia : asignaciones, comentarios, bitacora, dependencias de BLOQUEO,
+               estados, avances, fechas reales.
+    """
+    if not plantilla.es_plantilla:
+        raise ValidationError("El tablero origen no esta marcado como plantilla.")
+    if not plantilla.activo:
+        raise ValidationError("Esa plantilla esta archivada.")
+
+    # --- Frontera de tenant: unica excepcion controlada del sistema ---
+    if plantilla.empresa_id != empresa_destino.id:
+        if plantilla.alcance != "GLOBAL":
+            raise PermissionDenied("La plantilla pertenece a otra empresa.")
+        if not usuario.has_perm("tareas.gestionar_plantillas_globales"):
+            raise PermissionDenied(
+                "Se requiere el permiso de plantillas globales para instanciar entre empresas.")
+
+    nuevo = Tablero.objects.create(
+        empresa=empresa_destino,
+        codigo=codigo or siguiente_codigo_tablero(empresa_destino),
+        nombre=nombre,
+        descripcion=plantilla.descripcion,
+        tipo=plantilla.tipo,
+        modo_cierre=plantilla.modo_cierre,
+        color=plantilla.color,
+        responsable=responsable or usuario,
+        fecha_inicio=fecha_inicio,
+        es_plantilla=False,
+        alcance="EMPRESA",
+        plantilla_origen=plantilla,
+        instanciado_en=timezone.now(),
+        creado_por=usuario,
+    )
+
+    # ---------- Secciones ----------
+    mapa_sec = {
+        s.id: Seccion.objects.create(tablero=nuevo, nombre=s.nombre, orden=s.orden).id
+        for s in plantilla.secciones.all()
+    }
+
+    # ---------- Tareas, primera pasada (sin padre) ----------
+    origen = list(plantilla.tareas.exclude(estado="CANC").order_by("ruta_wbs"))
+    if not origen:
+        raise ValidationError("La plantilla no tiene tareas.")
+
+    # Ancla temporal: el inicio declarado de la plantilla, o la tarea mas temprana
+    base = plantilla.fecha_inicio or min(
+        (t.fecha_inicio_plan for t in origen if t.fecha_inicio_plan), default=None)
+
+    folios = reservar_folios(empresa_destino, len(origen))   # un solo lock, no 40
+    mapa = {}
+
+    for t, folio in zip(origen, folios):
+        ini = fin = None
+        if base and t.fecha_inicio_plan:
+            desfase = dias_habiles_entre(base, t.fecha_inicio_plan)
+            dur = (dias_habiles_entre(t.fecha_inicio_plan, t.fecha_fin_plan)
+                   if t.fecha_fin_plan else 0)
+            ini = sumar_dias_habiles(fecha_inicio, desfase)
+            fin = sumar_dias_habiles(ini, dur)
+
+        mapa[t.id] = Tarea.objects.create(
+            empresa=empresa_destino,
+            tablero=nuevo,
+            seccion_id=mapa_sec.get(t.seccion_id),
+            padre=None,                     # se resuelve en la segunda pasada
+            folio=folio,
+            titulo=t.titulo,
+            descripcion=t.descripcion,
+            estado="PEND",                  # todo arranca limpio
+            prioridad=t.prioridad,
+            perfil_sugerido=t.perfil_sugerido,
+            fecha_inicio_plan=ini,
+            fecha_fin_plan=fin,
+            duracion_dias=t.duracion_dias,
+            avance=0,
+            peso=t.peso,
+            es_hito=t.es_hito,
+            orden=t.orden,
+            creado_por=usuario,
+        )
+
+    # ---------- Tareas, segunda pasada (jerarquia) ----------
+    for t in origen:
+        if t.padre_id and t.padre_id in mapa:
+            hija = mapa[t.id]
+            hija.padre = mapa[t.padre_id]
+            hija.save(update_fields=["padre"])
+
+    # ---------- Dependencias: solo las de diseño ----------
+    deps = TareaDependencia.objects.filter(
+        origen="PLANEADA",
+        predecesora__tablero=plantilla,
+        sucesora__tablero=plantilla,
+    ).select_related("predecesora", "sucesora")
+
+    TareaDependencia.objects.bulk_create([
+        TareaDependencia(
+            predecesora=mapa[d.predecesora_id],
+            sucesora=mapa[d.sucesora_id],
+            tipo=d.tipo,
+            desfase_dias=d.desfase_dias,
+            origen="PLANEADA",
+            creado_por=usuario,
+        )
+        for d in deps
+        if d.predecesora_id in mapa and d.sucesora_id in mapa
+    ])
+
+    # ---------- Adjuntos: formatos, actas, checklists ----------
+    if clonar_adjuntos:
+        ct_tarea = ContentType.objects.get_for_model(Tarea)
+        copiar_objeto = (plantilla.empresa_id != empresa_destino.id)   # ver aviso abajo
+        for viejo_id, nueva in mapa.items():
+            for adj in Adjunto.objects.filter(content_type=ct_tarea, object_id=viejo_id):
+                clonar_adjunto(adj, destino=nueva, empresa=empresa_destino,
+                               usuario=usuario, copiar_objeto=copiar_objeto)
+
+    recalcular_wbs(nuevo, usuario)
+    registrar_actividad_tablero(
+        nuevo, usuario, "INSTANCIADO",
+        detalle=f"Creado desde la plantilla {plantilla.codigo} · {plantilla.nombre} "
+                f"({len(mapa)} tareas, arranque {fecha_inicio:%d/%m/%Y})")
+    return nuevo
+
+
+# ───────────── Guardar un tablero existente como plantilla ─────────────
+
+@transaction.atomic
+def guardar_como_plantilla(tablero, *, nombre, usuario, alcance="EMPRESA", tipo=None):
+    """
+    Convierte un tablero real en molde reutilizable. El flujo tipico de PH Analytics:
+    se arma la primera implementacion a mano, sale bien, y se guarda como plantilla
+    para el siguiente cliente.
+    """
+    if tablero.es_plantilla:
+        raise ValidationError("Ese tablero ya es una plantilla.")
+    if alcance == "GLOBAL" and not usuario.has_perm("tareas.gestionar_plantillas_globales"):
+        raise PermissionDenied("No puedes crear plantillas globales.")
+
+    plantilla = instanciar_plantilla(
+        _como_molde(tablero),               # envoltura que finge es_plantilla=True
+        empresa_destino=tablero.empresa,
+        nombre=nombre,
+        fecha_inicio=tablero.fecha_inicio or timezone.localdate(),
+        usuario=usuario,
+        clonar_adjuntos=True,
+    )
+    plantilla.es_plantilla = True
+    plantilla.alcance = alcance
+    plantilla.tipo = tipo or tablero.tipo
+    plantilla.plantilla_origen = None
+    plantilla.responsable = None
+    plantilla.save()
+    return plantilla
+</code></pre>
+
+<div class="note n-warn">
+  <div class="note-h">Adjuntos entre empresas: copiar el objeto, no referenciarlo</div>
+  <p><code>guardar_adjunto()</code> deduplica por hash reutilizando el mismo objeto en Spaces. Eso está
+  bien <b>dentro</b> de una empresa. Pero si una plantilla GLOBAL de PH Analytics comparte el objeto
+  con la instancia de Acuagro, borrar el archivo en la plantilla rompe el de Acuagro, y la ruta del
+  bucket queda bajo el prefijo de otro cliente.</p>
+  <p style="margin-bottom:0">Por eso <code>clonar_adjunto(..., copiar_objeto=True)</code> cuando la
+  empresa destino es distinta: hace un <code>copy</code> real en Spaces bajo el prefijo correcto.
+  Dentro de la misma empresa se referencia y ya.</p>
+</div>
+
+<div class="note n-tip">
+  <div class="note-h">Folios: reservar en bloque</div>
+  <p><code>reservar_folios(empresa, n)</code> toma el lock del contador una sola vez y devuelve n
+  folios consecutivos. Llamar <code>siguiente_folio()</code> dentro del bucle son 40 locks seriados y
+  convierte una operación de medio segundo en una de diez.</p>
+</div>
+</section>
+
+<!-- ══════════════════ 7 ══════════════════ -->
+<section id="s7">
+<h2><span class="num">07</span> API REST (DRF)</h2>
+
+<p>Base: <code>/api/v1/tareas/</code>. Todos los endpoints filtran por la empresa activa del
+<code>PerfilUsuario</code>. Autenticación por sesión y token, igual que el resto del genérico.</p>
+
+<h3>Tableros y estructura</h3>
+<table>
+  <thead><tr><th>Método</th><th>Ruta</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/tableros/</code></td>
+        <td>Lista tableros visibles. Filtros: <code>activo</code>, <code>responsable</code></td></tr>
+    <tr><td><span class="tag t-post">POST</span></td><td><code>/tableros/</code></td>
+        <td>Crear tablero. Requiere <code>gestionar_tablero</code></td></tr>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/tableros/{id}/</code></td>
+        <td>Detalle con secciones, estadísticas y conteo por estado</td></tr>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/tableros/{id}/arbol/</code></td>
+        <td>Árbol completo de tareas ordenado por <code>ruta_wbs</code>. Alimenta la vista Lista</td></tr>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/tableros/{id}/cronograma/</code></td>
+        <td>Tareas + dependencias + rango de fechas. Payload del Gantt</td></tr>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/tableros/{id}/kanban/</code></td>
+        <td>Tareas agrupadas por estado o por sección (<code>?agrupar=seccion</code>)</td></tr>
+  </tbody>
+</table>
+<p style="font-size:12.5px;color:var(--muted);margin-top:-6px">
+El listado <code>/tableros/</code> excluye plantillas por defecto. Para verlas:
+<code>?es_plantilla=true</code>.</p>
+
+<h3>Plantillas</h3>
+<table>
+  <thead><tr><th>Método</th><th>Ruta</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/plantillas/</code></td>
+        <td>Plantillas instanciables en la empresa activa: las propias + el catálogo
+            <code>GLOBAL</code>. Filtro <code>?tipo=ARRANQUE</code></td></tr>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/plantillas/{id}/vista_previa/</code></td>
+        <td>Árbol de tareas con <code>perfil_sugerido</code> y desfases en días hábiles.
+            Sin fechas absolutas — se calculan al instanciar</td></tr>
+    <tr><td><span class="tag t-post">POST</span></td><td><code>/plantillas/{id}/instanciar/</code></td>
+        <td><code>{nombre, fecha_inicio, responsable?, clonar_adjuntos?}</code>.
+            Devuelve el tablero nuevo. Valida la frontera de tenant</td></tr>
+    <tr><td><span class="tag t-post">POST</span></td><td><code>/tableros/{id}/guardar_como_plantilla/</code></td>
+        <td><code>{nombre, alcance, tipo?}</code>. <code>alcance=GLOBAL</code> requiere
+            <code>gestionar_plantillas_globales</code></td></tr>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/plantillas/{id}/instancias/</code></td>
+        <td>Tableros generados desde esta plantilla, con su avance. Útil para comparar cómo va cada
+            cliente contra el mismo molde</td></tr>
+  </tbody>
+</table>
+
+<h3>Tareas</h3>
+<table>
+  <thead><tr><th>Método</th><th>Ruta</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/tareas/</code></td>
+        <td>Filtros: <code>tablero</code>, <code>estado</code>, <code>prioridad</code>,
+            <code>asignado</code>, <code>vence_antes</code>, <code>con_bloqueo</code>,
+            <code>q</code> (búsqueda)</td></tr>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/tareas/mias/</code></td>
+        <td>Tareas del usuario en curso, todos los tableros. Vista "Mi trabajo"</td></tr>
+    <tr><td><span class="tag t-post">POST</span></td><td><code>/tareas/</code></td>
+        <td>Crear. Acepta <code>padre</code>, <code>asignados[]</code>, <code>etiquetas[]</code></td></tr>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/tareas/{id}/</code></td>
+        <td>Detalle completo: asignaciones, subtareas, dependencias, adjuntos, actividad</td></tr>
+    <tr><td><span class="tag t-patch">PATCH</span></td><td><code>/tareas/{id}/</code></td>
+        <td>Edición parcial. <code>avance</code> se rechaza si <code>es_resumen</code></td></tr>
+    <tr><td><span class="tag t-del">DELETE</span></td><td><code>/tareas/{id}/</code></td>
+        <td>Borrado lógico a <code>CANC</code>. El borrado físico solo desde admin</td></tr>
+    <tr><td><span class="tag t-post">POST</span></td><td><code>/tareas/{id}/mover/</code></td>
+        <td><code>{padre, orden, seccion}</code>. Dispara <code>recalcular_wbs</code></td></tr>
+    <tr><td><span class="tag t-post">POST</span></td><td><code>/tareas/{id}/estado/</code></td>
+        <td><code>{estado, motivo}</code>. Valida la matriz de transiciones</td></tr>
+    <tr><td><span class="tag t-post">POST</span></td><td><code>/tareas/{id}/bloquear/</code></td>
+        <td><code>{motivo, titulo_bloqueante, asignados[], fecha_compromiso, tablero_destino?}</code></td></tr>
+    <tr><td><span class="tag t-post">POST</span></td><td><code>/tareas/{id}/confirmar/</code></td>
+        <td><code>{nota?}</code>. Confirma la asignación del usuario en curso</td></tr>
+    <tr><td><span class="tag t-post">POST</span></td><td><code>/tareas/{id}/desconfirmar/</code></td>
+        <td>Revierte la confirmación propia. Regresa la tarea de REVI a PROC</td></tr>
+    <tr><td><span class="tag t-post">POST</span></td><td><code>/tareas/{id}/cerrar/</code></td>
+        <td>REVI → COMP. Requiere <code>cerrar_tarea</code></td></tr>
+  </tbody>
+</table>
+
+<h3>Asignaciones, dependencias, comentarios</h3>
+<table>
+  <thead><tr><th>Método</th><th>Ruta</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td><span class="tag t-post">POST</span></td><td><code>/tareas/{id}/asignados/</code></td>
+        <td><code>{usuario, rol}</code>. Requiere <code>reasignar_tarea</code> si no eres responsable</td></tr>
+    <tr><td><span class="tag t-del">DELETE</span></td><td><code>/asignaciones/{id}/</code></td>
+        <td>Quitar asignado. Rechaza si ya confirmó</td></tr>
+    <tr><td><span class="tag t-post">POST</span></td><td><code>/dependencias/</code></td>
+        <td><code>{predecesora, sucesora, tipo, desfase_dias}</code>. Valida ciclos</td></tr>
+    <tr><td><span class="tag t-del">DELETE</span></td><td><code>/dependencias/{id}/</code></td>
+        <td>Eliminar. Si era BLOQUEO, reevalúa el estado de la sucesora</td></tr>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/tareas/{id}/comentarios/</code></td>
+        <td>Hilo paginado con sus adjuntos anidados</td></tr>
+    <tr><td><span class="tag t-post">POST</span></td><td><code>/tareas/{id}/comentarios/</code></td>
+        <td><code>multipart/form-data</code>: <code>texto</code> + <code>archivos[]</code></td></tr>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/tareas/{id}/actividad/</code></td>
+        <td>Bitácora paginada, orden descendente</td></tr>
+  </tbody>
+</table>
+
+<h3>Adjuntos</h3>
+<table>
+  <thead><tr><th>Método</th><th>Ruta</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td><span class="tag t-post">POST</span></td><td><code>/adjuntos/</code></td>
+        <td><code>multipart</code>: <code>content_type</code>, <code>object_id</code>,
+            <code>archivos[]</code> (uno o varios en la misma petición)</td></tr>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/adjuntos/{id}/descargar/</code></td>
+        <td>Redirige a URL firmada con expiración de 5 min. <b>Único punto de acceso al archivo</b></td></tr>
+    <tr><td><span class="tag t-get">GET</span></td><td><code>/adjuntos/{id}/preview/</code></td>
+        <td>Solo imágenes y PDF limpios. 415 para cualquier otro tipo</td></tr>
+    <tr><td><span class="tag t-del">DELETE</span></td><td><code>/adjuntos/{id}/</code></td>
+        <td>Borra el registro y el objeto del bucket. Ajeno requiere permiso</td></tr>
+  </tbody>
+</table>
+
+<div class="note n-tip">
+  <div class="note-h">Rendimiento del árbol</div>
+  <p><code>/tableros/{id}/arbol/</code> debe resolverse en una sola consulta con
+  <code>select_related("tablero","seccion","padre")</code> y
+  <code>prefetch_related("asignaciones__usuario","etiquetas","adjuntos")</code>, y armar el anidamiento
+  en Python sobre <code>ruta_wbs</code>. Recorrer el árbol con queries por nodo es N+1 garantizado y con
+  200 tareas ya se siente.</p>
+</div>
+</section>
+
+<!-- ══════════════════ 8 ══════════════════ -->
+<section id="s8">
+<h2><span class="num">08</span> Permisos y visibilidad</h2>
+
+<h3>Permisos personalizados</h3>
+<table>
+  <thead><tr><th>Codename</th><th>Quién lo tiene</th><th>Habilita</th></tr></thead>
+  <tbody>
+    <tr><td><code>tareas.ver_todos_los_tableros</code></td><td>OWNER, MANAGER</td>
+        <td>Ver tableros donde no participa</td></tr>
+    <tr><td><code>tareas.gestionar_tablero</code></td><td>OWNER, MANAGER</td>
+        <td>Crear, configurar y archivar tableros</td></tr>
+    <tr><td><code>tareas.reasignar_tarea</code></td><td>OWNER, MANAGER, responsable del tablero</td>
+        <td>Cambiar asignados en tareas ajenas</td></tr>
+    <tr><td><code>tareas.cerrar_tarea</code></td><td>OWNER, MANAGER, responsable del tablero</td>
+        <td>Pasar de REVI a COMP</td></tr>
+    <tr><td><code>tareas.cerrar_tarea_forzado</code></td><td>OWNER</td>
+        <td>Cerrar sin que todos confirmen. Deja registro explícito en la bitácora</td></tr>
+    <tr><td><code>tareas.eliminar_adjunto_ajeno</code></td><td>OWNER, MANAGER</td>
+        <td>Borrar archivos de otros</td></tr>
+    <tr><td><code>tareas.ver_cronograma</code></td><td>Todos por defecto</td>
+        <td>Vista Gantt. Desactivable por cliente</td></tr>
+    <tr><td><code>tareas.gestionar_plantillas_globales</code></td>
+        <td><b>Solo staff de PH Analytics</b></td>
+        <td>Crear plantillas <code>GLOBAL</code> e instanciarlas en cualquier empresa.
+            Es el único permiso del sistema que cruza la frontera de tenant</td></tr>
+  </tbody>
+</table>
+
+<div class="note n-warn">
+  <div class="note-h">No repartir <code>gestionar_plantillas_globales</code></div>
+  <p>Quien lo tenga puede escribir en la empresa de cualquier cliente. No debe estar en ningún grupo
+  de <code>PerfilUsuario</code> de Acuagro, Insermed ni PH: se asigna a nivel de usuario, a las cuentas
+  internas de PH Analytics, y solo a ésas. Toda instanciación cruzada deja registro con origen,
+  destino, usuario y hora.</p>
+</div>
+
+<h3>Visibilidad por defecto (sin <code>ver_todos_los_tableros</code>)</h3>
+<pre><code>def tableros_visibles(usuario, empresa):
+    return Tablero.objects.filter(empresa=empresa, activo=True).filter(
+        Q(responsable=usuario) |
+        Q(tareas__asignaciones__usuario=usuario)
+    ).distinct()
+</code></pre>
+
+<div class="note n-warn">
+  <div class="note-h">Aislamiento entre Acuagro, Insermed y PH</div>
+  <p>Cada consulta del módulo <b>tiene que</b> pasar por el manager de <code>TenantModel</code> o filtrar
+  explícitamente por <code>empresa</code>. Ojo especial en tres lugares donde el filtro se pierde con
+  facilidad:</p>
+  <ul style="margin-bottom:0">
+    <li><code>TareaDependencia</code> — no hereda de <code>TenantModel</code>. Validar en el serializer
+        que predecesora y sucesora pertenezcan a la misma empresa. <b>Sin esto se puede crear una
+        dependencia cruzada entre clientes.</b></li>
+    <li><code>Adjunto</code> — la vista de descarga debe verificar
+        <code>adjunto.empresa_id == request.empresa_activa.id</code> antes de firmar la URL.
+        El <code>id</code> secuencial es adivinable.</li>
+    <li>Los selectores de usuario para asignar deben listar solo <code>PerfilUsuario</code> de la
+        empresa activa, no <code>User.objects.all()</code>.</li>
+  </ul>
+</div>
+</section>
+
+<!-- ══════════════════ 9 ══════════════════ -->
+<section id="s9">
+<h2><span class="num">09</span> Adjuntos: storage y seguridad</h2>
+
+<h3>9.1 — Storage en DigitalOcean Spaces</h3>
+<p>No en el volumen del droplet: un redeploy o un cambio de máquina borra los archivos de los tres
+clientes. Spaces es S3-compatible y ya lo soporta <code>django-storages</code>.</p>
+
+<div class="pre-label">python · settings/produccion.py</div>
+<pre><code>INSTALLED_APPS += ["storages"]
+
+AWS_ACCESS_KEY_ID       = env("DO_SPACES_KEY")
+AWS_SECRET_ACCESS_KEY   = env("DO_SPACES_SECRET")
+AWS_STORAGE_BUCKET_NAME = env("DO_SPACES_BUCKET")          # ej. ierp-generic-adjuntos
+AWS_S3_ENDPOINT_URL     = "https://sfo3.digitaloceanspaces.com"
+AWS_S3_REGION_NAME      = "sfo3"
+
+AWS_DEFAULT_ACL         = "private"      # NUNCA public-read
+AWS_QUERYSTRING_AUTH    = True
+AWS_QUERYSTRING_EXPIRE  = 300            # 5 minutos
+AWS_S3_FILE_OVERWRITE   = False
+AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "private, max-age=0, no-store"}
+
+STORAGES = {
+    "default":     {"BACKEND": "storages.backends.s3.S3Storage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
+MAX_ADJUNTO_MB   = 100
+MAX_ADJUNTOS_LOTE = 20
+</code></pre>
+
+<h3>9.2 — Reglas de seguridad no negociables</h3>
+
+<div class="note n-warn">
+  <div class="note-h">"Cualquier formato" es exactamente donde entra el XSS</div>
+  <p>Si un usuario de Insermed sube <code>reporte.html</code> con un <code>&lt;script&gt;</code> y el
+  sistema lo sirve inline desde el mismo dominio, ese script corre con la sesión de quien lo abra.
+  Lo mismo con SVG. Tres reglas cierran el hueco:</p>
+</div>
+
+<table>
+  <thead><tr><th>#</th><th>Regla</th><th>Por qué</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Bucket <b>privado</b>. El archivo solo se entrega por
+        <code>/adjuntos/{id}/descargar/</code>, que valida tenant y permiso y luego firma una URL de
+        5 min.</td>
+        <td>El <code>id</code> secuencial es adivinable; la URL directa del bucket no valida nada.</td></tr>
+    <tr><td>2</td><td>Respuesta siempre con
+        <code>Content-Disposition: attachment; filename="…"</code>, salvo imágenes y PDF limpios.
+        Agregar <code>X-Content-Type-Options: nosniff</code>.</td>
+        <td>Fuerza descarga en vez de ejecución en el navegador.</td></tr>
+    <tr><td>3</td><td>El MIME lo determina el servidor con <code>python-magic</code> leyendo los
+        primeros bytes. Nunca <code>request.FILES[x].content_type</code>.</td>
+        <td>El navegador manda texto libre; un <code>.exe</code> puede declararse
+        <code>image/png</code>.</td></tr>
+    <tr><td>4</td><td>Nombre en disco: <code>uuid4().hex</code>. El original solo en base de datos, y
+        se sanea al mostrarlo.</td>
+        <td>Evita path traversal y colisiones.</td></tr>
+    <tr><td>5</td><td>Límite 100 MB por archivo, 20 por lote, cuota configurable por empresa.</td>
+        <td>Un CSV de 5 GB tumba el worker y la cuenta de Spaces.</td></tr>
+    <tr><td>6</td><td>Hash SHA-256 al subir. Si ya existe el mismo hash en la empresa, reutilizar el
+        objeto y solo crear el registro.</td>
+        <td>Ahorro real: en un tablero de implementación el mismo layout se sube seis veces.</td></tr>
+  </tbody>
+</table>
+
+<div class="pre-label">python · comunes/services.py</div>
+<pre><code>import hashlib, magic
+from django.core.exceptions import ValidationError
+from django.conf import settings
+
+EXT_PELIGROSAS_INLINE = {".html", ".htm", ".svg", ".xhtml", ".xml", ".js", ".mhtml"}
+
+
+def guardar_adjunto(archivo, contenido, empresa, usuario):
+    """
+    Guarda un archivo de CUALQUIER formato de forma segura.
+    'contenido' es la instancia a la que se cuelga: Tarea, TareaComentario o TareaActividad.
+    """
+    limite = settings.MAX_ADJUNTO_MB * 1024 * 1024
+    if archivo.size &gt; limite:
+        raise ValidationError(f"{archivo.name}: excede {settings.MAX_ADJUNTO_MB} MB.")
+    if archivo.size == 0:
+        raise ValidationError(f"{archivo.name}: el archivo esta vacio.")
+
+    # MIME real, leido del binario. Ignoramos lo que declare el navegador.
+    cabeza = archivo.read(2048)
+    archivo.seek(0)
+    mime = magic.from_buffer(cabeza, mime=True)
+
+    # Hash en streaming para no cargar el archivo completo en memoria
+    h = hashlib.sha256()
+    for bloque in archivo.chunks(8192):
+        h.update(bloque)
+    archivo.seek(0)
+    digest = h.hexdigest()
+
+    ext = os.path.splitext(archivo.name)[1].lower()[:12]
+    ct = ContentType.objects.get_for_model(contenido)
+
+    # Deduplicacion dentro de la misma empresa
+    gemelo = Adjunto.objects.filter(empresa=empresa, hash_sha256=digest).first()
+
+    adj = Adjunto(
+        empresa=empresa, content_type=ct, object_id=contenido.pk,
+        nombre_original=archivo.name[:255],
+        extension=ext,
+        mime_detectado=mime,
+        tamano_bytes=archivo.size,
+        hash_sha256=digest,
+        es_imagen=mime.startswith("image/") and ext not in EXT_PELIGROSAS_INLINE,
+        subido_por=usuario,
+    )
+    if gemelo:
+        adj.archivo = gemelo.archivo          # reusa el objeto en Spaces
+        adj.estado_scan = gemelo.estado_scan
+        adj.save()
+    else:
+        adj.archivo = archivo
+        adj.save()
+        escanear_adjunto.delay(adj.id)        # Celery, opcional en v1
+
+    return adj
+</code></pre>
+
+<div class="pre-label">python · comunes/views.py</div>
+<pre><code>@login_required
+def descargar_adjunto(request, pk):
+    adj = get_object_or_404(Adjunto, pk=pk)
+
+    # 1. Aislamiento de tenant. Sin esto, el id secuencial expone archivos de otro cliente.
+    if adj.empresa_id != request.empresa_activa.id:
+        raise Http404
+
+    # 2. Permiso sobre el objeto padre (la tarea)
+    if not puede_ver_contenido(request.user, adj.contenido):
+        raise PermissionDenied
+
+    # 3. Cuarentena
+    if adj.estado_scan == "INFECTADO":
+        raise PermissionDenied("Este archivo fue marcado como infectado.")
+
+    inline = request.GET.get("inline") == "1" and adj.puede_previsualizar
+    disp = "inline" if inline else "attachment"
+
+    url = adj.archivo.storage.url(
+        adj.archivo.name,
+        parameters={
+            "ResponseContentDisposition":
+                f'{disp}; filename="{escape_uri_path(adj.nombre_original)}"',
+            "ResponseContentType":
+                adj.mime_detectado if inline else "application/octet-stream",
+        },
+        expire=300,
+    )
+    registrar_actividad_descarga(adj, request.user)
+    return HttpResponseRedirect(url)
+</code></pre>
+
+<h3>9.3 — Carga múltiple desde el frontend</h3>
+<p>El input acepta <code>multiple</code>, drag &amp; drop sobre la zona de arrastre, y pegado desde el
+portapapeles (<code>paste</code> event) — esto último es lo más usado en la práctica para capturas de
+pantalla, que es justo el caso del mockup. Subir con <code>FormData</code> y barra de progreso por
+archivo vía <code>XMLHttpRequest.upload.onprogress</code>; <code>fetch</code> no expone progreso.</p>
+</section>
+
+<!-- ══════════════════ 10 ══════════════════ -->
+<section id="s10">
+<h2><span class="num">10</span> Admin django-unfold</h2>
+
+<div class="pre-label">python · tareas/admin.py</div>
+<pre><code>from django.contrib import admin
+from unfold.admin import ModelAdmin, TabularInline, StackedInline
+from unfold.contrib.filters.admin import RangeDateFilter, ChoicesDropdownFilter
+from unfold.decorators import display
+
+
+class TareaAsignacionInline(TabularInline):
+    model = TareaAsignacion
+    extra = 1
+    autocomplete_fields = ["usuario"]
+    fields = ("usuario", "rol", "completado", "completado_en", "nota_cierre")
+    readonly_fields = ("completado_en",)
+    tab = True
+
+
+class SubtareaInline(TabularInline):
+    model = Tarea
+    fk_name = "padre"
+    extra = 0
+    fields = ("ruta_wbs", "titulo", "estado", "prioridad", "avance", "fecha_fin_plan")
+    readonly_fields = ("ruta_wbs",)
+    show_change_link = True
+    tab = True
+
+
+class DependenciaInline(TabularInline):
+    model = TareaDependencia
+    fk_name = "sucesora"
+    extra = 0
+    verbose_name = "Depende de"
+    verbose_name_plural = "Depende de"
+    autocomplete_fields = ["predecesora"]
+    fields = ("predecesora", "tipo", "desfase_dias", "origen", "motivo", "resuelta")
+    tab = True
+
+
+class AdjuntoInline(GenericTabularInline):
+    model = Adjunto
+    extra = 0
+    fields = ("nombre_original", "tamano_legible", "mime_detectado", "estado_scan", "subido_por")
+    readonly_fields = ("tamano_legible", "mime_detectado", "estado_scan", "subido_por")
+    tab = True
+
+
+@admin.register(Tarea)
+class TareaAdmin(ModelAdmin):
+    list_display = ("folio", "wbs_titulo", "estado_badge", "prioridad_badge",
+                    "asignados_txt", "avance_barra", "fecha_fin_plan", "adjuntos_n")
+    list_filter = (
+        ("estado", ChoicesDropdownFilter),
+        ("prioridad", ChoicesDropdownFilter),
+        ("fecha_fin_plan", RangeDateFilter),
+        "tablero", "es_hito",
+    )
+    search_fields = ("folio", "titulo", "descripcion")
+    autocomplete_fields = ("tablero", "padre", "seccion")
+    readonly_fields = ("folio", "ruta_wbs", "nivel", "es_resumen", "cerrado_en", "cerrado_por")
+    inlines = [TareaAsignacionInline, SubtareaInline, DependenciaInline, AdjuntoInline]
+    list_per_page = 50
+    list_fullwidth = True
+    compressed_fields = True
+    warn_unsaved_form = True
+
+    fieldsets = (
+        ("Identificacion", {"fields": (("folio", "ruta_wbs"), "tablero", "seccion", "padre",
+                                       "titulo", "descripcion", "etiquetas")}),
+        ("Estado y prioridad", {"fields": (("estado", "prioridad"), ("es_hito", "es_resumen"))}),
+        ("Programacion", {"fields": (("fecha_inicio_plan", "fecha_fin_plan"),
+                                     ("fecha_inicio_real", "fecha_fin_real"),
+                                     ("duracion_dias", "peso"), "avance")}),
+        ("Cierre", {"fields": (("cerrado_en", "cerrado_por"),), "classes": ("collapse",)}),
+    )
+
+    @display(description="Tarea", ordering="ruta_wbs")
+    def wbs_titulo(self, obj):
+        sangria = "&nbsp;" * (obj.nivel * 4)
+        icono = "&#9670; " if obj.es_hito else ""
+        return format_html(f"{sangria}{icono}{{}}", obj.titulo)
+
+    @display(description="Estado", label={
+        "Pendiente": "secondary", "En proceso": "info", "Bloqueada": "danger",
+        "En revision": "warning", "Completada": "success", "Cancelada": "secondary"})
+    def estado_badge(self, obj):
+        return obj.get_estado_display()
+
+    @display(description="Asignados")
+    def asignados_txt(self, obj):
+        a = obj.asignaciones.select_related("usuario")
+        hechos = sum(1 for x in a if x.completado)
+        return f"{hechos}/{len(a)} confirmaron" if a else "Sin asignar"
+
+    @display(description="Archivos")
+    def adjuntos_n(self, obj):
+        n = obj.adjuntos.count()
+        return f"{n}" if n else "—"
+
+    def get_readonly_fields(self, request, obj=None):
+        ro = list(super().get_readonly_fields(request, obj))
+        if obj and obj.es_resumen:
+            ro.append("avance")        # el avance del padre se calcula
+        return ro
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        recalcular_wbs(obj.tablero, request.user)
+        recalcular_avance(obj)
+</code></pre>
+
+<div class="pre-label">python · tareas/admin.py — plantillas</div>
+<pre><code>@admin.register(Tablero)
+class TableroAdmin(ModelAdmin):
+    list_display = ("codigo", "nombre", "tipo_badge", "plantilla_badge",
+                    "responsable", "avance_barra", "n_tareas", "fecha_fin")
+    list_filter = (("tipo", ChoicesDropdownFilter), "es_plantilla", "alcance", "activo")
+    search_fields = ("codigo", "nombre")
+    actions_detail = ["instanciar_plantilla_action", "guardar_como_plantilla_action"]
+
+    @display(description="Plantilla", label={"Plantilla": "info", "Global": "warning"})
+    def plantilla_badge(self, obj):
+        if not obj.es_plantilla:
+            return "—" if not obj.plantilla_origen_id else f"de {obj.plantilla_origen.codigo}"
+        return "Global" if obj.alcance == "GLOBAL" else "Plantilla"
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.has_perm("tareas.gestionar_plantillas_globales"):
+            qs = qs.exclude(alcance="GLOBAL", es_plantilla=True)
+        return qs
+
+    @action(description="Crear tablero desde esta plantilla", icon="content_copy")
+    def instanciar_plantilla_action(self, request, object_id):
+        plantilla = get_object_or_404(Tablero, pk=object_id)
+        if not plantilla.es_plantilla:
+            messages.error(request, "Este tablero no es una plantilla.")
+            return redirect(reverse("admin:tareas_tablero_change", args=[object_id]))
+
+        form = InstanciarPlantillaForm(request.POST or None, usuario=request.user)
+        if request.method == "POST" and form.is_valid():
+            try:
+                nuevo = instanciar_plantilla(
+                    plantilla,
+                    empresa_destino=form.cleaned_data["empresa"],
+                    nombre=form.cleaned_data["nombre"],
+                    fecha_inicio=form.cleaned_data["fecha_inicio"],
+                    responsable=form.cleaned_data["responsable"],
+                    clonar_adjuntos=form.cleaned_data["clonar_adjuntos"],
+                    usuario=request.user,
+                )
+            except (ValidationError, PermissionDenied) as e:
+                messages.error(request, str(e))
+            else:
+                messages.success(
+                    request,
+                    f"Se creo «{nuevo.nombre}» con {nuevo.tareas.count()} tareas. "
+                    f"Falta asignar responsables.")
+                return redirect(reverse("admin:tareas_tablero_change", args=[nuevo.pk]))
+
+        return render(request, "admin/tareas/instanciar_plantilla.html",
+                      {"plantilla": plantilla, "form": form,
+                       "vista_previa": plantilla.tareas.order_by("ruta_wbs")})
+
+    @action(description="Guardar como plantilla", icon="bookmark_add")
+    def guardar_como_plantilla_action(self, request, object_id):
+        ...   # mismo patron, llama a guardar_como_plantilla()
+</code></pre>
+
+<div class="note n-tip">
+  <div class="note-h">Después de instanciar, llevar al usuario a asignar</div>
+  <p>El tablero nuevo nace sin una sola asignación: es lo único que la plantilla no puede resolver.
+  La pantalla posterior a instanciar debe ser una lista de las tareas con su
+  <code>perfil_sugerido</code> a la izquierda y un selector de usuario a la derecha, para repartir todo
+  de un jalón. Si se manda al usuario al tablero normal, va a andar tarea por tarea.</p>
+</div>
+
+<div class="note n-tip">
+  <div class="note-h">Vistas custom montadas en el admin</div>
+  <p>Cronograma y kanban van como vistas propias registradas con el decorador
+  <code>@action</code> de unfold sobre <code>TableroAdmin</code>, o como
+  <code>get_urls()</code> extendido, para que hereden el layout, el sidebar y la sesión del admin en
+  lugar de vivir como app suelta. Es el mismo patrón que ya usas para los paneles del ERP.</p>
+</div>
+</section>
+
+<!-- ══════════════════ 11 ══════════════════ -->
+<section id="s11">
+<h2><span class="num">11</span> Plan de implementación</h2>
+
+<p>Siete fases, ~9.5 días. Cada una deja algo funcionando y probable. No arrancar la siguiente sin
+cerrar la anterior.</p>
+
+<div class="phase">
+  <div class="phase-h"><span class="phase-n">Fase 1</span>
+    <span class="phase-t">Cimientos de datos</span><span class="phase-d">~1 día</span></div>
+  <ul>
+    <li>Crear apps <code>comunes</code> y <code>tareas</code> siguiendo el workflow estándar de módulos.</li>
+    <li>Modelos completos + migraciones. Correr contra SQL Server y revisar el SQL generado
+        con <code>sqlmigrate</code>, verificando las FK con NO ACTION.</li>
+    <li>Registrar el módulo en <code>EmpresaModulo</code>.</li>
+    <li>Fixture de datos demo: 1 tablero, 13 tareas, 6 usuarios (el del mockup).</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <div class="phase-h"><span class="phase-n">Fase 2</span>
+    <span class="phase-t">Servicios y reglas</span><span class="phase-d">~1.5 días</span></div>
+  <ul>
+    <li><code>services.py</code> completo: folio, WBS, avance, transiciones, bloqueo, ciclos.</li>
+    <li><code>registrar_actividad()</code> conectado en todas las mutaciones.</li>
+    <li>Tests unitarios de la sección 12 en verde <b>antes</b> de tocar la API.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <div class="phase-h"><span class="phase-n">Fase 3</span>
+    <span class="phase-t">Admin unfold</span><span class="phase-d">~1 día</span></div>
+  <ul>
+    <li><code>TableroAdmin</code>, <code>TareaAdmin</code> con los cuatro inlines.</li>
+    <li>Filtros, badges de estado, barra de avance.</li>
+    <li>Punto de control: el módulo ya es usable por un administrador aunque no exista frontend.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <div class="phase-h"><span class="phase-n">Fase 4</span>
+    <span class="phase-t">Adjuntos</span><span class="phase-d">~1 día</span></div>
+  <ul>
+    <li>Spaces configurado, bucket privado, credenciales en <code>.env</code> y en el compose.</li>
+    <li><code>guardar_adjunto()</code> con <code>python-magic</code>, hash y dedup.</li>
+    <li>Vista de descarga con URL firmada + validación de tenant.</li>
+    <li>Probar explícitamente: subir un <code>.html</code> con script y confirmar que se descarga,
+        no se ejecuta.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <div class="phase-h"><span class="phase-n">Fase 5</span>
+    <span class="phase-t">Plantillas</span><span class="phase-d">~1 día</span></div>
+  <ul>
+    <li>Campos <code>es_plantilla</code>, <code>alcance</code>, <code>tipo</code>,
+        <code>plantilla_origen</code>, <code>perfil_sugerido</code> — migración incremental.</li>
+    <li><code>instanciar_plantilla()</code> con las dos pasadas y el recálculo de días hábiles.</li>
+    <li><code>guardar_como_plantilla()</code> y <code>reservar_folios()</code>.</li>
+    <li>Acción en <code>TableroAdmin</code> con formulario y vista previa del árbol.</li>
+    <li>Pantalla de reparto masivo de asignados posterior a la instanciación.</li>
+    <li>Cargar el "Plan de arranque estándar" de PH Analytics como plantilla GLOBAL semilla.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <div class="phase-h"><span class="phase-n">Fase 6</span>
+    <span class="phase-t">API REST</span><span class="phase-d">~1.5 días</span></div>
+  <ul>
+    <li>Serializers anidados y ViewSets de la sección 7, incluidos los de plantillas.</li>
+    <li>Filtros con <code>django-filter</code>, paginación, permisos por objeto.</li>
+    <li>Revisar N+1 con django-debug-toolbar en <code>/arbol/</code> y <code>/cronograma/</code>.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <div class="phase-h"><span class="phase-n">Fase 7</span>
+    <span class="phase-t">Frontend</span><span class="phase-d">~2.5 días</span></div>
+  <ul>
+    <li>Vista Lista con AG-Grid en modo <code>treeData</code> sobre <code>ruta_wbs</code>.</li>
+    <li>Cronograma: barras posicionadas por días hábiles, hitos, línea de hoy, líneas de dependencia.</li>
+    <li>Kanban con drag &amp; drop entre estados (respetando la matriz de transiciones).</li>
+    <li>Panel de detalle: asignados con confirmación, subtareas, bloqueo, archivos, comentarios.</li>
+    <li>Referencia visual: <code>mockup_modulo_tareas.html</code>. Respetar espaciado y paleta.</li>
+  </ul>
+</div>
+
+<div class="note n-info">
+  <div class="note-h">Dependencias nuevas a instalar</div>
+  <pre style="margin:6px 0 0"><code>django-storages[s3]==1.14.*
+boto3
+python-magic          # en Alpine: apk add libmagic
+Pillow                # thumbnails de imagenes
+django-filter
+celery + redis        # opcional en v1, requerido para antivirus y notificaciones</code></pre>
+</div>
+</section>
+
+<!-- ══════════════════ 12 ══════════════════ -->
+<section id="s12">
+<h2><span class="num">12</span> Casos de prueba</h2>
+
+<p>Mínimo obligatorio antes de considerar el módulo entregado.</p>
+
+<table>
+  <thead><tr><th>#</th><th>Caso</th><th>Resultado esperado</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Crear tarea con padre en el nivel 2</td>
+        <td><code>ruta_wbs</code> = "2.1", <code>nivel</code> = 1, padre marcado <code>es_resumen</code></td></tr>
+    <tr><td>2</td><td>Mover una subtarea a otro padre</td>
+        <td>Se recalcula el WBS de todo el tablero, sin huecos en la numeración</td></tr>
+    <tr><td>3</td><td>Cerrar 2 de 3 hijos con pesos 1, 1, 2</td>
+        <td>Avance del padre = 50.00, no 66.67</td></tr>
+    <tr><td>4</td><td>Modo <code>TODOS</code>: confirma 1 de 2 asignados</td>
+        <td>La tarea sigue en PROC</td></tr>
+    <tr><td>5</td><td>Modo <code>TODOS</code>: confirma el segundo</td>
+        <td>La tarea pasa a REVI. <b>No</b> a COMP</td></tr>
+    <tr><td>6</td><td>Usuario A intenta confirmar la asignación de B</td>
+        <td>403 <code>PermissionDenied</code></td></tr>
+    <tr><td>7</td><td>Bloquear una tarea sin motivo</td>
+        <td><code>ValidationError</code>. No se crea nada</td></tr>
+    <tr><td>8</td><td>Bloquear con motivo y asignados</td>
+        <td>Se crean tarea bloqueante + dependencia BLOQUEO, estado BLOQ, se notifica al asignado</td></tr>
+    <tr><td>9</td><td>Confirmar una tarea con bloqueo activo</td>
+        <td>Rechazado con mensaje claro</td></tr>
+    <tr><td>10</td><td>Cerrar la bloqueante (única)</td>
+        <td>La bloqueada regresa a PROC automáticamente</td></tr>
+    <tr><td>11</td><td>Crear dependencia A→B existiendo B→A</td>
+        <td><code>ValidationError</code> por ciclo. Nada se guarda</td></tr>
+    <tr><td>12</td><td>Editar <code>avance</code> de una tarea resumen vía API</td>
+        <td>400. El campo es de solo lectura</td></tr>
+    <tr><td>13</td><td>Subir 5 archivos en una sola petición</td>
+        <td>5 registros <code>Adjunto</code>, rutas UUID distintas, MIME sniffeado</td></tr>
+    <tr><td>14</td><td>Subir el mismo archivo dos veces</td>
+        <td>2 registros, 1 solo objeto en Spaces (mismo hash)</td></tr>
+    <tr><td>15</td><td>Subir <code>payload.html</code> con <code>&lt;script&gt;</code> y abrirlo</td>
+        <td>Se descarga como adjunto. <b>Nunca se ejecuta en el navegador</b></td></tr>
+    <tr><td>16</td><td>Usuario de Insermed pide <code>/adjuntos/{id}/</code> de Acuagro</td>
+        <td>404. No 403 — no confirmar que el recurso existe</td></tr>
+    <tr><td>17</td><td>Dependencia entre una tarea de Acuagro y una de PH</td>
+        <td>Rechazada en el serializer</td></tr>
+    <tr><td>18</td><td>Cargar <code>/arbol/</code> con 200 tareas</td>
+        <td>Menos de 10 queries en total</td></tr>
+    <tr><td>19</td><td>Hito con avance 45</td>
+        <td>Rechazado. Un hito solo admite 0 o 100</td></tr>
+    <tr><td>20</td><td>Borrar una tarea padre con hijos</td>
+        <td>Los hijos pasan a CANC o suben de nivel según la opción elegida. Nunca quedan huérfanos</td></tr>
+  </tbody>
+</table>
+
+<h3>Plantillas</h3>
+<table>
+  <thead><tr><th>#</th><th>Caso</th><th>Resultado esperado</th></tr></thead>
+  <tbody>
+    <tr><td>21</td><td>Bloquear una tarea y revisar el WBS</td>
+        <td>La bloqueante tiene <code>padre = None</code>. La bloqueada <b>no</b> queda marcada como
+            <code>es_resumen</code> y su avance sigue siendo editable</td></tr>
+    <tr><td>22</td><td>Cerrar la bloqueante al 100%</td>
+        <td>El avance de la bloqueada <b>no</b> cambia. Solo se desbloquea</td></tr>
+    <tr><td>22b</td><td>Tablero con 5 fases y 2 bloqueantes; correr <code>recalcular_wbs</code></td>
+        <td>Las fases quedan 1 a 5. Las bloqueantes con <code>ruta_wbs = ''</code>.
+            Ninguna bloqueante recibe número de primer nivel</td></tr>
+    <tr><td>23</td><td>Instanciar plantilla de 40 tareas y 3 niveles</td>
+        <td>40 tareas nuevas, jerarquía idéntica, WBS renumerado desde 1, folios consecutivos</td></tr>
+    <tr><td>24</td><td>Plantilla que arranca 3 ago; instanciar con inicio 12 oct</td>
+        <td>Todas las fechas corridas por días hábiles. Ninguna tarea cae en sábado ni domingo</td></tr>
+    <tr><td>25</td><td>Plantilla con una dependencia FS y un bloqueo histórico</td>
+        <td>Se copia la FS. El bloqueo <b>no</b> se copia</td></tr>
+    <tr><td>26</td><td>Instanciar y revisar asignaciones</td>
+        <td>Cero asignaciones. <code>perfil_sugerido</code> presente en cada tarea</td></tr>
+    <tr><td>27</td><td>Instanciar y revisar estados</td>
+        <td>Todo en <code>PEND</code>, avance 0, sin fechas reales, sin comentarios ni bitácora heredada</td></tr>
+    <tr><td>28</td><td>Usuario de Insermed instancia una plantilla GLOBAL de PH Analytics</td>
+        <td><code>PermissionDenied</code>. Solo staff con <code>gestionar_plantillas_globales</code></td></tr>
+    <tr><td>29</td><td>Usuario de Insermed instancia una plantilla EMPRESA de Acuagro</td>
+        <td><code>PermissionDenied</code> aunque tenga el permiso global: <code>EMPRESA</code> no cruza</td></tr>
+    <tr><td>30</td><td>Instanciar GLOBAL con adjuntos en otra empresa</td>
+        <td>Objeto <b>copiado</b> en Spaces bajo el prefijo del destino, no referenciado.
+            Borrar el de la plantilla no rompe la instancia</td></tr>
+    <tr><td>31</td><td>Marcar como plantilla un tablero que ya salió de otra plantilla</td>
+        <td>Se permite, pero <code>plantilla_origen</code> queda en <code>NULL</code>
+            (constraint <code>CK_tablero_plt_origen</code>)</td></tr>
+    <tr><td>32</td><td>Instanciar una plantilla vacía</td>
+        <td><code>ValidationError</code>. No se crea el tablero</td></tr>
+    <tr><td>33</td><td>Instanciar dos veces la misma plantilla en paralelo</td>
+        <td>Dos tableros con folios distintos. Sin colisiones ni folios repetidos</td></tr>
+    <tr><td>34</td><td><code>/tableros/</code> sin filtros</td>
+        <td>No aparecen plantillas en el listado de trabajo</td></tr>
+  </tbody>
+</table>
+</section>
+
+<!-- ══════════════════ 13 ══════════════════ -->
+<section id="s13">
+<h2><span class="num">13</span> Fuera de alcance v1</h2>
+
+<p>Anotado para que no se cuele por el camino. Se evalúa en v1.1 según cómo lo usen Acuagro e Insermed.</p>
+<ul>
+  <li><b>Tareas recurrentes</b> — plantilla + regla de repetición. Requiere Celery beat.</li>
+  <li><b>Ruta crítica calculada</b> — el Gantt v1 dibuja dependencias, no resalta la ruta crítica.
+      El algoritmo (forward/backward pass, holgura) es un módulo aparte.</li>
+  <li><b>Reprogramación automática</b> — al mover una tarea, arrastrar sus sucesoras. Poderoso y
+      peligroso; primero hay que ver si lo piden.</li>
+  <li><b>Carga de trabajo por persona</b> — la pestaña existe en el mockup pero apunta a la vista Lista.
+      Necesita capacidad por usuario y horas estimadas.</li>
+  <li><b>Antivirus real</b> — <code>estado_scan</code> ya está en el modelo. Conectar ClamAV vía Celery
+      cuando haya usuarios externos subiendo archivos.</li>
+  <li><b>Notificaciones push y digest diario</b> — v1 solo correo al asignar y al bloquear.</li>
+  <li><b>Versionado de plantillas</b> — v1 instancia y corta el cordón. Saber qué instancias salieron
+      de la v2 del "Plan de arranque" y propagar cambios hacia abajo es otro problema, bastante mayor.
+      Por ahora <code>plantilla_origen</code> guarda la trazabilidad y con eso basta.</li>
+  <li><b>Catálogo de días no laborables</b> — el cálculo de fechas al instanciar salta sábados y
+      domingos, pero no los feriados mexicanos. Cuando estorbe, se agrega
+      <code>DiaNoLaborable(empresa, fecha)</code> y se conecta a <code>sumar_dias_habiles()</code>,
+      que ya está aislado justo para eso.</li>
+</ul>
+
+<div class="note n-ok">
+  <div class="note-h">Criterio de aceptación del módulo</div>
+  <p>El módulo se considera entregado cuando un usuario de Insermed puede: crear un tablero con tareas
+  y subtareas, asignar a tres personas, que cada una confirme por separado, que una reporte un bloqueo
+  generando una tarea para Dirección con un PDF adjunto, ver todo eso reflejado en el cronograma, y que
+  un usuario de Acuagro no pueda ver nada de lo anterior.</p>
+  <p style="margin-bottom:0">Y desde PH Analytics: instanciar el "Plan de arranque estándar" en la
+  empresa de un cliente nuevo, con fecha de arranque distinta, y que el tablero quede listo y con
+  fechas correctas en menos de un minuto — sin que ese mismo botón permita tocar los datos de nadie más.</p>
+</div>
+</section>
+
+<div class="foot">
+  <b>Módulo de Tareas · iErpGeneric v2.0</b> — documento de handoff para Claude Code.
+  Acompaña al mockup <code>mockup_modulo_tareas.html</code>, que es la referencia visual vinculante.
+  PH Analytics · 27 de julio de 2026.
+</div>
+
+</div>
+</body>
+</html>
