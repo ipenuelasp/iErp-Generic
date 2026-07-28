@@ -264,9 +264,12 @@ class TableroDetalleView(LoginRequiredMixin, View):
                 except ValueError:
                     pass
             tarea.save()
+            movidas = services.reprogramar_cascada(tarea, request.user)
             services.recalcular_tablero(tablero)
             services.evaluar_cierre(tarea)
             services.registrar_actividad(tarea, request.user, 'EDITADA', detalle="Editó la tarea")
+            if movidas:
+                messages.info(request, f"Se recorrieron {len(movidas)} tarea(s) dependiente(s) en cascada.")
             messages.success(request, "Tarea actualizada.")
 
         elif accion == 'mover_tarea' and tarea:
@@ -292,12 +295,15 @@ class TableroDetalleView(LoginRequiredMixin, View):
             tarea.fecha_fin_plan = ini if tarea.es_hito else fin
             tarea.duracion_dias = services.dias_habiles_entre(ini, tarea.fecha_fin_plan)
             tarea.save(update_fields=['fecha_inicio_plan', 'fecha_fin_plan', 'duracion_dias'])
-            services.recalcular_tablero(tablero)
             services.registrar_actividad(
                 tarea, request.user, 'FECHA',
                 detalle=f"Reprogramó en el cronograma: {ini:%d/%m} – {tarea.fecha_fin_plan:%d/%m}")
+            movidas = services.reprogramar_cascada(tarea, request.user)
+            services.recalcular_tablero(tablero)
+            if movidas:
+                messages.info(request, f"Se recorrieron {len(movidas)} tarea(s) dependiente(s) en cascada.")
             if es_ajax:
-                return JsonResponse({'ok': True})
+                return JsonResponse({'ok': True, 'cascada': len(movidas)})
             return volver
 
         elif accion == 'eliminar_tarea' and tarea:

@@ -35,6 +35,19 @@ def sumar_dias_habiles(fecha, n):
     return d
 
 
+def restar_dias_habiles(fecha, n):
+    """Retrocede n días hábiles (lun–vie) desde `fecha`."""
+    if not fecha:
+        return None
+    d = fecha
+    pasos = 0
+    while pasos < n:
+        d = d - datetime.timedelta(days=1)
+        if d.weekday() < 5:
+            pasos += 1
+    return d
+
+
 def dias_habiles_entre(a, b):
     """Cuenta los días hábiles (lun–vie) entre a y b, inclusivo. Mínimo 1."""
     if not a or not b:
@@ -87,6 +100,63 @@ def bloqueada_por(tarea):
     """Lista de dependencias (predecesoras) que impiden avanzar la tarea."""
     deps = TareaDependencia.objects.filter(sucesora=tarea).select_related('predecesora')
     return [d for d in deps if _bloquea(d)]
+
+
+def _inicio_requerido(suc):
+    """Fecha de inicio más temprana permitida para `suc` según TODAS sus
+    predecesoras (toma la más restrictiva). None si no tiene predecesoras con
+    fechas o si la propia tarea no tiene fechas."""
+    if not suc.fecha_inicio_plan or not suc.fecha_fin_plan:
+        return None
+    dur = dias_habiles_entre(suc.fecha_inicio_plan, suc.fecha_fin_plan) or 1
+    reqs = []
+    for dep in TareaDependencia.objects.filter(sucesora=suc).select_related('predecesora'):
+        p = dep.predecesora
+        if not p.fecha_inicio_plan or not p.fecha_fin_plan:
+            continue
+        lag = dep.desfase_dias or 0
+        if dep.tipo == 'FS':          # empieza después de que la otra termina
+            reqs.append(sumar_dias_habiles(p.fecha_fin_plan, 1 + lag))
+        elif dep.tipo == 'SS':        # empieza cuando la otra empieza
+            reqs.append(sumar_dias_habiles(p.fecha_inicio_plan, lag))
+        elif dep.tipo == 'FF':        # termina cuando la otra termina
+            fin = sumar_dias_habiles(p.fecha_fin_plan, lag)
+            reqs.append(restar_dias_habiles(fin, dur - 1))
+        else:                          # SF
+            fin = sumar_dias_habiles(p.fecha_inicio_plan, lag)
+            reqs.append(restar_dias_habiles(fin, dur - 1))
+    return max(reqs) if reqs else None
+
+
+def reprogramar_cascada(tarea_movida, usuario):
+    """Empuja hacia adelante las sucesoras (directas e indirectas) para respetar
+    las dependencias. Solo adelanta cuando una sucesora empezaría demasiado
+    pronto; nunca la jala hacia atrás. Devuelve la lista de tareas recorridas."""
+    from collections import deque
+    cambiadas = []
+    cola = deque([tarea_movida])
+    iters = 0
+    while cola and iters < 1000:
+        iters += 1
+        actual = cola.popleft()
+        for dep in (TareaDependencia.objects.filter(predecesora=actual)
+                    .select_related('sucesora')):
+            suc = dep.sucesora
+            if not suc.fecha_inicio_plan or not suc.fecha_fin_plan:
+                continue
+            req = _inicio_requerido(suc)
+            if req and req > suc.fecha_inicio_plan:
+                dur = dias_habiles_entre(suc.fecha_inicio_plan, suc.fecha_fin_plan) or 1
+                suc.fecha_inicio_plan = req
+                suc.fecha_fin_plan = sumar_dias_habiles(req, dur - 1)
+                suc.duracion_dias = dur
+                suc.save(update_fields=['fecha_inicio_plan', 'fecha_fin_plan', 'duracion_dias'])
+                registrar_actividad(
+                    suc, usuario, 'FECHA',
+                    detalle=f"Recorrida en cascada por depender de {actual.folio}")
+                cambiadas.append(suc)
+                cola.append(suc)   # sus propias sucesoras también podrían moverse
+    return cambiadas
 
 
 def crearia_ciclo(predecesora, sucesora):
