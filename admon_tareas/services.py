@@ -403,6 +403,9 @@ def resolver_bloqueos_de(bloqueante, usuario):
         if not pendientes and suc.estado == 'BLOQ':
             suc.estado = 'PROC' if suc.asignaciones.exists() else 'PEND'
             suc.save(update_fields=['estado'])
+            # Devuélvela a su estado real: si ya estaban todas las confirmaciones,
+            # vuelve a "En revisión"; si no, queda en proceso/pendiente.
+            evaluar_cierre(suc)
             registrar_actividad(suc, usuario, 'DESBLOQUEO',
                                 detalle=f"Desbloqueada al completar {bloqueante.folio}")
             afectadas.append(suc)
