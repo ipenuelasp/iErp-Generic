@@ -16,7 +16,8 @@ from django.http import HttpResponse, Http404, FileResponse
 from django.utils import timezone
 
 from admon_comunes.models import Adjunto
-from .models import (Tablero, Tarea, Seccion, TareaAsignacion, TareaComentario)
+from .models import (Tablero, Tarea, Seccion, TareaAsignacion, TareaComentario,
+                     TipoTablero, tipos_de)
 from . import services
 
 
@@ -40,6 +41,32 @@ def _empresa(request):
 def _usuarios_empresa(empresa):
     return User.objects.filter(perfil__empresas=empresa, is_active=True).distinct().order_by(
         'first_name', 'username')
+
+
+def _fechas_desde_post(request):
+    """Devuelve (inicio, fin, dias, horas). Si hay duración (días/horas) calcula
+    la fecha fin en días hábiles; si no, respeta la fecha fin capturada."""
+    import datetime
+
+    def _d(s):
+        s = (s or '').strip()
+        try:
+            return datetime.datetime.strptime(s, '%Y-%m-%d').date() if s else None
+        except ValueError:
+            return None
+
+    ini = _d(request.POST.get('fecha_inicio_plan'))
+    fin_manual = _d(request.POST.get('fecha_fin_plan'))
+    try:
+        dias = int(request.POST.get('duracion_dias') or 0)
+    except ValueError:
+        dias = 0
+    try:
+        horas = int(request.POST.get('duracion_horas') or 0)
+    except ValueError:
+        horas = 0
+    fin = services.calcular_fin_plan(ini, dias, horas) or fin_manual
+    return ini, fin, (dias or None), horas
 
 
 def _guardar_adjunto(empresa, obj, archivo, usuario):
@@ -73,7 +100,8 @@ class TablerosView(LoginRequiredMixin, View):
         context = {
             'tableros': tableros,
             'usuarios': _usuarios_empresa(empresa),
-            'tipos': Tablero.TIPO,
+            'tipos': tipos_de(empresa),
+            'tipos_todos': TipoTablero.objects.filter(empresa=empresa),
             'modos': Tablero.MODO_CIERRE,
             'seccion': 'tareas',
         }
@@ -83,15 +111,35 @@ class TablerosView(LoginRequiredMixin, View):
         empresa = _empresa(request)
         if not empresa:
             return redirect('home')
+        accion = request.POST.get('accion') or 'crear_tablero'
+
+        if accion == 'crear_tipo':
+            nombre = (request.POST.get('nombre') or '').strip()
+            if nombre:
+                orden = (TipoTablero.objects.filter(empresa=empresa).count())
+                TipoTablero.objects.get_or_create(
+                    empresa=empresa, nombre=nombre[:60], defaults={'orden': orden})
+                messages.success(request, f"Tipo '{nombre}' agregado.")
+            return redirect('admon_tareas:tableros')
+
+        if accion == 'toggle_tipo':
+            tp = TipoTablero.objects.filter(id=request.POST.get('tipo_id'), empresa=empresa).first()
+            if tp:
+                tp.activo = not tp.activo
+                tp.save(update_fields=['activo'])
+                messages.info(request, f"Tipo '{tp.nombre}' {'activado' if tp.activo else 'desactivado'}.")
+            return redirect('admon_tareas:tableros')
+
         nombre = (request.POST.get('nombre') or '').strip()
         if not nombre:
             messages.error(request, "Captura el nombre del tablero.")
             return redirect('admon_tareas:tableros')
         n = Tablero.objects.filter(empresa=empresa).count() + 1
+        tipo = TipoTablero.objects.filter(id=request.POST.get('tipo'), empresa=empresa).first()
         tablero = Tablero.objects.create(
             empresa=empresa, codigo=(request.POST.get('codigo') or f'TAB-{n:04d}').strip()[:20],
             nombre=nombre, descripcion=(request.POST.get('descripcion') or '').strip(),
-            tipo=request.POST.get('tipo') or 'INTERNO',
+            tipo=tipo,
             modo_cierre=request.POST.get('modo_cierre') or 'TODOS',
             responsable_id=request.POST.get('responsable') or None,
             fecha_inicio=request.POST.get('fecha_inicio') or None,
@@ -155,11 +203,12 @@ class TableroDetalleView(LoginRequiredMixin, View):
             padre = None
             if request.POST.get('padre'):
                 padre = tablero.tareas.filter(id=request.POST.get('padre')).first()
+            ini, fin, dias, horas = _fechas_desde_post(request)
             services.crear_tarea(
                 tablero=tablero, usuario=request.user, titulo=titulo, padre=padre,
                 prioridad=request.POST.get('prioridad') or 'MEDIA',
-                fecha_inicio_plan=request.POST.get('fecha_inicio_plan') or None,
-                fecha_fin_plan=request.POST.get('fecha_fin_plan') or None,
+                fecha_inicio_plan=ini, fecha_fin_plan=fin,
+                duracion_dias=dias, duracion_horas=horas,
                 es_hito=bool(request.POST.get('es_hito')),
                 perfil_sugerido=(request.POST.get('perfil_sugerido') or '').strip())
             messages.success(request, "Tarea agregada.")
@@ -173,8 +222,11 @@ class TableroDetalleView(LoginRequiredMixin, View):
             tarea.titulo = (request.POST.get('titulo') or tarea.titulo).strip()
             tarea.descripcion = request.POST.get('descripcion', tarea.descripcion)
             tarea.prioridad = request.POST.get('prioridad') or tarea.prioridad
-            tarea.fecha_inicio_plan = request.POST.get('fecha_inicio_plan') or None
-            tarea.fecha_fin_plan = request.POST.get('fecha_fin_plan') or None
+            ini, fin, dias, horas = _fechas_desde_post(request)
+            tarea.fecha_inicio_plan = ini
+            tarea.fecha_fin_plan = fin
+            tarea.duracion_dias = dias
+            tarea.duracion_horas = horas
             if not tarea.es_resumen:
                 try:
                     av = request.POST.get('avance')
@@ -200,10 +252,20 @@ class TableroDetalleView(LoginRequiredMixin, View):
             if nuevo in dict(Tarea.ESTADO):
                 ant = tarea.estado
                 tarea.estado = nuevo
+                campos = ['estado', 'cerrado_en', 'cerrado_por', 'avance', 'fecha_fin_real']
                 if nuevo == 'COMP':
                     tarea.cerrado_en = timezone.now()
                     tarea.cerrado_por = request.user
-                tarea.save(update_fields=['estado', 'cerrado_en', 'cerrado_por'])
+                    tarea.fecha_fin_real = timezone.localdate()
+                    if not tarea.es_resumen:
+                        tarea.avance = 100
+                elif ant == 'COMP':
+                    # Se reabre: se limpia el cierre real
+                    tarea.cerrado_en = None
+                    tarea.cerrado_por = None
+                    tarea.fecha_fin_real = None
+                tarea.save(update_fields=campos)
+                services.recalcular_tablero(tablero)
                 services.registrar_actividad(tarea, request.user, 'ESTADO',
                                              campo='estado', valor_ant=ant, valor_nue=nuevo)
                 messages.success(request, "Estado actualizado.")

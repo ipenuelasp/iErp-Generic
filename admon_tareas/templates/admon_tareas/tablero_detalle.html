@@ -8,7 +8,7 @@
             <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase mt-1">{{ tablero.nombre }}</h1>
             <p class="text-slate-500 mt-1 font-medium text-sm">
                 <span class="font-mono text-slate-400">{{ tablero.codigo }}</span> ·
-                {{ tablero.get_tipo_display }} · Cierre: {{ tablero.get_modo_cierre_display }}
+                {% if tablero.tipo %}{{ tablero.tipo.nombre }} · {% endif %}Cierre: {{ tablero.get_modo_cierre_display }}
                 {% if tablero.responsable %}· Resp.: {{ tablero.responsable.get_full_name|default:tablero.responsable.username }}{% endif %}
             </p>
         </div>
@@ -94,17 +94,30 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Prioridad</label>
-                    <select name="prioridad" class="w-full mt-1 no-select2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold">
+                    <select name="prioridad" class="w-full mt-1">
                         {% for k,v in prioridades %}<option value="{{ k }}" {% if k == 'MEDIA' %}selected{% endif %}>{{ v }}</option>{% endfor %}
                     </select>
                 </div>
-                <div class="flex items-end pb-1">
-                    <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" name="es_hito" class="w-4 h-4"> Es hito</label>
+                <div class="flex items-end pb-2">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <span class="relative inline-flex items-center">
+                            <input type="checkbox" name="es_hito" class="sr-only peer">
+                            <span class="w-11 h-6 bg-slate-200 rounded-full peer-checked:bg-brand transition-all"></span>
+                            <span class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all peer-checked:translate-x-5"></span>
+                        </span>
+                        <span class="text-xs font-bold text-slate-600">Es hito <span class="text-slate-400 font-medium">(marca sin duración)</span></span>
+                    </label>
                 </div>
             </div>
-            <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Inicio plan</label><input type="date" name="fecha_inicio_plan" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold"></div>
-                <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Fin plan</label><input type="date" name="fecha_fin_plan" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold"></div>
+            <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                <p class="text-[10px] font-black text-slate-400 uppercase ml-1 mb-2">Duración → calcula el fin</p>
+                <div class="grid grid-cols-3 gap-3 items-end">
+                    <div><label class="text-[10px] font-bold text-slate-400 ml-1">Días hábiles</label><input type="number" name="duracion_dias" min="0" placeholder="0" class="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-right"></div>
+                    <div><label class="text-[10px] font-bold text-slate-400 ml-1">Horas</label><input type="number" name="duracion_horas" min="0" max="23" placeholder="0" class="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-right"></div>
+                    <div><label class="text-[10px] font-bold text-slate-400 ml-1">Inicio plan</label><input type="date" name="fecha_inicio_plan" class="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold"></div>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2 ml-1 italic">Con inicio + días hábiles se calcula el <b>fin</b> (sin fines de semana). O captura el fin directo abajo.</p>
+                <div class="mt-2"><label class="text-[10px] font-bold text-slate-400 ml-1">Fin plan (manual, opcional)</label><input type="date" name="fecha_fin_plan" class="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold"></div>
             </div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="document.getElementById('modalCrear').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cancelar</button>

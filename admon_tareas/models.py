@@ -19,6 +19,42 @@ from admon_empresas.models import Empresa
 from admon_comunes.models import AdjuntableMixin
 
 
+# Tipos de tablero que se siembran por empresa la primera vez (editables después).
+DEFAULT_TIPOS = ['Arranque', 'Implementación', 'Soporte', 'Mejora', 'Interno']
+
+
+class TipoTablero(models.Model):
+    """Catálogo modificable de tipos de tablero, por empresa."""
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='tipos_tablero')
+    nombre = models.CharField(max_length=60)
+    orden = models.IntegerField(default=0)
+    activo = models.BooleanField(default=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'tareas_tipotablero'
+        verbose_name = 'Tipo de tablero'
+        verbose_name_plural = 'Tipos de tablero'
+        ordering = ('orden', 'nombre')
+        constraints = [
+            models.UniqueConstraint(fields=['empresa', 'nombre'], name='uq_tipotablero_empresa_nombre'),
+        ]
+
+    def __str__(self):
+        return self.nombre
+
+
+def tipos_de(empresa):
+    """Devuelve (sembrando la primera vez) los tipos de tablero activos de la empresa."""
+    qs = TipoTablero.objects.filter(empresa=empresa)
+    if not qs.exists():
+        TipoTablero.objects.bulk_create(
+            [TipoTablero(empresa=empresa, nombre=n, orden=i)
+             for i, n in enumerate(DEFAULT_TIPOS)])
+        qs = TipoTablero.objects.filter(empresa=empresa)
+    return qs.filter(activo=True)
+
+
 class TableroQuerySet(models.QuerySet):
     def operativos(self):
         """Tableros de trabajo real. Excluye plantillas."""
@@ -38,13 +74,6 @@ class Tablero(models.Model):
         ('RESPONSABLE', 'Solo el responsable cierra'),
         ('CUALQUIERA', 'El primero que confirme'),
     ]
-    TIPO = [
-        ('ARRANQUE', 'Arranque'),
-        ('IMPLEMENTACION', 'Implementación'),
-        ('SOPORTE', 'Soporte'),
-        ('MEJORA', 'Mejora'),
-        ('INTERNO', 'Interno'),
-    ]
     ALCANCE = [
         ('EMPRESA', 'Solo esta empresa'),
         ('GLOBAL', 'Catálogo del proveedor'),
@@ -54,7 +83,8 @@ class Tablero(models.Model):
     codigo = models.CharField(max_length=20)
     nombre = models.CharField(max_length=180)
     descripcion = models.TextField(blank=True)
-    tipo = models.CharField(max_length=14, choices=TIPO, default='INTERNO')
+    tipo = models.ForeignKey(TipoTablero, on_delete=models.PROTECT, null=True, blank=True,
+                             related_name='tableros')
     modo_cierre = models.CharField(max_length=12, choices=MODO_CIERRE, default='TODOS')
     responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
                                     null=True, blank=True, related_name='tableros_a_cargo')
@@ -175,6 +205,7 @@ class Tarea(AdjuntableMixin):
     fecha_inicio_real = models.DateField(null=True, blank=True)
     fecha_fin_real = models.DateField(null=True, blank=True)
     duracion_dias = models.IntegerField(null=True, blank=True)
+    duracion_horas = models.PositiveSmallIntegerField(default=0)
 
     avance = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     peso = models.DecimalField(max_digits=6, decimal_places=2, default=1)

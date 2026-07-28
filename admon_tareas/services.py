@@ -16,6 +16,44 @@ from django.utils import timezone
 from .models import Tablero, Tarea, TareaAsignacion, TareaActividad
 
 
+import datetime
+
+
+# --------------------------------------------------------------------------
+# Fechas: duración (días hábiles + horas) → fecha fin
+# --------------------------------------------------------------------------
+def sumar_dias_habiles(fecha, n):
+    """Avanza n días hábiles (lun–vie) a partir de `fecha`. n=0 devuelve la misma."""
+    if not fecha:
+        return None
+    d = fecha
+    pasos = 0
+    while pasos < n:
+        d = d + datetime.timedelta(days=1)
+        if d.weekday() < 5:   # 0-4 = lun-vie
+            pasos += 1
+    return d
+
+
+def calcular_fin_plan(inicio, dias, horas):
+    """fecha fin = inicio + (días hábiles), contando el día de inicio como el 1.
+    Si solo hay horas (día 0) la tarea termina el mismo día. Sin inicio o sin
+    duración, devuelve None (se respeta la fecha fin capturada a mano)."""
+    if not inicio:
+        return None
+    dias = int(dias or 0)
+    horas = int(horas or 0)
+    if dias <= 0 and horas > 0:
+        dias = 1
+    if dias <= 0:
+        return None
+    # el día de inicio cuenta como el primer día hábil
+    inicio_habil = inicio
+    while inicio_habil.weekday() >= 5:   # si cae en finde, arranca el lunes
+        inicio_habil = inicio_habil + datetime.timedelta(days=1)
+    return sumar_dias_habiles(inicio_habil, dias - 1)
+
+
 # --------------------------------------------------------------------------
 # Folio
 # --------------------------------------------------------------------------

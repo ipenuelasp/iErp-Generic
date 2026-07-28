@@ -2,9 +2,16 @@ from django.contrib import admin
 from unfold.admin import ModelAdmin, TabularInline
 
 from .models import (
-    Tablero, Seccion, Etiqueta, Tarea,
+    Tablero, Seccion, Etiqueta, Tarea, TipoTablero,
     TareaAsignacion, TareaDependencia, TareaComentario, TareaActividad,
 )
+
+
+@admin.register(TipoTablero)
+class TipoTableroAdmin(ModelAdmin):
+    list_display = ('nombre', 'empresa', 'orden', 'activo')
+    list_filter = ('empresa', 'activo')
+    search_fields = ('nombre',)
 
 
 class SeccionInline(TabularInline):
