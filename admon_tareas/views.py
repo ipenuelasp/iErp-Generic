@@ -486,9 +486,6 @@ class TableroDetalleView(LoginRequiredMixin, View):
                 if creada:
                     services.registrar_actividad(tarea, request.user, 'ASIGNO',
                                                  detalle=f"Asignó a {obj.usuario}")
-                    if tarea.estado == 'PEND':
-                        tarea.estado = 'PROC'
-                        tarea.save(update_fields=['estado'])
                 messages.success(request, "Persona asignada.")
 
         elif accion == 'quitar_asignacion' and tarea:
