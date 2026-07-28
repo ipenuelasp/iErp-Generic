@@ -12,7 +12,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
-from django.http import HttpResponse, Http404, FileResponse
+from django.http import HttpResponse, Http404, FileResponse, JsonResponse
 from django.utils import timezone
 
 from admon_comunes.models import Adjunto
@@ -269,6 +269,37 @@ class TableroDetalleView(LoginRequiredMixin, View):
             services.registrar_actividad(tarea, request.user, 'EDITADA', detalle="Editó la tarea")
             messages.success(request, "Tarea actualizada.")
 
+        elif accion == 'mover_tarea' and tarea:
+            # Reprogramar desde el Gantt (arrastrar / redimensionar). Recibe las
+            # fechas ya resueltas (ISO) que calculó el front desde los índices.
+            import datetime as _dt
+
+            def _pd(s):
+                try:
+                    return _dt.datetime.strptime((s or '').strip(), '%Y-%m-%d').date()
+                except ValueError:
+                    return None
+            ini = _pd(request.POST.get('inicio'))
+            fin = _pd(request.POST.get('fin'))
+            es_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            if not ini:
+                if es_ajax:
+                    return JsonResponse({'ok': False, 'error': 'fecha inválida'}, status=400)
+                return volver
+            if not fin or fin < ini:
+                fin = ini
+            tarea.fecha_inicio_plan = ini
+            tarea.fecha_fin_plan = ini if tarea.es_hito else fin
+            tarea.duracion_dias = services.dias_habiles_entre(ini, tarea.fecha_fin_plan)
+            tarea.save(update_fields=['fecha_inicio_plan', 'fecha_fin_plan', 'duracion_dias'])
+            services.recalcular_tablero(tablero)
+            services.registrar_actividad(
+                tarea, request.user, 'FECHA',
+                detalle=f"Reprogramó en el cronograma: {ini:%d/%m} – {tarea.fecha_fin_plan:%d/%m}")
+            if es_ajax:
+                return JsonResponse({'ok': True})
+            return volver
+
         elif accion == 'eliminar_tarea' and tarea:
             folio = tarea.folio
             tarea.delete()  # CASCADE en Python borra hijos/asignaciones/etc.
@@ -521,7 +552,7 @@ def _datos_gantt(ordenadas, tablero, deps):
         if d.weekday() < 5:   # lun-vie
             idx_map[d] = len(dias)
             dias.append({'num': d.day, 'mes': meses[d.month - 1],
-                         'week_start': d.weekday() == 0})
+                         'week_start': d.weekday() == 0, 'fecha': d.isoformat()})
         d += _dt.timedelta(days=1)
     if not dias:   # por si acaso
         dias = [{'num': hoy.day, 'mes': meses[hoy.month - 1], 'week_start': True}]

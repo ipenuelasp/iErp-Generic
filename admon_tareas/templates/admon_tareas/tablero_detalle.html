@@ -108,7 +108,7 @@
                                 {% for d in gantt.dias %}<div style="width:{{ gantt.cw }}px" class="flex items-center justify-center text-[9px] text-slate-300 border-r border-slate-50 flex-none {% if d.week_start %}border-l border-slate-100{% endif %}">{{ d.num }}</div>{% endfor %}
                             </div>
                         </div>
-                        <div style="position:relative; height:{{ gantt.alto }}px;">
+                        <div id="ganttRows" style="position:relative; height:{{ gantt.alto }}px;">
                             {% if gantt.hoy_x %}<div class="bg-brand" style="position:absolute; left:{{ gantt.hoy_x }}px; top:0; bottom:0; width:2px; opacity:.4; z-index:2"></div>{% endif %}
                             <svg style="position:absolute; inset:0; z-index:1; pointer-events:none;" width="{{ gantt.ancho }}" height="{{ gantt.alto }}">
                                 <defs><marker id="arw" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8"/></marker></defs>
@@ -116,10 +116,10 @@
                             </svg>
                             {% for t in tareas %}{% if t.gvis %}
                                 {% if t.es_hito %}
-                                <div onclick="abrirTarea({{ t.id }})" title="{{ t.titulo }}" style="position:absolute; left:{{ t.gmid|add:'-8' }}px; top:{{ t.gy }}px; width:16px; height:16px; background:#7c3aed; transform:rotate(45deg); border-radius:2px; cursor:pointer; z-index:3"></div>
+                                <div {% if t.es_resumen or t.es_bloqueante %}onclick="abrirTarea({{ t.id }})"{% else %}class="g-drag" data-id="{{ t.id }}" data-hito="1"{% endif %} title="{{ t.titulo }}" style="position:absolute; left:{{ t.gmid|add:'-8' }}px; top:{{ t.gy }}px; width:16px; height:16px; background:#7c3aed; transform:rotate(45deg); border-radius:2px; cursor:pointer; z-index:3"></div>
                                 {% else %}
-                                <div onclick="abrirTarea({{ t.id }})" title="{{ t.titulo }} · {{ t.avance|floatformat:0 }}%" style="position:absolute; left:{{ t.gx }}px; top:{{ t.gy }}px; width:{{ t.gw }}px; height:{{ gantt.bar_h }}px; border-radius:4px; cursor:pointer; z-index:3;" class="flex items-center px-1.5 overflow-hidden {% if t.es_resumen %}bg-slate-700{% elif t.estado == 'COMP' %}bg-emerald-500{% elif t.estado == 'BLOQ' %}bg-rose-500{% elif t.estado == 'PEND' %}bg-slate-400{% else %}bg-brand{% endif %}">
-                                    {% if not t.es_resumen %}<span class="text-[9px] font-bold text-white whitespace-nowrap">{{ t.avance|floatformat:0 }}%</span>{% endif %}
+                                <div {% if t.es_resumen or t.es_bloqueante %}onclick="abrirTarea({{ t.id }})"{% else %}data-id="{{ t.id }}"{% endif %} title="{{ t.titulo }} · {{ t.avance|floatformat:0 }}%" style="position:absolute; left:{{ t.gx }}px; top:{{ t.gy }}px; width:{{ t.gw }}px; height:{{ gantt.bar_h }}px; border-radius:4px; cursor:pointer; z-index:3;" class="flex items-center px-1.5 overflow-hidden {% if not t.es_resumen and not t.es_bloqueante %}g-drag {% endif %}{% if t.es_resumen %}bg-slate-700{% elif t.estado == 'COMP' %}bg-emerald-500{% elif t.estado == 'BLOQ' %}bg-rose-500{% elif t.estado == 'PEND' %}bg-slate-400{% else %}bg-brand{% endif %}">
+                                    {% if not t.es_resumen %}<span class="text-[9px] font-bold text-white whitespace-nowrap pointer-events-none">{{ t.avance|floatformat:0 }}%</span>{% endif %}
                                 </div>
                                 {% endif %}
                             {% endif %}{% endfor %}
@@ -134,7 +134,7 @@
                 <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-slate-400 inline-block"></i>Pendiente</span>
                 <span class="flex items-center gap-1.5"><i class="w-4 h-2 rounded-sm bg-rose-500 inline-block"></i>Bloqueada</span>
                 <span class="flex items-center gap-1.5"><span style="width:9px;height:9px;background:#7c3aed;transform:rotate(45deg);display:inline-block"></span>Hito</span>
-                <span class="flex items-center gap-1.5 ml-auto text-slate-400 italic">Las flechas son dependencias. Sin fechas → no aparece barra.</span>
+                <span class="flex items-center gap-1.5 ml-auto text-slate-400 italic"><i class="fa-solid fa-arrows-left-right-to-line"></i> Arrastra una barra para moverla, o su borde derecho para la duración. Sin fechas → no hay barra.</span>
             </div>
         </div>
     </div>
@@ -228,6 +228,62 @@
 
 <script>
 const TAB_PK = {{ tablero.pk }};
+const GANTT_CW = {{ gantt.cw }};
+const GANTT_DIAS = [{% for d in gantt.dias %}"{{ d.fecha }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+const CSRF = '{{ csrf_token }}';
+const POST_URL = '{% url "admon_tareas:tablero_detalle" tablero.pk %}';
+
+// ── Arrastre/redimensión de barras del Gantt ──
+function initGanttDrag(){
+    const cont = document.getElementById('ganttRows');
+    if(!cont) return;
+    let drag = null;
+    const clamp = i => Math.max(0, Math.min(GANTT_DIAS.length - 1, i));
+
+    cont.querySelectorAll('.g-drag').forEach(bar => {
+        bar.addEventListener('mousemove', e => {
+            if(drag) return;
+            const r = bar.getBoundingClientRect();
+            bar.style.cursor = (!bar.dataset.hito && e.clientX > r.right - 9) ? 'col-resize' : 'grab';
+        });
+        bar.addEventListener('mousedown', e => {
+            e.preventDefault();
+            const r = bar.getBoundingClientRect();
+            const resize = !bar.dataset.hito && e.clientX > r.right - 9;
+            drag = { bar, x0: e.clientX, left0: parseFloat(bar.style.left) || 0,
+                     w0: parseFloat(bar.style.width) || 16, mode: resize ? 'resize' : 'move',
+                     moved: false, isBar: !bar.dataset.hito };
+            bar.style.zIndex = 30; bar.style.opacity = .85;
+        });
+    });
+
+    window.addEventListener('mousemove', e => {
+        if(!drag) return;
+        const dx = e.clientX - drag.x0;
+        if(Math.abs(dx) > 2) drag.moved = true;
+        if(drag.mode === 'move'){
+            drag.bar.style.left = Math.max(0, Math.round((drag.left0 + dx) / GANTT_CW) * GANTT_CW) + 'px';
+        } else {
+            drag.bar.style.width = Math.max(GANTT_CW, Math.round((drag.w0 + dx) / GANTT_CW) * GANTT_CW) + 'px';
+        }
+    });
+
+    window.addEventListener('mouseup', () => {
+        if(!drag) return;
+        const d = drag; drag = null;
+        d.bar.style.zIndex = 3; d.bar.style.opacity = 1;
+        if(!d.moved){ abrirTarea(d.bar.dataset.id); return; }
+        const startIdx = clamp(Math.round(parseFloat(d.bar.style.left) / GANTT_CW));
+        let endIdx = startIdx;
+        if(d.isBar){ endIdx = clamp(startIdx + Math.round(parseFloat(d.bar.style.width) / GANTT_CW) - 1); }
+        const fd = new FormData();
+        fd.append('accion', 'mover_tarea'); fd.append('tarea_id', d.bar.dataset.id);
+        fd.append('inicio', GANTT_DIAS[startIdx]); fd.append('fin', GANTT_DIAS[endIdx]);
+        fd.append('csrfmiddlewaretoken', CSRF);
+        fetch(POST_URL, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json()).then(() => location.reload()).catch(() => location.reload());
+    });
+}
 function cambiarVista(v){
     document.querySelectorAll('.vista-tareas').forEach(el=>el.classList.toggle('hidden', el.dataset.vista !== v));
     document.querySelectorAll('.tab-tareas').forEach(b=>{
@@ -264,6 +320,7 @@ function cerrarTarea(){
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') cerrarTarea(); });
 (function(){
     try { const v = localStorage.getItem('tareas_vista_'+TAB_PK); if(v && v!=='lista') cambiarVista(v); } catch(e){}
+    initGanttDrag();
     const p=new URLSearchParams(location.search).get('t'); if(p) abrirTarea(p);
 })();
 </script>

@@ -35,6 +35,20 @@ def sumar_dias_habiles(fecha, n):
     return d
 
 
+def dias_habiles_entre(a, b):
+    """Cuenta los días hábiles (lun–vie) entre a y b, inclusivo. Mínimo 1."""
+    if not a or not b:
+        return None
+    if b < a:
+        a, b = b, a
+    n, d = 0, a
+    while d <= b:
+        if d.weekday() < 5:
+            n += 1
+        d = d + datetime.timedelta(days=1)
+    return n or 1
+
+
 def calcular_fin_plan(inicio, dias, horas):
     """fecha fin = inicio + (días hábiles), contando el día de inicio como el 1.
     Si solo hay horas (día 0) la tarea termina el mismo día. Sin inicio o sin
