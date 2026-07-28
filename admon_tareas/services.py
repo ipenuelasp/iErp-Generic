@@ -353,6 +353,35 @@ def confirmar_asignacion(asignacion, usuario, *, completado=True, nota=''):
 # --------------------------------------------------------------------------
 # Bloqueos (generan una tarea bloqueante, fuera del WBS)
 # --------------------------------------------------------------------------
+def _delay_bloqueo(inicio, fin):
+    """Días hábiles que un bloqueo (de `inicio` a `fin`) le agrega a la tarea."""
+    if not inicio or not fin or fin <= inicio:
+        return 0
+    return (dias_habiles_entre(inicio, fin) or 1) - 1
+
+
+def _aplicar_delay_bloqueo(dep, bloqueada, delay_nuevo, usuario):
+    """Empuja (o regresa) el fin de la tarea bloqueada por la diferencia entre el
+    retraso ya aplicado (guardado en dep.desfase_dias) y el nuevo. Luego recorre
+    en cascada a sus dependientes de cronograma."""
+    impuesto = dep.desfase_dias or 0
+    diff = delay_nuevo - impuesto
+    if dep.desfase_dias != delay_nuevo:
+        dep.desfase_dias = delay_nuevo
+        dep.save(update_fields=['desfase_dias'])
+    if diff == 0 or not bloqueada.fecha_fin_plan:
+        return
+    bloqueada.fecha_fin_plan = desplazar_habiles(bloqueada.fecha_fin_plan, diff)
+    if bloqueada.fecha_inicio_plan:
+        bloqueada.duracion_dias = dias_habiles_entre(
+            bloqueada.fecha_inicio_plan, bloqueada.fecha_fin_plan)
+    bloqueada.save(update_fields=['fecha_fin_plan', 'duracion_dias'])
+    registrar_actividad(
+        bloqueada, usuario, 'FECHA',
+        detalle=f"Fin recorrido {diff:+d} día(s) hábil(es) por el bloqueo")
+    reprogramar_cascada(bloqueada, usuario)
+
+
 @transaction.atomic
 def bloquear(*, tarea, usuario, motivo, titulo, asignados_ids=None, fecha_compromiso=None):
     """Marca una tarea como bloqueada CREANDO la tarea que la desbloquea. En una
@@ -373,7 +402,7 @@ def bloquear(*, tarea, usuario, motivo, titulo, asignados_ids=None, fecha_compro
         TareaAsignacion.objects.get_or_create(
             tarea=bloqueante, usuario_id=uid,
             defaults={'rol': 'RESP', 'asignado_por': usuario})
-    TareaDependencia.objects.create(
+    dep = TareaDependencia.objects.create(
         predecesora=bloqueante, sucesora=tarea, tipo='FS', origen='BLOQUEO',
         motivo=motivo, creado_por=usuario)
     tarea.estado = 'BLOQ'
@@ -382,6 +411,11 @@ def bloquear(*, tarea, usuario, motivo, titulo, asignados_ids=None, fecha_compro
                         detalle=f"Bloqueada · {motivo}. Se creó {bloqueante.folio}.")
     registrar_actividad(bloqueante, usuario, 'CREADA',
                         detalle=f"Tarea bloqueante para desbloquear {tarea.folio}")
+    # Retraso estimado por el bloqueo: empuja el fin de la tarea (y su cadena)
+    # los días hábiles que se espera dure (desde hoy hasta la fecha compromiso).
+    delay = _delay_bloqueo(bloqueante.fecha_inicio_plan, fecha_compromiso)
+    if delay:
+        _aplicar_delay_bloqueo(dep, tarea, delay, usuario)
     recalcular_tablero(tablero)
     return bloqueante
 
@@ -394,6 +428,11 @@ def resolver_bloqueos_de(bloqueante, usuario):
             .filter(predecesora=bloqueante, origen='BLOQUEO', resuelta=False)
             .select_related('sucesora'))
     for d in deps:
+        # Ajusta el retraso al REAL (día en que se resolvió vs lo estimado) y
+        # recorre la tarea y su cadena en consecuencia.
+        resol = bloqueante.fecha_fin_real or timezone.localdate()
+        delay_real = _delay_bloqueo(bloqueante.fecha_inicio_plan, resol)
+        _aplicar_delay_bloqueo(d, d.sucesora, delay_real, usuario)
         d.resuelta = True
         d.resuelta_en = timezone.now()
         d.save(update_fields=['resuelta', 'resuelta_en'])

@@ -195,11 +195,12 @@ class TableroDetalleView(LoginRequiredMixin, View):
         tareas = list(tablero.tareas.select_related('padre')
                       .prefetch_related('asignaciones__usuario')
                       .order_by('orden', 'ruta_wbs', 'id'))
-        # Orden jerárquico para la Lista: raíces por orden, luego sus hijos (WBS).
-        ordenadas = _orden_jerarquico(tareas)
-        # Marca las tareas bloqueadas por dependencias no cumplidas.
         deps = (TareaDependencia.objects.filter(sucesora__tablero=tablero)
                 .select_related('predecesora'))
+        # Cada bloqueante se muestra debajo de la tarea que bloquea.
+        bloqueante_de = {d.predecesora_id: d.sucesora_id for d in deps if d.origen == 'BLOQUEO'}
+        ordenadas = _orden_jerarquico(tareas, bloqueante_de)
+        # Marca las tareas bloqueadas por dependencias no cumplidas.
         espera = {}
         for d in deps:
             if services._bloquea(d):
@@ -348,7 +349,12 @@ class TableroDetalleView(LoginRequiredMixin, View):
                 return volver
             asignados = [u for u in request.POST.getlist('asignados')
                          if _usuarios_empresa(empresa).filter(id=u).exists()]
-            fecha = request.POST.get('fecha_compromiso') or None
+            import datetime as _dt
+            try:
+                fecha = _dt.datetime.strptime(
+                    (request.POST.get('fecha_compromiso') or '').strip(), '%Y-%m-%d').date()
+            except ValueError:
+                fecha = None
             bloqueante = services.bloquear(
                 tarea=tarea, usuario=request.user, motivo=motivo, titulo=titulo,
                 asignados_ids=asignados, fecha_compromiso=fecha)
@@ -729,9 +735,11 @@ def _datos_gantt(ordenadas, tablero, deps):
     }
 
 
-def _orden_jerarquico(tareas):
+def _orden_jerarquico(tareas, bloqueante_de=None):
     """Ordena las tareas para la Lista: cada raíz seguida de su subárbol (por
-    orden/WBS). Las bloqueantes (fuera del WBS) van al final."""
+    orden/WBS). Cada tarea bloqueante se coloca justo DEBAJO de la tarea que
+    bloquea (sin ser su hija). `bloqueante_de`: {id_bloqueante: id_bloqueada}."""
+    bloqueante_de = bloqueante_de or {}
     por_padre = {}
     for t in tareas:
         por_padre.setdefault(t.padre_id, []).append(t)
@@ -747,6 +755,19 @@ def _orden_jerarquico(tareas):
             _walk(t.id)
 
     _walk(None)
-    # Bloqueantes al final
-    salida += [t for t in tareas if t.es_bloqueante]
-    return salida
+
+    # Inserta las bloqueantes debajo de la tarea que bloquean.
+    bloqueantes = [t for t in tareas if t.es_bloqueante]
+    por_bloqueada = {}
+    for b in bloqueantes:
+        por_bloqueada.setdefault(bloqueante_de.get(b.id), []).append(b)
+    resultado, colocadas = [], set()
+    for t in salida:
+        resultado.append(t)
+        for b in por_bloqueada.get(t.id, []):
+            resultado.append(b)
+            colocadas.add(b.id)
+    for b in bloqueantes:            # bloqueadas ausentes → al final
+        if b.id not in colocadas:
+            resultado.append(b)
+    return resultado
