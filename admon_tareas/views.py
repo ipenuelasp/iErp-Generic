@@ -703,10 +703,28 @@ def _datos_gantt(ordenadas, tablero, deps):
         span[t.id] = (si, ei) if (si is not None and ei is not None) else None
         return span[t.id]
 
+    # Intervalos de bloqueo por tarea (para partir su barra: split task).
+    bloqueos_por_tarea = {}
+    for dep in deps:
+        if dep.origen != 'BLOQUEO':
+            continue
+        b = dep.predecesora
+        bsi = idx_de(b.fecha_inicio_plan)
+        fin_b = b.fecha_fin_real or b.fecha_fin_plan
+        bei = idx_de(fin_b) if fin_b else bsi
+        if bsi is None:
+            continue
+        if bei is None:
+            bei = bsi
+        bloqueos_por_tarea.setdefault(dep.sucesora_id, []).append((bsi, bei))
+
     fila = {}
     for row, t in enumerate(ordenadas):
         t.grow = row
         t.gy = row * ROWH + BAR_TOP
+        t.gsplit = False
+        t.gsegs = None
+        t.gconn = None
         sp = _span(t)
         if sp:
             si, ei = sp
@@ -717,6 +735,26 @@ def _datos_gantt(ordenadas, tablero, deps):
             t.gw = (ei - si + 1) * CW
             t.gmid = si * CW + CW / 2   # centro (para el hito)
             fila[t.id] = (si, ei, row)
+            # Split: parte la barra alrededor del/los periodo(s) de bloqueo.
+            if (not t.es_resumen and not t.es_hito and not t.es_bloqueante
+                    and not t.gbloq_punto and bloqueos_por_tarea.get(t.id)):
+                segs, cur = [], si
+                for bsi, bei in sorted(bloqueos_por_tarea[t.id]):
+                    bsi, bei = max(bsi, si), min(bei, ei)
+                    if bei < si or bsi > ei:
+                        continue
+                    if bsi > cur:
+                        segs.append((cur, bsi - 1))
+                    cur = max(cur, bei + 1)
+                if cur <= ei:
+                    segs.append((cur, ei))
+                segs = [(a, b) for (a, b) in segs if b >= a]
+                if len(segs) > 1:
+                    t.gsplit = True
+                    t.gsegs = [{'x': a * CW, 'w': (b - a + 1) * CW} for (a, b) in segs]
+                    fseg, lseg = t.gsegs[0], t.gsegs[-1]
+                    x0 = fseg['x'] + fseg['w']
+                    t.gconn = {'x': x0, 'w': lseg['x'] - x0, 'y': t.gy + BAR_H // 2}
         else:
             t.gvis = False
 
