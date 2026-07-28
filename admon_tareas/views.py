@@ -646,6 +646,11 @@ def _datos_gantt(ordenadas, tablero, deps):
     for t in ordenadas:
         si = idx_de(t.fecha_inicio_plan)
         ei = idx_de(t.fecha_fin_plan) if not t.es_hito else si
+        # Una tarea bloqueante sin fecha compromiso se muestra como punto (rombo)
+        # en su inicio, para que aparezca en el cronograma.
+        t.gbloq_punto = t.es_bloqueante and not t.fecha_fin_plan
+        if t.gbloq_punto and si is not None:
+            ei = si
         propio[t.id] = (si, ei)
 
     # Hijos por padre (las bloqueantes viven fuera de la jerarquía).
