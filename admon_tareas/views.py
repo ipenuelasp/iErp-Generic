@@ -231,6 +231,7 @@ class TableroDetalleView(LoginRequiredMixin, View):
             'estados': Tarea.ESTADO,
             'prioridades': Tarea.PRIORIDAD,
             'roles': TareaAsignacion.ROL,
+            'tipos_dep': TareaDependencia.TIPO,
             'seccion': 'tareas',
         }
         return render(request, self.template_name, context)
@@ -258,14 +259,35 @@ class TableroDetalleView(LoginRequiredMixin, View):
             if request.POST.get('padre'):
                 padre = tablero.tareas.filter(id=request.POST.get('padre')).first()
             ini, fin, dias, horas = _fechas_desde_post(request)
-            services.crear_tarea(
+            nueva = services.crear_tarea(
                 tablero=tablero, usuario=request.user, titulo=titulo, padre=padre,
                 prioridad=request.POST.get('prioridad') or 'MEDIA',
                 fecha_inicio_plan=ini, fecha_fin_plan=fin,
                 duracion_dias=dias, duracion_horas=horas,
                 es_hito=bool(request.POST.get('es_hito')),
                 perfil_sugerido=(request.POST.get('perfil_sugerido') or '').strip())
-            messages.success(request, "Tarea agregada.")
+            # Dependencia opcional capturada al crear (agiliza el armado).
+            pred = tablero.tareas.filter(id=request.POST.get('predecesora')).first() \
+                if request.POST.get('predecesora') else None
+            if pred and pred.id != nueva.id:
+                tipo = request.POST.get('tipo_dep') or 'FS'
+                if tipo not in dict(TareaDependencia.TIPO):
+                    tipo = 'FS'
+                try:
+                    desfase = int(request.POST.get('desfase_dias') or 0)
+                except ValueError:
+                    desfase = 0
+                if not services.crearia_ciclo(pred, nueva):
+                    TareaDependencia.objects.create(
+                        predecesora=pred, sucesora=nueva, tipo=tipo,
+                        desfase_dias=desfase, origen='PLANEADA', creado_por=request.user)
+                    services.reprogramar_cascada(pred, request.user)
+                    services.recalcular_tablero(tablero)
+                    messages.success(request, f"Tarea agregada, depende de {pred.folio}.")
+                else:
+                    messages.warning(request, "Tarea agregada, pero la dependencia crearía un ciclo y se omitió.")
+            else:
+                messages.success(request, "Tarea agregada.")
             return volver
 
         # A partir de aquí, acciones sobre una tarea concreta

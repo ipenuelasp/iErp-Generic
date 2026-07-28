@@ -221,6 +221,21 @@
                 <p class="text-[10px] text-slate-400 mt-2 ml-1 italic">Con inicio + días hábiles se calcula el <b>fin</b> (sin fines de semana). O captura el fin directo abajo.</p>
                 <div class="mt-2"><label class="text-[10px] font-bold text-slate-400 ml-1">Fin plan (manual, opcional)</label><input type="date" name="fecha_fin_plan" class="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold"></div>
             </div>
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Depende de (opcional)</label>
+                <select name="predecesora" class="w-full mt-1">
+                    <option value="">No depende de ninguna</option>
+                    {% for c in tareas %}{% if not c.es_bloqueante %}<option value="{{ c.id }}">{% if c.ruta_wbs %}{{ c.ruta_wbs }} · {% endif %}{{ c.titulo }}</option>{% endif %}{% endfor %}
+                </select>
+                <div class="grid grid-cols-2 gap-2 mt-2">
+                    <div><label class="text-[9px] font-bold text-slate-400 ml-1">Tipo</label>
+                        <select name="tipo_dep" class="w-full mt-0.5 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs font-bold">
+                            {% for k,v in tipos_dep %}<option value="{{ k }}" {% if k == 'FS' %}selected{% endif %}>{{ v }}</option>{% endfor %}
+                        </select></div>
+                    <div><label class="text-[9px] font-bold text-slate-400 ml-1">Desfase (días)</label>
+                        <input type="number" name="desfase_dias" value="0" step="1" class="w-full mt-0.5 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs font-bold text-right"></div>
+                </div>
+            </div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="document.getElementById('modalCrear').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cancelar</button>
                 <button type="submit" class="bg-brand text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Agregar</button>
