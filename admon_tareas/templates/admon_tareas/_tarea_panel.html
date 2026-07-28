@@ -134,7 +134,7 @@
         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Depende de · {{ dependencias|length }}</p>
         {% for d in dependencias %}
         <div onclick="abrirTarea({{ d.predecesora_id }})" class="flex items-center gap-2 py-2 border-b border-slate-50 cursor-pointer hover:bg-slate-50/60 rounded px-1">
-            <span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500" title="{{ d.get_tipo_display }}">{{ d.tipo }}</span>
+            <span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500" title="{{ d.get_tipo_display }}">{{ d.tipo }}{% if d.desfase_dias %} {{ d.desfase_dias|stringformat:"+d" }}d{% endif %}</span>
             <span class="text-[10px] font-mono text-slate-300">{{ d.predecesora.ruta_wbs }}</span>
             <span class="text-[13px] font-bold text-slate-600 flex-1 truncate">{{ d.predecesora.titulo }}</span>
             {% include 'admon_tareas/_estado_badge.html' with estado=d.predecesora.estado display=d.predecesora.get_estado_display %}
@@ -144,23 +144,33 @@
             </form>
         </div>
         {% empty %}<p class="text-[12px] text-slate-400 italic">No espera a ninguna otra tarea.</p>{% endfor %}
-        <form method="POST" action="{{ post_url }}" class="flex items-center gap-2 mt-3">{% csrf_token %}
+        <form method="POST" action="{{ post_url }}" class="mt-3 space-y-2">{% csrf_token %}
             <input type="hidden" name="accion" value="agregar_dependencia"><input type="hidden" name="tarea_id" value="{{ t.id }}">
-            <select name="predecesora" required class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold">
+            <select name="predecesora" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold">
                 <option value="">Debe terminar antes…</option>
                 {% for c in candidatas %}<option value="{{ c.id }}">{% if c.ruta_wbs %}{{ c.ruta_wbs }} · {% endif %}{{ c.titulo }}</option>{% endfor %}
             </select>
-            <select name="tipo_dep" class="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs font-bold" title="Tipo de dependencia">
-                {% for k,v in tipos_dep %}<option value="{{ k }}" {% if k == 'FS' %}selected{% endif %}>{{ v }}</option>{% endfor %}
-            </select>
-            <button class="bg-brand text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase"><i class="fa-solid fa-plus"></i></button>
+            <div class="flex items-end gap-2">
+                <div class="flex-1">
+                    <label class="text-[9px] font-bold text-slate-400 ml-1">Tipo</label>
+                    <select name="tipo_dep" class="w-full mt-0.5 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs font-bold" title="Tipo de dependencia">
+                        {% for k,v in tipos_dep %}<option value="{{ k }}" {% if k == 'FS' %}selected{% endif %}>{{ v }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="w-24">
+                    <label class="text-[9px] font-bold text-slate-400 ml-1">Desfase (días)</label>
+                    <input type="number" name="desfase_dias" value="0" step="1" class="w-full mt-0.5 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs font-bold text-right" title="Días de holgura: + separa, − adelanta/traslapa">
+                </div>
+                <button class="bg-brand text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase h-[34px]"><i class="fa-solid fa-plus"></i></button>
+            </div>
         </form>
         <div class="mt-2 rounded-lg bg-slate-50 border border-slate-100 p-2.5 space-y-1">
             <p class="text-[10px] text-slate-500"><b class="font-mono text-slate-700">FS</b> · Fin → Inicio — la sucesora <b>no empieza</b> hasta que la otra <b>termine</b>. <span class="text-slate-400">(la más común)</span></p>
             <p class="text-[10px] text-slate-500"><b class="font-mono text-slate-700">SS</b> · Inicio → Inicio — <b>empiezan al mismo tiempo</b> (arranca cuando la otra arranca).</p>
             <p class="text-[10px] text-slate-500"><b class="font-mono text-slate-700">FF</b> · Fin → Fin — <b>terminan al mismo tiempo</b>.</p>
             <p class="text-[10px] text-slate-500"><b class="font-mono text-slate-700">SF</b> · Inicio → Fin — la sucesora termina cuando la otra empieza <span class="text-slate-400">(poco usada)</span>.</p>
-            <p class="text-[9px] text-slate-400 italic pt-0.5">Hoy bloquean el arranque FS y SS; FF y SF quedan como referencia para el cronograma.</p>
+            <p class="text-[9px] text-slate-400 italic pt-0.5">Bloquean el arranque FS y SS; FF y SF son referencia del cronograma.</p>
+            <p class="text-[9px] text-slate-400 italic">Desfase: días de holgura. <b>+2</b> = deja 2 días entre ambas; <b>−1</b> = puede traslaparse un día. 0 = pegadas.</p>
         </div>
     </div>
 

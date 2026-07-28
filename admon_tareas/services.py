@@ -48,6 +48,13 @@ def restar_dias_habiles(fecha, n):
     return d
 
 
+def desplazar_habiles(fecha, n):
+    """Desplaza n días hábiles con signo (n>0 hacia adelante, n<0 hacia atrás)."""
+    if not fecha:
+        return None
+    return sumar_dias_habiles(fecha, n) if n >= 0 else restar_dias_habiles(fecha, -n)
+
+
 def dias_habiles_entre(a, b):
     """Cuenta los días hábiles (lun–vie) entre a y b, inclusivo. Mínimo 1."""
     if not a or not b:
@@ -116,14 +123,14 @@ def _inicio_requerido(suc):
             continue
         lag = dep.desfase_dias or 0
         if dep.tipo == 'FS':          # empieza después de que la otra termina
-            reqs.append(sumar_dias_habiles(p.fecha_fin_plan, 1 + lag))
+            reqs.append(desplazar_habiles(p.fecha_fin_plan, 1 + lag))
         elif dep.tipo == 'SS':        # empieza cuando la otra empieza
-            reqs.append(sumar_dias_habiles(p.fecha_inicio_plan, lag))
+            reqs.append(desplazar_habiles(p.fecha_inicio_plan, lag))
         elif dep.tipo == 'FF':        # termina cuando la otra termina
-            fin = sumar_dias_habiles(p.fecha_fin_plan, lag)
+            fin = desplazar_habiles(p.fecha_fin_plan, lag)
             reqs.append(restar_dias_habiles(fin, dur - 1))
         else:                          # SF
-            fin = sumar_dias_habiles(p.fecha_inicio_plan, lag)
+            fin = desplazar_habiles(p.fecha_inicio_plan, lag)
             reqs.append(restar_dias_habiles(fin, dur - 1))
     return max(reqs) if reqs else None
 

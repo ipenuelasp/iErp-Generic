@@ -403,20 +403,34 @@ class TableroDetalleView(LoginRequiredMixin, View):
             tipo = request.POST.get('tipo_dep') or 'FS'
             if tipo not in dict(TareaDependencia.TIPO):
                 tipo = 'FS'
+            try:
+                desfase = int(request.POST.get('desfase_dias') or 0)
+            except ValueError:
+                desfase = 0
+            existente = TareaDependencia.objects.filter(predecesora=pred, sucesora=tarea).first() if pred else None
             if not pred or pred.id == tarea.id:
                 messages.error(request, "Elige una tarea válida.")
-            elif TareaDependencia.objects.filter(predecesora=pred, sucesora=tarea).exists():
-                messages.info(request, "Esa dependencia ya existe.")
-            elif services.crearia_ciclo(pred, tarea):
+            elif not existente and services.crearia_ciclo(pred, tarea):
                 messages.error(request, "No se puede: crearía un ciclo de dependencias.")
             else:
-                TareaDependencia.objects.create(
-                    predecesora=pred, sucesora=tarea, tipo=tipo,
-                    origen='PLANEADA', creado_por=request.user)
+                if existente:
+                    existente.tipo = tipo
+                    existente.desfase_dias = desfase
+                    existente.save(update_fields=['tipo', 'desfase_dias'])
+                    msg = "Dependencia actualizada."
+                else:
+                    TareaDependencia.objects.create(
+                        predecesora=pred, sucesora=tarea, tipo=tipo,
+                        desfase_dias=desfase, origen='PLANEADA', creado_por=request.user)
+                    msg = "Dependencia agregada."
+                lag_txt = (f" {'+' if desfase > 0 else ''}{desfase}d" if desfase else "")
                 services.registrar_actividad(
                     tarea, request.user, 'DEPENDENCIA',
-                    detalle=f"Ahora depende de {pred.folio} · {pred.titulo} ({tipo})")
-                messages.success(request, "Dependencia agregada.")
+                    detalle=f"Depende de {pred.folio} · {pred.titulo} ({tipo}{lag_txt})")
+                # Reposiciona la sucesora (y su cadena) para respetar la dependencia.
+                services.reprogramar_cascada(pred, request.user)
+                services.recalcular_tablero(tablero)
+                messages.success(request, msg)
 
         elif accion == 'quitar_dependencia' and tarea:
             TareaDependencia.objects.filter(
