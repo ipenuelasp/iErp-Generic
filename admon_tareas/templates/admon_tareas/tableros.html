@@ -13,17 +13,29 @@
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {% for t in tableros %}
         <a href="{% url 'admon_tareas:tablero_detalle' t.pk %}" class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 hover:-translate-y-1 transition-all block">
-            <div class="flex items-center gap-2 mb-2">
+            <div class="flex items-center gap-2 mb-2 flex-wrap">
                 <span class="text-[10px] font-mono text-slate-400">{{ t.codigo }}</span>
                 {% if t.tipo %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-500">{{ t.tipo.nombre }}</span>{% endif %}
-                {% if t.n_bloq %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-rose-50 text-rose-500"><i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ t.n_bloq }} bloqueada(s)</span>{% endif %}
+                {% if t.stats.salud == 'completo' %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-50 text-emerald-600"><i class="fa-solid fa-circle-check mr-1"></i>Completo</span>
+                {% elif t.stats.salud == 'atrasado' %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-rose-50 text-rose-600"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Atrasado</span>
+                {% elif t.stats.n %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-50 text-emerald-600"><i class="fa-solid fa-circle-check mr-1"></i>En tiempo</span>{% endif %}
+                {% if t.stats.reprog %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded {% if t.stats.reprog > 0 %}bg-amber-50 text-amber-600{% else %}bg-blue-50 text-blue-600{% endif %}" title="Reprogramado vs la primera vista (línea base)"><i class="fa-solid fa-calendar-day mr-1"></i>{{ t.stats.reprog|stringformat:"+d" }}d</span>{% endif %}
             </div>
             <h3 class="text-lg font-black text-slate-800 leading-tight mb-1">{{ t.nombre }}</h3>
-            <p class="text-xs text-slate-400 font-medium mb-4">{{ t.descripcion|truncatechars:90|default:"Sin descripción" }}</p>
-            <div class="flex items-center gap-5 pt-3 border-t border-slate-50">
-                <div><p class="text-lg font-black text-slate-800">{{ t.n_tareas }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Tareas</p></div>
-                <div><p class="text-lg font-black text-emerald-600">{{ t.n_comp }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Completas</p></div>
-                {% if t.responsable %}<div class="ml-auto text-right"><p class="text-xs font-bold text-slate-600">{{ t.responsable.get_full_name|default:t.responsable.username }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Responsable</p></div>{% endif %}
+            <p class="text-xs text-slate-400 font-medium mb-3">{{ t.descripcion|truncatechars:90|default:"Sin descripción" }}</p>
+            <div class="mb-3">
+                <div class="flex items-center justify-between mb-1"><span class="text-[10px] font-black text-slate-400 uppercase tracking-wide">Avance</span><span class="text-xs font-black text-slate-700">{{ t.stats.avance }}%</span></div>
+                <div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full {% if t.stats.salud == 'atrasado' %}bg-rose-500{% elif t.stats.avance == 100 %}bg-emerald-500{% else %}bg-brand{% endif %}" style="width:{{ t.stats.avance }}%"></div></div>
+            </div>
+            <div class="flex items-center gap-4 pt-3 border-t border-slate-50 text-center">
+                <div><p class="text-base font-black text-slate-800">{{ t.stats.n }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Tareas</p></div>
+                <div><p class="text-base font-black text-emerald-600">{{ t.stats.comp }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Completas</p></div>
+                {% if t.stats.atrasadas %}<div><p class="text-base font-black text-rose-600">{{ t.stats.atrasadas }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Atrasadas</p></div>{% endif %}
+                {% if t.stats.bloq %}<div><p class="text-base font-black text-rose-600">{{ t.stats.bloq }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Bloqueadas</p></div>{% endif %}
+                <div class="ml-auto text-right">
+                    {% if t.stats.fin %}<p class="text-xs font-bold text-slate-600">{{ t.stats.ini|date:"d/m" }} → {{ t.stats.fin|date:"d/m/y" }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Fechas plan</p>
+                    {% elif t.responsable %}<p class="text-xs font-bold text-slate-600">{{ t.responsable.get_full_name|default:t.responsable.username }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Responsable</p>{% endif %}
+                </div>
             </div>
         </a>
         {% empty %}

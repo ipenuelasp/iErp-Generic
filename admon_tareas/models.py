@@ -90,6 +90,8 @@ class Tablero(models.Model):
                                     null=True, blank=True, related_name='tableros_a_cargo')
     fecha_inicio = models.DateField(null=True, blank=True)
     fecha_fin = models.DateField(null=True, blank=True)
+    # Línea base: fin planeado "de la primera vista" para medir reprogramaciones.
+    fecha_fin_base = models.DateField(null=True, blank=True)
     color = models.CharField(max_length=7, default='#4f46e5')
     activo = models.BooleanField(default=True)
 

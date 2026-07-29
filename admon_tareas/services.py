@@ -302,6 +302,20 @@ def recalcular_tablero(tablero):
 
     _rollup_avance(tablero)
     _estabilizar_fechas(tablero)
+    _capturar_linea_base(tablero)
+
+
+def _capturar_linea_base(tablero):
+    """Fija la línea base (fin planeado de la primera vista) la primera vez que el
+    tablero ya tiene un fin calculable. Después queda fija hasta que se re-fije."""
+    if tablero.fecha_fin_base:
+        return
+    fin = (Tarea.objects.filter(tablero=tablero, es_bloqueante=False,
+                                fecha_fin_plan__isnull=False)
+           .aggregate(m=Max('fecha_fin_plan'))['m'])
+    if fin:
+        tablero.fecha_fin_base = fin
+        tablero.save(update_fields=['fecha_fin_base'])
 
 
 def _rollup_fechas(tablero):

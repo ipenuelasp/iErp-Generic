@@ -43,6 +43,39 @@ def _usuarios_empresa(empresa):
         'first_name', 'username')
 
 
+def _stats_tablero(tablero, dets):
+    """Métricas para la tarjeta/encabezado: avance, atrasadas, bloqueadas,
+    ventana de fechas, reprogramación vs la línea base y salud."""
+    hojas = [x for x in dets if not x.es_resumen and not x.es_bloqueante]
+    hoy = timezone.localdate()
+    n = len(hojas)
+    comp = sum(1 for x in hojas if x.estado == 'COMP')
+    avance = round(sum(float(x.avance) for x in hojas) / n) if n else 0
+    atrasadas = sum(1 for x in hojas
+                    if x.fecha_fin_plan and x.fecha_fin_plan < hoy
+                    and x.estado not in ('COMP', 'CANC'))
+    bloq = sum(1 for x in dets if x.estado == 'BLOQ')
+    fins = [x.fecha_fin_plan for x in hojas if x.fecha_fin_plan]
+    inis = [x.fecha_inicio_plan for x in hojas if x.fecha_inicio_plan]
+    fin_actual = max(fins) if fins else None
+    ini_actual = min(inis) if inis else None
+    reprog = None
+    if tablero.fecha_fin_base and fin_actual:
+        if fin_actual > tablero.fecha_fin_base:
+            reprog = services.dias_habiles_entre(tablero.fecha_fin_base, fin_actual) - 1
+        elif fin_actual < tablero.fecha_fin_base:
+            reprog = -(services.dias_habiles_entre(fin_actual, tablero.fecha_fin_base) - 1)
+    if n and comp == n:
+        salud = 'completo'
+    elif atrasadas:
+        salud = 'atrasado'
+    else:
+        salud = 'en_tiempo'
+    return {'n': n, 'comp': comp, 'avance': avance, 'atrasadas': atrasadas,
+            'bloq': bloq, 'ini': ini_actual, 'fin': fin_actual,
+            'reprog': reprog or None, 'salud': salud}
+
+
 def _puede_cerrar(user, tablero):
     """Quién puede aprobar/rechazar el cierre: el responsable del tablero, el
     dueño (OWNER) o un superusuario."""
@@ -101,13 +134,9 @@ class TablerosView(LoginRequiredMixin, View):
         if not empresa:
             return redirect('home')
         tableros = list(Tablero.objects.operativos().filter(empresa=empresa)
-                        .select_related('responsable'))
+                        .select_related('responsable').prefetch_related('tareas'))
         for t in tableros:
-            dets = list(t.tareas.all())
-            hojas = [x for x in dets if not x.es_resumen and not x.es_bloqueante]
-            t.n_tareas = len(hojas)
-            t.n_comp = sum(1 for x in hojas if x.estado == 'COMP')
-            t.n_bloq = sum(1 for x in dets if x.estado == 'BLOQ')
+            t.stats = _stats_tablero(t, list(t.tareas.all()))
         plantillas = list(Tablero.objects.filter(empresa=empresa, es_plantilla=True, activo=True)
                           .order_by('nombre'))
         for p in plantillas:
@@ -226,13 +255,7 @@ class TableroDetalleView(LoginRequiredMixin, View):
                     d.predecesora.ruta_wbs or d.predecesora.folio)
         for t in ordenadas:
             t.espera = espera.get(t.id)
-        hojas = [t for t in tareas if not t.es_resumen and not t.es_bloqueante]
-        resumen = {
-            'total': len(hojas),
-            'comp': sum(1 for t in hojas if t.estado == 'COMP'),
-            'bloq': sum(1 for t in tareas if t.estado == 'BLOQ'),
-            'avance': (sum(float(t.avance) for t in hojas) / len(hojas)) if hojas else 0,
-        }
+        resumen = _stats_tablero(tablero, tareas)
         gantt = _datos_gantt(ordenadas, tablero, list(deps))
         # Kanban: tareas hoja (no resumen) por estado
         estado_labels = dict(Tarea.ESTADO)
@@ -267,6 +290,15 @@ class TableroDetalleView(LoginRequiredMixin, View):
             tid = request.POST.get('tarea_id')
             return redirect(f"{base_url}?t={tid}" if tid else base_url)
         volver = volver_a_tarea()
+
+        if accion == 'fijar_linea_base':
+            from django.db.models import Max as _Max
+            fin = (tablero.tareas.filter(es_bloqueante=False, fecha_fin_plan__isnull=False)
+                   .aggregate(m=_Max('fecha_fin_plan'))['m'])
+            tablero.fecha_fin_base = fin
+            tablero.save(update_fields=['fecha_fin_base'])
+            messages.success(request, "Línea base fijada al plan actual.")
+            return redirect(base_url)
 
         if accion == 'crear_tarea':
             titulo = (request.POST.get('titulo') or '').strip()

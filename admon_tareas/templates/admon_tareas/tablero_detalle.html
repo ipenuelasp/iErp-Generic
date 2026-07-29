@@ -11,14 +11,28 @@
                 {% if tablero.tipo %}{{ tablero.tipo.nombre }} · {% endif %}Cierre: {{ tablero.get_modo_cierre_display }}
                 {% if tablero.responsable %}· Resp.: {{ tablero.responsable.get_full_name|default:tablero.responsable.username }}{% endif %}
             </p>
+            <div class="flex items-center gap-2 mt-2 flex-wrap">
+                {% if resumen.salud == 'completo' %}<span class="text-[10px] font-black uppercase px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600"><i class="fa-solid fa-circle-check mr-1"></i>Completo</span>
+                {% elif resumen.salud == 'atrasado' %}<span class="text-[10px] font-black uppercase px-2 py-1 rounded-lg bg-rose-50 text-rose-600"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Atrasado</span>
+                {% elif resumen.n %}<span class="text-[10px] font-black uppercase px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600"><i class="fa-solid fa-circle-check mr-1"></i>En tiempo</span>{% endif %}
+                {% if resumen.reprog %}<span class="text-[10px] font-black uppercase px-2 py-1 rounded-lg {% if resumen.reprog > 0 %}bg-amber-50 text-amber-600{% else %}bg-blue-50 text-blue-600{% endif %}" title="Reprogramado vs la línea base ({{ tablero.fecha_fin_base|date:'d/m/Y' }})"><i class="fa-solid fa-calendar-day mr-1"></i>Reprogramado {{ resumen.reprog|stringformat:"+d" }}d</span>{% endif %}
+                {% if resumen.fin %}<span class="text-[10px] font-bold text-slate-400">{{ resumen.ini|date:"d/m/Y" }} → {{ resumen.fin|date:"d/m/Y" }}</span>{% endif %}
+            </div>
         </div>
-        <button type="button" onclick="abrirCrear('')" class="bg-brand text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Nueva tarea</button>
+        <div class="flex items-center gap-2">
+            <form method="POST" data-confirm="Fijar la línea base al plan actual (fin {{ resumen.fin|date:'d/m/Y'|default:'—' }})? Sirve para medir futuras reprogramaciones." data-confirm-title="Fijar línea base" data-confirm-ok="Sí, fijar" data-confirm-variant="ok">{% csrf_token %}
+                <input type="hidden" name="accion" value="fijar_linea_base">
+                <button type="submit" class="bg-white border border-slate-200 text-slate-500 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all" title="Guarda el fin planeado actual como referencia"><i class="fa-solid fa-flag mr-1"></i> Línea base</button>
+            </form>
+            <button type="button" onclick="abrirCrear('')" class="bg-brand text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Nueva tarea</button>
+        </div>
     </div>
 
     <div class="flex flex-wrap gap-6 mb-6">
-        <div><p class="text-2xl font-black text-slate-800">{{ resumen.total }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Tareas</p></div>
-        <div><p class="text-2xl font-black text-slate-800">{{ resumen.avance|floatformat:0 }}%</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Avance</p></div>
+        <div><p class="text-2xl font-black text-slate-800">{{ resumen.n }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Tareas</p></div>
+        <div><p class="text-2xl font-black text-slate-800">{{ resumen.avance }}%</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Avance</p></div>
         <div><p class="text-2xl font-black text-emerald-600">{{ resumen.comp }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Completas</p></div>
+        <div><p class="text-2xl font-black {% if resumen.atrasadas %}text-rose-600{% else %}text-slate-300{% endif %}">{{ resumen.atrasadas }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Atrasadas</p></div>
         <div><p class="text-2xl font-black {% if resumen.bloq %}text-rose-600{% else %}text-slate-300{% endif %}">{{ resumen.bloq }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Bloqueadas</p></div>
     </div>
 
