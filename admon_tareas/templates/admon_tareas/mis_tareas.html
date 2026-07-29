@@ -1,0 +1,57 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% block main_content %}
+<div class="max-w-4xl mx-auto p-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Mis tareas</h1>
+        <p class="text-slate-500 mt-2 font-medium">Todo lo asignado a ti en tus tableros, ordenado por urgencia. Da clic para abrir la tarea.</p>
+    </div>
+
+    <div class="flex flex-wrap gap-6 mb-8">
+        <div><p class="text-2xl font-black text-slate-800">{{ total }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Pendientes</p></div>
+        <div><p class="text-2xl font-black {% if atrasadas %}text-rose-600{% else %}text-slate-300{% endif %}">{{ atrasadas|length }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Atrasadas</p></div>
+        <div><p class="text-2xl font-black {% if semana %}text-amber-600{% else %}text-slate-300{% endif %}">{{ semana|length }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Esta semana</p></div>
+        <div><p class="text-2xl font-black {% if bloqueos %}text-rose-600{% else %}text-slate-300{% endif %}">{{ bloqueos|length }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Bloqueos por resolver</p></div>
+    </div>
+
+    {% if bloqueos %}
+    <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-rose-100 overflow-hidden mb-6">
+        <div class="px-5 py-3 bg-rose-50/60 border-b border-rose-100"><p class="text-[11px] font-black text-rose-600 uppercase tracking-widest"><i class="fa-solid fa-hand mr-1"></i>Bloqueos que debes resolver · {{ bloqueos|length }}</p></div>
+        {% for a in bloqueos %}{% include 'admon_tareas/_mis_tarea_row.html' %}{% endfor %}
+    </div>
+    {% endif %}
+
+    {% if atrasadas %}
+    <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-rose-100 overflow-hidden mb-6">
+        <div class="px-5 py-3 bg-rose-50/60 border-b border-rose-100"><p class="text-[11px] font-black text-rose-600 uppercase tracking-widest"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Atrasadas · {{ atrasadas|length }}</p></div>
+        {% for a in atrasadas %}{% include 'admon_tareas/_mis_tarea_row.html' %}{% endfor %}
+    </div>
+    {% endif %}
+
+    {% if semana %}
+    <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-amber-100 overflow-hidden mb-6">
+        <div class="px-5 py-3 bg-amber-50/60 border-b border-amber-100"><p class="text-[11px] font-black text-amber-600 uppercase tracking-widest"><i class="fa-solid fa-hourglass-half mr-1"></i>Vencen esta semana · {{ semana|length }}</p></div>
+        {% for a in semana %}{% include 'admon_tareas/_mis_tarea_row.html' %}{% endfor %}
+    </div>
+    {% endif %}
+
+    {% if proximas %}
+    <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden mb-6">
+        <div class="px-5 py-3 bg-slate-50/70 border-b border-slate-100"><p class="text-[11px] font-black text-slate-500 uppercase tracking-widest"><i class="fa-solid fa-calendar-days mr-1"></i>Próximas · {{ proximas|length }}</p></div>
+        {% for a in proximas %}{% include 'admon_tareas/_mis_tarea_row.html' %}{% endfor %}
+    </div>
+    {% endif %}
+
+    {% if bloqueadas %}
+    <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden mb-6">
+        <div class="px-5 py-3 bg-slate-50/70 border-b border-slate-100"><p class="text-[11px] font-black text-slate-500 uppercase tracking-widest"><i class="fa-solid fa-lock mr-1"></i>Bloqueadas · esperando desbloqueo · {{ bloqueadas|length }}</p></div>
+        {% for a in bloqueadas %}{% include 'admon_tareas/_mis_tarea_row.html' %}{% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not total %}
+    <div class="bg-white rounded-[2rem] border border-slate-100 p-12 text-center text-slate-400 italic">
+        No tienes tareas pendientes asignadas. 🎉
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

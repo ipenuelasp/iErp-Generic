@@ -43,6 +43,24 @@ def _usuarios_empresa(empresa):
         'first_name', 'username')
 
 
+def _es_admin_tareas(user):
+    """El dueño (OWNER) o un superusuario ven todos los tableros de la empresa."""
+    if user.is_superuser:
+        return True
+    perfil = getattr(user, 'perfil', None)
+    return bool(perfil and getattr(perfil, 'tipo_usuario', None) == 'OWNER')
+
+
+def _puede_ver_tablero(user, tablero):
+    """Un usuario ve un tablero si es admin, su responsable, lo creó, o tiene al
+    menos una tarea asignada en él (está 'invitado')."""
+    if _es_admin_tareas(user):
+        return True
+    if tablero.responsable_id == user.id or tablero.creado_por_id == user.id:
+        return True
+    return TareaAsignacion.objects.filter(tarea__tablero=tablero, usuario=user).exists()
+
+
 def _stats_tablero(tablero, dets):
     """Métricas para la tarjeta/encabezado: avance, atrasadas, bloqueadas,
     ventana de fechas, reprogramación vs la línea base y salud."""
@@ -143,13 +161,19 @@ class TablerosView(LoginRequiredMixin, View):
         empresa = _empresa(request)
         if not empresa:
             return redirect('home')
-        tableros = list(Tablero.objects.operativos().filter(empresa=empresa)
-                        .select_related('responsable')
+        from django.db.models import Q
+        qs = Tablero.objects.operativos().filter(empresa=empresa)
+        admin = _es_admin_tareas(request.user)
+        if not admin:
+            # Solo los tableros donde está involucrado (invitado).
+            qs = qs.filter(Q(responsable=request.user) | Q(creado_por=request.user)
+                           | Q(tareas__asignaciones__usuario=request.user)).distinct()
+        tableros = list(qs.select_related('responsable')
                         .prefetch_related('tareas__asignaciones__usuario'))
         for t in tableros:
             t.stats = _stats_tablero(t, list(t.tareas.all()))
         plantillas = list(Tablero.objects.filter(empresa=empresa, es_plantilla=True, activo=True)
-                          .order_by('nombre'))
+                          .order_by('nombre')) if admin else []
         for p in plantillas:
             dets = list(p.tareas.all())
             p.n_tareas = sum(1 for x in dets if not x.es_resumen and not x.es_bloqueante)
@@ -239,6 +263,50 @@ class TablerosView(LoginRequiredMixin, View):
         return redirect('admon_tareas:tablero_detalle', pk=tablero.pk)
 
 
+class MisTareasView(LoginRequiredMixin, View):
+    """Panel personal: las tareas asignadas al usuario, agrupadas por urgencia."""
+    template_name = 'admon_tareas/mis_tareas.html'
+
+    def get(self, request):
+        import datetime as _dt
+        empresa = _empresa(request)
+        if not empresa:
+            return redirect('home')
+        hoy = timezone.localdate()
+        fin_semana = hoy + _dt.timedelta(days=(6 - hoy.weekday()))
+
+        asigs = list(TareaAsignacion.objects.filter(
+            usuario=request.user, tarea__empresa=empresa)
+            .exclude(tarea__estado__in=['COMP', 'CANC'])
+            .select_related('tarea', 'tarea__tablero'))
+
+        def _fin(a):
+            return a.tarea.fecha_fin_plan or _dt.date.max
+        asigs.sort(key=_fin)
+
+        bloqueos = [a for a in asigs if a.tarea.es_bloqueante]           # debo resolver
+        resto = [a for a in asigs if not a.tarea.es_bloqueante]
+        bloqueadas = [a for a in resto if a.tarea.estado == 'BLOQ']      # esperando desbloqueo
+        activas = [a for a in resto if a.tarea.estado != 'BLOQ']
+        atrasadas = [a for a in activas if a.tarea.fecha_fin_plan and a.tarea.fecha_fin_plan < hoy]
+        semana = [a for a in activas
+                  if a.tarea.fecha_fin_plan and hoy <= a.tarea.fecha_fin_plan <= fin_semana]
+        proximas = [a for a in activas
+                    if not a.tarea.fecha_fin_plan or a.tarea.fecha_fin_plan > fin_semana]
+
+        context = {
+            'total': len(asigs),
+            'bloqueos': bloqueos,
+            'atrasadas': atrasadas,
+            'semana': semana,
+            'proximas': proximas,
+            'bloqueadas': bloqueadas,
+            'hoy': hoy,
+            'seccion': 'tareas',
+        }
+        return render(request, self.template_name, context)
+
+
 class TableroDetalleView(LoginRequiredMixin, View):
     template_name = 'admon_tareas/tablero_detalle.html'
 
@@ -247,6 +315,9 @@ class TableroDetalleView(LoginRequiredMixin, View):
         if not empresa:
             return redirect('home')
         tablero = get_object_or_404(Tablero, pk=pk, empresa=empresa)
+        if not _puede_ver_tablero(request.user, tablero):
+            messages.error(request, "No tienes acceso a ese tablero.")
+            return redirect('admon_tareas:tableros')
         # Recalcula derivados (WBS, avance, fechas de fases + cascada) al abrir,
         # para que la vista siempre sea consistente y se auto-corrija.
         services.recalcular_tablero(tablero)
@@ -294,6 +365,9 @@ class TableroDetalleView(LoginRequiredMixin, View):
             return redirect('home')
         from django.urls import reverse
         tablero = get_object_or_404(Tablero, pk=pk, empresa=empresa)
+        if not _puede_ver_tablero(request.user, tablero):
+            messages.error(request, "No tienes acceso a ese tablero.")
+            return redirect('admon_tareas:tableros')
         accion = request.POST.get('accion')
         base_url = reverse('admon_tareas:tablero_detalle', kwargs={'pk': pk})
 
@@ -631,6 +705,8 @@ class TareaPanelView(LoginRequiredMixin, View):
             return HttpResponse(status=403)
         tarea = get_object_or_404(
             Tarea.objects.select_related('tablero', 'padre'), pk=pk, empresa=empresa)
+        if not _puede_ver_tablero(request.user, tarea.tablero):
+            return HttpResponse(status=403)
         subtareas = list(tarea.hijos.exclude(es_bloqueante=True)
                          .prefetch_related('asignaciones__usuario').order_by('orden', 'ruta_wbs'))
         ct = ContentType.objects.get_for_model(Tarea)

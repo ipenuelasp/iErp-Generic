@@ -271,8 +271,14 @@
         <p class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">Tareas</p>
         {% if 'tareas.tableros' not in secciones_ocultas %}
         <a href="{% url 'admon_tareas:tableros' %}"
-           class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'tareas' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+           class="block p-3 rounded-xl flex items-center transition-all {% if seccion == 'tareas' and 'mis_tareas' not in request.resolver_match.url_name %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
             <i class="fa-solid fa-list-check mr-3"></i> Tableros
+        </a>
+        {% endif %}
+        {% if 'tareas.mis_tareas' not in secciones_ocultas %}
+        <a href="{% url 'admon_tareas:mis_tareas' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'mis_tareas' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-user-check mr-3"></i> Mis tareas
         </a>
         {% endif %}
     </div>

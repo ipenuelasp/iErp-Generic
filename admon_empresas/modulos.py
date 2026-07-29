@@ -89,6 +89,8 @@ SECCIONES = [
     # Tareas
     {'clave': 'tareas.tableros', 'nombre': 'Tableros', 'modulo': 'tareas',
      'urls': ['tableros', 'tablero_detalle', 'tarea_panel', 'adjunto_descarga']},
+    {'clave': 'tareas.mis_tareas', 'nombre': 'Mis tareas', 'modulo': 'tareas',
+     'urls': ['mis_tareas']},
 ]
 
 # Índice url_name -> clave de sección (para el bloqueo en middleware)

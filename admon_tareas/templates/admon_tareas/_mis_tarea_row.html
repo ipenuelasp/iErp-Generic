@@ -1,0 +1,10 @@
+<a href="{% url 'admon_tareas:tablero_detalle' a.tarea.tablero_id %}?t={{ a.tarea_id }}" class="flex items-center gap-3 py-3 px-5 hover:bg-slate-50/70 border-b border-slate-50 last:border-0">
+    {% if a.tarea.es_bloqueante %}<span class="text-rose-400 text-xs">⛔</span>{% endif %}
+    <div class="min-w-0 flex-1">
+        <p class="text-sm font-bold text-slate-700 truncate">{% if a.tarea.es_hito %}<i class="fa-solid fa-diamond text-violet-500 text-[10px] mr-1"></i>{% endif %}{{ a.tarea.titulo }}</p>
+        <p class="text-[11px] text-slate-400 truncate"><i class="fa-solid fa-list-check mr-1"></i>{{ a.tarea.tablero.nombre }}{% if a.tarea.ruta_wbs %} · WBS {{ a.tarea.ruta_wbs }}{% endif %} · {{ a.get_rol_display }}</p>
+    </div>
+    {% include 'admon_tareas/_estado_badge.html' with estado=a.tarea.estado display=a.tarea.get_estado_display %}
+    <span class="text-[11px] font-bold text-slate-400 w-20 text-right hidden sm:block">{{ a.tarea.fecha_fin_plan|date:"d/m/Y"|default:"—" }}</span>
+    {% if a.completado %}<span class="text-emerald-500 text-sm" title="Confirmaste tu parte"><i class="fa-solid fa-circle-check"></i></span>{% else %}<span class="text-slate-300 text-sm" title="Sin confirmar"><i class="fa-regular fa-circle"></i></span>{% endif %}
+</a>
