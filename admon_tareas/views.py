@@ -46,15 +46,25 @@ def _usuarios_empresa(empresa):
 def _stats_tablero(tablero, dets):
     """Métricas para la tarjeta/encabezado: avance, atrasadas, bloqueadas,
     ventana de fechas, reprogramación vs la línea base y salud."""
+    import datetime as _dt
     hojas = [x for x in dets if not x.es_resumen and not x.es_bloqueante]
     hoy = timezone.localdate()
+    fin_semana = hoy + _dt.timedelta(days=(6 - hoy.weekday()))   # domingo de esta semana
     n = len(hojas)
     comp = sum(1 for x in hojas if x.estado == 'COMP')
     avance = round(sum(float(x.avance) for x in hojas) / n) if n else 0
     atrasadas = sum(1 for x in hojas
                     if x.fecha_fin_plan and x.fecha_fin_plan < hoy
                     and x.estado not in ('COMP', 'CANC'))
+    vencen = sum(1 for x in hojas
+                 if x.fecha_fin_plan and hoy <= x.fecha_fin_plan <= fin_semana
+                 and x.estado not in ('COMP', 'CANC'))
     bloq = sum(1 for x in dets if x.estado == 'BLOQ')
+    # Equipo: personas asignadas a cualquier tarea del tablero (distintas).
+    equipo = {}
+    for x in dets:
+        for a in x.asignaciones.all():
+            equipo.setdefault(a.usuario_id, a.usuario)
     fins = [x.fecha_fin_plan for x in hojas if x.fecha_fin_plan]
     inis = [x.fecha_inicio_plan for x in hojas if x.fecha_inicio_plan]
     fin_actual = max(fins) if fins else None
@@ -72,8 +82,8 @@ def _stats_tablero(tablero, dets):
     else:
         salud = 'en_tiempo'
     return {'n': n, 'comp': comp, 'avance': avance, 'atrasadas': atrasadas,
-            'bloq': bloq, 'ini': ini_actual, 'fin': fin_actual,
-            'reprog': reprog or None, 'salud': salud}
+            'vencen': vencen, 'bloq': bloq, 'ini': ini_actual, 'fin': fin_actual,
+            'reprog': reprog or None, 'salud': salud, 'equipo': list(equipo.values())}
 
 
 def _puede_cerrar(user, tablero):
@@ -134,7 +144,8 @@ class TablerosView(LoginRequiredMixin, View):
         if not empresa:
             return redirect('home')
         tableros = list(Tablero.objects.operativos().filter(empresa=empresa)
-                        .select_related('responsable').prefetch_related('tareas'))
+                        .select_related('responsable')
+                        .prefetch_related('tareas__asignaciones__usuario'))
         for t in tableros:
             t.stats = _stats_tablero(t, list(t.tareas.all()))
         plantillas = list(Tablero.objects.filter(empresa=empresa, es_plantilla=True, activo=True)

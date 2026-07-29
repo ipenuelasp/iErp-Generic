@@ -28,12 +28,24 @@
         </div>
     </div>
 
-    <div class="flex flex-wrap gap-6 mb-6">
+    <div class="flex flex-wrap items-center gap-6 mb-6">
         <div><p class="text-2xl font-black text-slate-800">{{ resumen.n }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Tareas</p></div>
         <div><p class="text-2xl font-black text-slate-800">{{ resumen.avance }}%</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Avance</p></div>
         <div><p class="text-2xl font-black text-emerald-600">{{ resumen.comp }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Completas</p></div>
+        <div><p class="text-2xl font-black {% if resumen.vencen %}text-amber-600{% else %}text-slate-300{% endif %}">{{ resumen.vencen }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Vencen esta sem.</p></div>
         <div><p class="text-2xl font-black {% if resumen.atrasadas %}text-rose-600{% else %}text-slate-300{% endif %}">{{ resumen.atrasadas }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Atrasadas</p></div>
         <div><p class="text-2xl font-black {% if resumen.bloq %}text-rose-600{% else %}text-slate-300{% endif %}">{{ resumen.bloq }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Bloqueadas</p></div>
+        {% if resumen.equipo %}
+        <div class="ml-auto">
+            <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Equipo · {{ resumen.equipo|length }}</p>
+            <div class="flex -space-x-1.5">
+                {% for u in resumen.equipo|slice:":10" %}
+                <span title="{{ u.get_full_name|default:u.username }}" class="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black text-white border-2 border-white {% cycle 'bg-indigo-500' 'bg-emerald-500' 'bg-rose-500' 'bg-amber-500' 'bg-blue-500' 'bg-violet-500' 'bg-cyan-600' 'bg-pink-600' %}">{{ u.get_full_name|default:u.username|slice:":2"|upper }}</span>
+                {% endfor %}
+                {% if resumen.equipo|length > 10 %}<span class="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black text-slate-500 bg-slate-100 border-2 border-white">+{{ resumen.equipo|length|add:"-10" }}</span>{% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Pestañas de vista -->

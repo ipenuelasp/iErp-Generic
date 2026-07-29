@@ -20,6 +20,7 @@
                 {% elif t.stats.salud == 'atrasado' %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-rose-50 text-rose-600"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Atrasado</span>
                 {% elif t.stats.n %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-50 text-emerald-600"><i class="fa-solid fa-circle-check mr-1"></i>En tiempo</span>{% endif %}
                 {% if t.stats.reprog %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded {% if t.stats.reprog > 0 %}bg-amber-50 text-amber-600{% else %}bg-blue-50 text-blue-600{% endif %}" title="Reprogramado vs la primera vista (línea base)"><i class="fa-solid fa-calendar-day mr-1"></i>{{ t.stats.reprog|stringformat:"+d" }}d</span>{% endif %}
+                {% if t.stats.vencen %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-600" title="Tareas que vencen esta semana"><i class="fa-solid fa-hourglass-half mr-1"></i>{{ t.stats.vencen }} vencen</span>{% endif %}
             </div>
             <h3 class="text-lg font-black text-slate-800 leading-tight mb-1">{{ t.nombre }}</h3>
             <p class="text-xs text-slate-400 font-medium mb-3">{{ t.descripcion|truncatechars:90|default:"Sin descripción" }}</p>
@@ -37,6 +38,17 @@
                     {% elif t.responsable %}<p class="text-xs font-bold text-slate-600">{{ t.responsable.get_full_name|default:t.responsable.username }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide">Responsable</p>{% endif %}
                 </div>
             </div>
+            {% if t.stats.equipo %}
+            <div class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-50">
+                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wide">Equipo</span>
+                <div class="flex -space-x-1.5">
+                    {% for u in t.stats.equipo|slice:":8" %}
+                    <span title="{{ u.get_full_name|default:u.username }}" class="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-black text-white border-2 border-white {% cycle 'bg-indigo-500' 'bg-emerald-500' 'bg-rose-500' 'bg-amber-500' 'bg-blue-500' 'bg-violet-500' 'bg-cyan-600' 'bg-pink-600' %}">{{ u.get_full_name|default:u.username|slice:":2"|upper }}</span>
+                    {% endfor %}
+                </div>
+                {% if t.stats.equipo|length > 8 %}<span class="text-[10px] font-bold text-slate-400">+{{ t.stats.equipo|length|add:"-8" }}</span>{% endif %}
+            </div>
+            {% endif %}
         </a>
         {% empty %}
         <div class="col-span-full bg-white rounded-[2rem] border border-slate-100 p-12 text-center text-slate-400 italic">
