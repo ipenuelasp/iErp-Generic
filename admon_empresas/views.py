@@ -79,25 +79,56 @@ def cambiar_empresa(request, empresa_id):
     messages.success(request, f"Cambiado a: {empresa.nombre_fiscal}")
     return redirect('home')
 
-# Módulos que se muestran en la landing pública (ícono FA, nombre, gancho).
-_LANDING_MODULOS = [
-    ('fa-boxes-stacked', 'Inventarios', 'Existencias, kardex, recepciones y traspasos entre sucursales, siempre al día.'),
-    ('fa-cash-register', 'Ventas', 'Cotizaciones, pedidos, entregas y clientes, del presupuesto a la factura.'),
-    ('fa-file-invoice-dollar', 'Compras', 'Órdenes, proveedores y cadena de autorización, con recepción contra OC.'),
-    ('fa-money-bill-wave', 'Finanzas', 'Cuentas por pagar y cobrar, pagos, gastos y estado de resultados.'),
-    ('fa-box', 'Kits / Cajas', 'Arma cajas y kits, contrólalos y registra sus salidas al detalle.'),
-    ('fa-syringe', 'Cirugías', 'Solicitudes, doctores y hospitales, listas para facturar la cirugía.'),
-    ('fa-industry', 'Producción', 'Recetas y órdenes de producción que descuentan tus insumos.'),
-    ('fa-list-check', 'Tareas', 'Tableros con subtareas, dependencias, Gantt y kanban para tus proyectos.'),
-]
-
-
 def landing_view(request):
-    """Página pública/informativa del producto. Se sirve en el dominio raíz
-    (ierp.mx) a los visitantes anónimos y en /landing/ para previsualizar."""
-    return render(request, 'admon_empresas/landing.html', {
-        'modulos': _LANDING_MODULOS,
-    })
+    """Página pública de PH Analytics con formulario de contacto. Se sirve en el
+    dominio raíz (ierp.mx) a visitantes anónimos y en /landing/ para previsualizar.
+    El formulario manda un correo (Resend) a settings.CONTACTO_EMAIL."""
+    from django.conf import settings
+    ctx = {'valores': {}, 'enviado': False, 'error': None,
+           'contacto_email': settings.CONTACTO_EMAIL}
+
+    if request.method == 'POST':
+        v = {
+            'nombre': (request.POST.get('nombre') or '').strip(),
+            'email': (request.POST.get('email') or '').strip(),
+            'empresa': (request.POST.get('empresa') or '').strip(),
+            'mensaje': (request.POST.get('mensaje') or '').strip(),
+        }
+        ctx['valores'] = v
+        # Honeypot antispam: si el bot llenó el campo oculto, fingimos éxito.
+        if (request.POST.get('sitio_web') or '').strip():
+            ctx['enviado'] = True
+            return render(request, 'admon_empresas/landing.html', ctx)
+
+        if not (v['nombre'] and v['email'] and v['mensaje']):
+            ctx['error'] = 'Por favor completa tu nombre, correo y mensaje.'
+        elif '@' not in v['email'] or '.' not in v['email'].split('@')[-1]:
+            ctx['error'] = 'El correo no parece válido, revísalo por favor.'
+        else:
+            from .emails import send_plain
+            cuerpo = (
+                "Nuevo mensaje desde la web de PH Analytics\n"
+                "------------------------------------------\n\n"
+                f"Nombre:  {v['nombre']}\n"
+                f"Correo:  {v['email']}\n"
+                f"Empresa: {v['empresa'] or '—'}\n\n"
+                "Mensaje:\n"
+                f"{v['mensaje']}\n"
+            )
+            ok = send_plain(
+                subject=f"Web PH Analytics — {v['nombre']}",
+                text=cuerpo,
+                to=settings.CONTACTO_EMAIL,
+                reply_to=v['email'],
+            )
+            if ok:
+                ctx['enviado'] = True
+                ctx['valores'] = {}
+            else:
+                ctx['error'] = ('No pudimos enviar tu mensaje en este momento. '
+                                'Escríbenos directo a ' + settings.CONTACTO_EMAIL + '.')
+
+    return render(request, 'admon_empresas/landing.html', ctx)
 
 
 def raiz_view(request):

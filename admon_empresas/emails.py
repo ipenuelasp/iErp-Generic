@@ -42,9 +42,10 @@ def enviar_invitacion_cliente(cliente):
     )
 
 
-def send_plain(subject, text, to, attachments=None):
+def send_plain(subject, text, to, attachments=None, reply_to=None):
     """Correo de texto plano vía Resend (para avisos internos). Robusto: nunca lanza.
-    `attachments`: lista opcional de {'filename': str, 'content': bytes}."""
+    `attachments`: lista opcional de {'filename': str, 'content': bytes}.
+    `reply_to`: correo (o lista) al que responder; útil para leads de contacto."""
     try:
         import base64
         resend.api_key = settings.RESEND_API_KEY
@@ -57,6 +58,8 @@ def send_plain(subject, text, to, attachments=None):
             'html': html,
             'text': text,
         }
+        if reply_to:
+            payload['reply_to'] = [reply_to] if isinstance(reply_to, str) else list(reply_to)
         if attachments:
             payload['attachments'] = [
                 {'filename': a['filename'],
