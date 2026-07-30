@@ -1,0 +1,187 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iErp — ERP multiempresa en la nube | PhAnalytics</title>
+    <meta name="description" content="iErp es un ERP multiempresa y multi-sucursal: inventarios, ventas, compras, finanzas, cirugías, producción y tareas. Contrátalo por módulos, en la nube.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}">
+    <style>
+        :root { --navy:#1e2d4f; }
+        .bg-navy { background-color:#1e2d4f; }
+        .text-navy { color:#1e2d4f; }
+        .ring-navy { --tw-ring-color:#1e2d4f; }
+        .hero-grid {
+            background-image:
+                linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+            background-size: 44px 44px;
+        }
+        .fade-up { opacity:0; transform:translateY(16px); animation:fadeUp .7s ease forwards; }
+        @keyframes fadeUp { to { opacity:1; transform:none; } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-700 antialiased">
+
+<!-- ===== NAV ===== -->
+<header class="sticky top-0 z-40 backdrop-blur bg-white/80 border-b border-slate-100">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <a href="#top" class="flex items-center gap-2">
+            <img src="{% static 'img/iErp_4k_sinfondo.png' %}" alt="iErp" class="h-7 w-auto">
+        </a>
+        <nav class="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-500">
+            <a href="#modulos" class="hover:text-navy transition-colors">Módulos</a>
+            <a href="#porque" class="hover:text-navy transition-colors">Por qué iErp</a>
+            <a href="#contacto" class="hover:text-navy transition-colors">Contacto</a>
+        </nav>
+        <div class="flex items-center gap-3">
+            <a href="/login/" class="hidden sm:inline text-sm font-semibold text-slate-500 hover:text-navy transition-colors">Iniciar sesión</a>
+            <a href="#contacto" class="text-sm font-bold text-white bg-navy px-4 py-2 rounded-xl hover:opacity-90 transition-opacity">Solicitar demo</a>
+        </div>
+    </div>
+</header>
+
+<!-- ===== HERO ===== -->
+<section id="top" class="bg-navy text-white relative overflow-hidden">
+    <div class="absolute inset-0 hero-grid"></div>
+    <div class="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-blue-500/20 blur-3xl"></div>
+    <div class="absolute -bottom-32 -left-24 w-96 h-96 rounded-full bg-emerald-400/10 blur-3xl"></div>
+    <div class="relative max-w-6xl mx-auto px-6 py-24 md:py-32">
+        <div class="max-w-3xl fade-up">
+            <span class="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-blue-200 bg-white/10 px-3 py-1 rounded-full mb-6">
+                <i class="fa-solid fa-cloud"></i> ERP multiempresa en la nube
+            </span>
+            <h1 class="text-4xl md:text-6xl font-black tracking-tight leading-[1.05]">
+                Toda tu operación,<br><span class="text-blue-300">ordenada en un solo lugar.</span>
+            </h1>
+            <p class="mt-6 text-lg md:text-xl text-blue-100/80 max-w-2xl">
+                Inventarios, ventas, compras, finanzas, cirugías, producción y tareas.
+                Un sistema que crece contigo: <strong class="text-white font-semibold">contrátalo por módulos</strong>,
+                úsalo en varias empresas y sucursales, sin instalar nada.
+            </p>
+            <div class="mt-9 flex flex-col sm:flex-row gap-3">
+                <a href="#contacto" class="inline-flex items-center justify-center gap-2 bg-white text-navy font-bold px-6 py-3.5 rounded-xl hover:bg-blue-50 transition-colors">
+                    Solicitar una demo <i class="fa-solid fa-arrow-right text-sm"></i>
+                </a>
+                <a href="#modulos" class="inline-flex items-center justify-center gap-2 bg-white/10 text-white font-bold px-6 py-3.5 rounded-xl hover:bg-white/20 transition-colors border border-white/15">
+                    Ver módulos
+                </a>
+            </div>
+            <div class="mt-10 flex flex-wrap items-center gap-x-7 gap-y-2 text-sm text-blue-100/70">
+                <span class="inline-flex items-center gap-2"><i class="fa-solid fa-circle-check text-emerald-300"></i> Multiempresa y multi-sucursal</span>
+                <span class="inline-flex items-center gap-2"><i class="fa-solid fa-circle-check text-emerald-300"></i> Acceso por módulos y por usuario</span>
+                <span class="inline-flex items-center gap-2"><i class="fa-solid fa-circle-check text-emerald-300"></i> Cada cliente en su propio portal</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== TRUST BAR ===== -->
+<section class="bg-white border-b border-slate-100">
+    <div class="max-w-6xl mx-auto px-6 py-8">
+        <p class="text-center text-xs font-bold uppercase tracking-widest text-slate-400 mb-5">Empresas que ya operan con iErp</p>
+        <div class="flex flex-wrap items-center justify-center gap-x-12 gap-y-3 text-slate-400 font-black text-xl italic">
+            <span>Insermed</span>
+            <span class="text-slate-300">·</span>
+            <span>Acuagro</span>
+            <span class="text-slate-300">·</span>
+            <span>PH Analytics</span>
+        </div>
+    </div>
+</section>
+
+<!-- ===== MÓDULOS ===== -->
+<section id="modulos" class="max-w-6xl mx-auto px-6 py-20 md:py-28">
+    <div class="max-w-2xl mb-14">
+        <p class="text-xs font-bold uppercase tracking-widest text-blue-500 mb-3">Módulos</p>
+        <h2 class="text-3xl md:text-4xl font-black text-slate-800 tracking-tight">Enciende solo lo que necesitas</h2>
+        <p class="mt-4 text-slate-500 text-lg">Cada módulo trabaja por separado o integrado. Empieza con inventarios y ventas, y agrega el resto cuando tu operación lo pida.</p>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {% for m in modulos %}
+        <div class="group bg-white rounded-2xl border border-slate-100 p-6 hover:border-slate-200 hover:shadow-xl hover:shadow-slate-200/50 transition-all">
+            <div class="w-12 h-12 rounded-xl bg-navy/5 text-navy flex items-center justify-center text-xl mb-4 group-hover:bg-navy group-hover:text-white transition-colors">
+                <i class="fa-solid {{ m.0 }}"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 text-lg">{{ m.1 }}</h3>
+            <p class="text-sm text-slate-500 mt-1.5 leading-relaxed">{{ m.2 }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ===== POR QUÉ IERP ===== -->
+<section id="porque" class="bg-white border-y border-slate-100">
+    <div class="max-w-6xl mx-auto px-6 py-20 md:py-28">
+        <div class="max-w-2xl mb-14">
+            <p class="text-xs font-bold uppercase tracking-widest text-blue-500 mb-3">Por qué iErp</p>
+            <h2 class="text-3xl md:text-4xl font-black text-slate-800 tracking-tight">Pensado para grupos de empresas</h2>
+            <p class="mt-4 text-slate-500 text-lg">Un mismo sistema, aislado y ordenado para cada negocio que manejas.</p>
+        </div>
+        <div class="grid md:grid-cols-2 gap-x-12 gap-y-10">
+            <div class="flex gap-4">
+                <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg"><i class="fa-solid fa-building"></i></div>
+                <div><h3 class="font-bold text-slate-800">Multiempresa y multi-sucursal</h3><p class="text-sm text-slate-500 mt-1">Cambia de empresa y sucursal con un clic; cada una con su inventario, sus precios y sus reportes.</p></div>
+            </div>
+            <div class="flex gap-4">
+                <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg"><i class="fa-solid fa-shield-halved"></i></div>
+                <div><h3 class="font-bold text-slate-800">Portal propio por cliente</h3><p class="text-sm text-slate-500 mt-1">Cada empresa entra por su propio subdominio, con sus datos aislados del resto.</p></div>
+            </div>
+            <div class="flex gap-4">
+                <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center text-lg"><i class="fa-solid fa-sliders"></i></div>
+                <div><h3 class="font-bold text-slate-800">Permisos finos por usuario</h3><p class="text-sm text-slate-500 mt-1">Decide qué módulos y qué pantallas ve cada colaborador. El almacén no ve costos, por ejemplo.</p></div>
+            </div>
+            <div class="flex gap-4">
+                <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg"><i class="fa-solid fa-puzzle-piece"></i></div>
+                <div><h3 class="font-bold text-slate-800">Contratación por módulos</h3><p class="text-sm text-slate-500 mt-1">Pagas y activas solo lo que usas. Suma módulos conforme tu operación crece.</p></div>
+            </div>
+            <div class="flex gap-4">
+                <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                <div><h3 class="font-bold text-slate-800">100% en la nube</h3><p class="text-sm text-slate-500 mt-1">Sin instalar nada. Entra desde cualquier navegador, con respaldos y actualizaciones incluidas.</p></div>
+            </div>
+            <div class="flex gap-4">
+                <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-lg"><i class="fa-solid fa-file-invoice"></i></div>
+                <div><h3 class="font-bold text-slate-800">Pensado para México</h3><p class="text-sm text-slate-500 mt-1">Flujos de facturación, complementos de pago y conciliación SAT integrados al día a día.</p></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== CTA / CONTACTO ===== -->
+<section id="contacto" class="max-w-6xl mx-auto px-6 py-20 md:py-28">
+    <div class="bg-navy rounded-[2.5rem] px-8 py-14 md:px-16 md:py-20 text-center relative overflow-hidden">
+        <div class="absolute inset-0 hero-grid opacity-60"></div>
+        <div class="absolute -top-20 -right-16 w-80 h-80 rounded-full bg-blue-500/20 blur-3xl"></div>
+        <div class="relative">
+            <h2 class="text-3xl md:text-5xl font-black text-white tracking-tight">¿Listo para ordenar tu operación?</h2>
+            <p class="mt-4 text-blue-100/80 text-lg max-w-xl mx-auto">Cuéntanos qué manejas y te mostramos cómo se vería iErp para tu empresa. Sin compromiso.</p>
+            <div class="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
+                <a href="mailto:contacto@phanalytics.com.mx?subject=Quiero%20conocer%20iErp" class="inline-flex items-center justify-center gap-2 bg-white text-navy font-bold px-7 py-4 rounded-xl hover:bg-blue-50 transition-colors">
+                    <i class="fa-solid fa-envelope"></i> contacto@phanalytics.com.mx
+                </a>
+                <a href="https://phanalytics.com.mx" target="_blank" rel="noopener" class="inline-flex items-center justify-center gap-2 bg-white/10 border border-white/15 text-white font-bold px-7 py-4 rounded-xl hover:bg-white/20 transition-colors">
+                    <i class="fa-solid fa-globe"></i> phanalytics.com.mx
+                </a>
+            </div>
+            <p class="mt-6 text-sm text-blue-100/60">¿Ya eres cliente? <a href="/login/" class="underline decoration-blue-300/50 hover:text-white">Entra a tu portal</a>.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="border-t border-slate-100 bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
+        <img src="{% static 'img/iErp_4k_sinfondo.png' %}" alt="iErp" class="h-6 w-auto opacity-70">
+        <p class="text-xs text-slate-400 text-center">
+            Powered by <span class="font-semibold text-slate-500">PhAnalytics</span> ·
+            Sistema desarrollado por <a href="mailto:contacto@phanalytics.com.mx" class="hover:text-slate-600 transition-colors">phanalytics.com.mx</a>
+        </p>
+        <a href="/login/" class="text-xs font-semibold text-slate-400 hover:text-navy transition-colors">Iniciar sesión</a>
+    </div>
+</footer>
+
+</body>
+</html>

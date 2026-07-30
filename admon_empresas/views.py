@@ -79,6 +79,36 @@ def cambiar_empresa(request, empresa_id):
     messages.success(request, f"Cambiado a: {empresa.nombre_fiscal}")
     return redirect('home')
 
+# Módulos que se muestran en la landing pública (ícono FA, nombre, gancho).
+_LANDING_MODULOS = [
+    ('fa-boxes-stacked', 'Inventarios', 'Existencias, kardex, recepciones y traspasos entre sucursales, siempre al día.'),
+    ('fa-cash-register', 'Ventas', 'Cotizaciones, pedidos, entregas y clientes, del presupuesto a la factura.'),
+    ('fa-file-invoice-dollar', 'Compras', 'Órdenes, proveedores y cadena de autorización, con recepción contra OC.'),
+    ('fa-money-bill-wave', 'Finanzas', 'Cuentas por pagar y cobrar, pagos, gastos y estado de resultados.'),
+    ('fa-box', 'Kits / Cajas', 'Arma cajas y kits, contrólalos y registra sus salidas al detalle.'),
+    ('fa-syringe', 'Cirugías', 'Solicitudes, doctores y hospitales, listas para facturar la cirugía.'),
+    ('fa-industry', 'Producción', 'Recetas y órdenes de producción que descuentan tus insumos.'),
+    ('fa-list-check', 'Tareas', 'Tableros con subtareas, dependencias, Gantt y kanban para tus proyectos.'),
+]
+
+
+def landing_view(request):
+    """Página pública/informativa del producto. Se sirve en el dominio raíz
+    (ierp.mx) a los visitantes anónimos y en /landing/ para previsualizar."""
+    return render(request, 'admon_empresas/landing.html', {
+        'modulos': _LANDING_MODULOS,
+    })
+
+
+def raiz_view(request):
+    """Despacho de la raíz '/': en el portal del proveedor (ierp.mx) un visitante
+    anónimo ve la landing pública; en cualquier otro caso, el home de siempre."""
+    from .middleware import es_portal_proveedor
+    if not request.user.is_authenticated and es_portal_proveedor(request):
+        return landing_view(request)
+    return home_view(request)
+
+
 @login_required
 def home_view(request):
     # SEGURIDAD: Si no ha aceptado la invitación (cambiado clave), no entra al home.
