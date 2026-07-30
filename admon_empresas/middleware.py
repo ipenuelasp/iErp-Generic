@@ -15,6 +15,34 @@ def resolver_tenant(request):
     return ClienteSaaS.objects.filter(slug_instancia=sub).first()
 
 
+def es_portal_proveedor(request):
+    """True si el host es el portal del PROVEEDOR: el dominio raíz (ierp.mx) o
+    www/admin/app. Ahí solo opera el superadmin; un usuario de cliente debe
+    entrar por el subdominio de su empresa. En desarrollo (sin BASE_DOMAIN) y en
+    los subdominios de cliente devuelve False."""
+    from django.conf import settings
+    base = (getattr(settings, 'BASE_DOMAIN', '') or '').lower()
+    if not base:
+        return False  # dev
+    host = request.get_host().split(':')[0].lower()
+    if host == base:
+        return True
+    if host.endswith('.' + base):
+        sub = host[:-(len(base) + 1)]
+        return sub in ('www', 'admin', 'app')
+    return False
+
+
+def _subdominio_de_usuario(user):
+    """Slug de la instancia (subdominio) del cliente al que pertenece el usuario,
+    tomando su empresa por defecto (o la primera). None si no tiene empresa."""
+    perfil = getattr(user, 'perfil', None)
+    if not perfil:
+        return None
+    emp = getattr(perfil, 'empresa_default', None) or perfil.empresas.first()
+    return emp.cliente.slug_instancia if emp and emp.cliente_id else None
+
+
 class TenantMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -29,6 +57,26 @@ class TenantMiddleware:
         request.tenant = resolver_tenant(request)
 
         if request.user.is_authenticated:
+            # El dominio raíz (ierp.mx) y www/admin/app son el portal del PROVEEDOR:
+            # solo el superadmin opera ahí. Un usuario de cliente no puede usar la
+            # app en el raíz; se cierra su sesión y se le manda al login con el
+            # aviso de que entre por el subdominio de su empresa.
+            if es_portal_proveedor(request) and not request.user.is_superuser:
+                from django.conf import settings
+                from django.contrib.auth import logout
+                from django.contrib import messages
+                from django.shortcuts import redirect
+                slug = _subdominio_de_usuario(request.user)
+                base = (getattr(settings, 'BASE_DOMAIN', '') or '').lower()
+                logout(request)
+                if slug and base:
+                    messages.info(request, "Este portal es solo administrativo. "
+                                  f"Ingresa a tu empresa en {slug}.{base}")
+                else:
+                    messages.info(request, "Este portal es solo administrativo. "
+                                  "Ingresa desde el subdominio de tu empresa.")
+                return redirect('login')
+
             perfil = getattr(request.user, 'perfil', None)
 
             if perfil:
