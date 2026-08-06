@@ -454,6 +454,31 @@ class MovilView(LoginRequiredMixin, View):
         })
 
 
+class MovilTareaView(LoginRequiredMixin, View):
+    """Detalle de una tarea en versión móvil: datos, asignados, subtareas y las
+    acciones clave (confirmar mi parte, cambiar estado) que reusan el POST normal."""
+    template_name = 'admon_tareas/movil/tarea.html'
+
+    def get(self, request, pk):
+        empresa = _empresa(request)
+        if not empresa:
+            return redirect('home')
+        tarea = get_object_or_404(Tarea.objects.select_related('tablero', 'padre'),
+                                  pk=pk, empresa=empresa)
+        if not _puede_ver_tablero(request.user, tarea.tablero):
+            return redirect('admon_tareas:movil')
+        subtareas = list(tarea.hijos.exclude(es_bloqueante=True)
+                         .prefetch_related('asignaciones__usuario').order_by('orden', 'ruta_wbs'))
+        return render(request, self.template_name, {
+            'empresa': empresa, 'tablero': tarea.tablero, 't': tarea,
+            'asignaciones': tarea.asignaciones.select_related('usuario').all(),
+            'subtareas': subtareas,
+            'mi_asignacion': tarea.asignaciones.filter(usuario=request.user).first(),
+            'estados': Tarea.ESTADO,
+            'seccion': 'tareas',
+        })
+
+
 class TableroDetalleView(LoginRequiredMixin, View):
     template_name = 'admon_tareas/tablero_detalle.html'
 
@@ -516,6 +541,13 @@ class TableroDetalleView(LoginRequiredMixin, View):
             if r.es_etapa and not t.es_etapa and not t.es_resumen and not t.es_bloqueante:
                 r.n_hijas += 1
         resumen = _stats_tablero(tablero, tareas)
+        # En celular/PWA: vista móvil del tablero (lista por etapas), sin Gantt/Kanban.
+        if _es_movil(request):
+            return render(request, 'admon_tareas/movil/tablero.html', {
+                'empresa': empresa, 'tablero': tablero, 'tareas': ordenadas,
+                'resumen': resumen, 'solo_mias': solo_mias,
+                'hoy': timezone.localdate(), 'seccion': 'tareas',
+            })
         gantt = _datos_gantt(ordenadas, tablero, list(deps))
         # Kanban: tareas hoja (no resumen) por estado
         estado_labels = dict(Tarea.ESTADO)
@@ -557,6 +589,10 @@ class TableroDetalleView(LoginRequiredMixin, View):
 
         def volver_a_tarea():
             tid = request.POST.get('tarea_id')
+            # Si la acción vino de la vista móvil, regresa a la tarea móvil.
+            if request.POST.get('next') == 'movil' and tid:
+                from django.urls import reverse
+                return redirect(reverse('admon_tareas:movil_tarea', kwargs={'pk': tid}))
             return redirect(f"{base_url}?t={tid}" if tid else base_url)
         volver = volver_a_tarea()
 

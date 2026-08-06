@@ -1,0 +1,78 @@
+{% extends "admon_tareas/movil/base_movil.html" %}
+{% block title %}{{ t.titulo }}{% endblock %}
+{% block topbar_title %}Tarea{% endblock %}
+
+{% block content %}
+<a href="{% url 'admon_tareas:tablero_detalle' tablero.pk %}" class="tap inline-flex items-center gap-1 text-[11px] font-black text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-arrow-left"></i> {{ tablero.nombre|truncatechars:26 }}</a>
+
+<!-- Encabezado -->
+<div class="bg-white rounded-2xl p-4 shadow-sm">
+    <div class="flex items-center gap-2 flex-wrap mb-2">
+        {% include 'admon_tareas/_estado_badge.html' with estado=t.estado display=t.get_estado_display %}
+        {% if t.ruta_wbs %}<span class="text-[10px] font-mono text-slate-300">WBS {{ t.ruta_wbs }}</span>{% endif %}
+    </div>
+    <h1 class="text-lg font-black text-slate-800 leading-tight">{% if t.es_hito %}<i class="fa-solid fa-diamond text-violet-500 text-sm mr-1"></i>{% endif %}{{ t.titulo }}</h1>
+    {% if t.descripcion %}<p class="text-sm text-slate-500 mt-1">{{ t.descripcion }}</p>{% endif %}
+    <div class="grid grid-cols-3 gap-2 mt-3 text-center">
+        <div><p class="text-lg font-black text-slate-800">{{ t.avance|floatformat:0 }}%</p><p class="text-[9px] text-slate-400 uppercase font-bold">Avance</p></div>
+        <div><p class="text-xs font-black text-slate-700 mt-1.5">{{ t.fecha_inicio_plan|date:"d/m/y"|default:"—" }}</p><p class="text-[9px] text-slate-400 uppercase font-bold">Inicio</p></div>
+        <div><p class="text-xs font-black text-slate-700 mt-1.5">{{ t.fecha_fin_plan|date:"d/m/y"|default:"—" }}</p><p class="text-[9px] text-slate-400 uppercase font-bold">Fin plan</p></div>
+    </div>
+</div>
+
+<!-- Asignados -->
+<div class="bg-white rounded-2xl p-4 shadow-sm">
+    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Asignados</p>
+    {% for a in asignaciones %}
+    <div class="flex items-center gap-2 py-1.5">
+        <span class="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black text-white {% if a.completado %}bg-emerald-500{% else %}bg-slate-400{% endif %}">{{ a.usuario.get_full_name|default:a.usuario.username|slice:":2"|upper }}</span>
+        <span class="text-sm font-bold text-slate-700 flex-1 truncate">{{ a.usuario.get_full_name|default:a.usuario.username }}</span>
+        {% if a.completado %}<i class="fa-solid fa-circle-check text-emerald-500"></i>{% else %}<i class="fa-regular fa-circle text-slate-300"></i>{% endif %}
+    </div>
+    {% empty %}<p class="text-sm text-slate-300 italic">Nadie asignado.</p>{% endfor %}
+</div>
+
+<!-- Acciones -->
+{% if not t.es_etapa %}
+<div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+    {% if mi_asignacion %}
+    <form method="post" action="{% url 'admon_tareas:tablero_detalle' tablero.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="confirmar">
+        <input type="hidden" name="tarea_id" value="{{ t.id }}">
+        <input type="hidden" name="next" value="movil">
+        <button type="submit" class="tap w-full py-3 rounded-xl font-black text-[11px] uppercase tracking-widest {% if mi_asignacion.completado %}bg-slate-100 text-slate-500{% else %}bg-emerald-500 text-white{% endif %}">
+            {% if mi_asignacion.completado %}<i class="fa-solid fa-rotate-left mr-1"></i>Quitar mi confirmación{% else %}<i class="fa-solid fa-circle-check mr-1"></i>Confirmar mi parte{% endif %}
+        </button>
+    </form>
+    {% endif %}
+    {% if not t.es_resumen %}
+    <form method="post" action="{% url 'admon_tareas:tablero_detalle' tablero.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="cambiar_estado">
+        <input type="hidden" name="tarea_id" value="{{ t.id }}">
+        <input type="hidden" name="next" value="movil">
+        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cambiar estado</label>
+        <select name="estado" onchange="this.form.submit()" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold">
+            {% for k,v in estados %}{% if k != 'BLOQ' %}<option value="{{ k }}" {% if k == t.estado %}selected{% endif %}>{{ v }}</option>{% endif %}{% endfor %}
+        </select>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Subtareas -->
+{% if subtareas %}
+<div>
+    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Subtareas · {{ subtareas|length }}</p>
+    {% for s in subtareas %}
+    <a href="{% url 'admon_tareas:movil_tarea' s.id %}" class="tap block bg-white rounded-2xl p-3 shadow-sm mb-2">
+        <div class="flex items-center gap-2">
+            <p class="text-sm font-bold text-slate-700 truncate flex-1">{{ s.titulo }}</p>
+            {% include 'admon_tareas/_estado_badge.html' with estado=s.estado display=s.get_estado_display %}
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

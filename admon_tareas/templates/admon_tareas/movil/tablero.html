@@ -1,0 +1,57 @@
+{% extends "admon_tareas/movil/base_movil.html" %}
+{% block title %}{{ tablero.nombre }}{% endblock %}
+{% block topbar_title %}{{ tablero.nombre }}{% endblock %}
+
+{% block content %}
+<a href="{% url 'admon_tareas:movil' %}" class="tap inline-flex items-center gap-1 text-[11px] font-black text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-arrow-left"></i> Mis tareas</a>
+
+<!-- Resumen -->
+<div class="bg-white rounded-2xl p-4 shadow-sm">
+    <div class="flex items-center gap-2 mb-2">
+        <div class="flex-1 h-2.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full {% if resumen.salud == 'atrasado' %}bg-rose-500{% elif resumen.avance == 100 %}bg-emerald-500{% else %}bg-indigo-500{% endif %}" style="width:{{ resumen.avance }}%"></div></div>
+        <span class="text-sm font-black text-slate-800">{{ resumen.avance }}%</span>
+    </div>
+    <div class="flex items-center gap-4 text-[11px] font-bold text-slate-400">
+        <span>{{ resumen.n }} tareas</span>
+        <span class="text-emerald-600">{{ resumen.comp }} listas</span>
+        {% if resumen.atrasadas %}<span class="text-rose-500">{{ resumen.atrasadas }} atras.</span>{% endif %}
+        {% if resumen.vencen %}<span class="text-amber-600">{{ resumen.vencen }} vencen</span>{% endif %}
+    </div>
+</div>
+
+{% if solo_mias %}
+<div class="rounded-xl px-3 py-2 bg-blue-50 border border-blue-100 text-blue-700 text-[11px] font-bold"><i class="fa-solid fa-user-lock mr-1"></i>Ves solo tus tareas asignadas.</div>
+{% endif %}
+
+<!-- Tareas por etapa -->
+<div class="space-y-2">
+    {% for t in tareas %}
+    {% if t.es_etapa %}
+    <div class="pt-3 pb-1 flex items-center gap-2">
+        <span class="text-[11px] font-black text-slate-500 uppercase tracking-widest"><i class="fa-solid fa-layer-group mr-1 text-slate-400"></i>{{ t.titulo }}</span>
+        <span class="text-[10px] font-bold text-slate-300">{{ t.n_hijas }} · {{ t.avance|floatformat:0 }}%</span>
+    </div>
+    {% else %}
+    <a href="{% url 'admon_tareas:movil_tarea' t.id %}" class="tap block bg-white rounded-2xl p-3.5 shadow-sm {% if t.es_bloqueante %}border-l-4 border-rose-500{% elif t.es_resumen %}border-l-4 border-slate-300{% endif %}" {% if t.nivel > 1 %}style="margin-left:{{ t.nivel|add:'-1' }}6px"{% endif %}>
+        <div class="flex items-center gap-2">
+            <div class="min-w-0 flex-1">
+                <p class="text-sm {% if t.es_resumen %}font-black{% else %}font-bold{% endif %} text-slate-800 truncate">{% if t.es_bloqueante %}⛔ {% elif t.es_hito %}<i class="fa-solid fa-diamond text-violet-500 text-[10px]"></i> {% endif %}{{ t.titulo }}</p>
+                <div class="flex items-center gap-2 mt-1">
+                    {% for a in t.asignaciones.all|slice:":3" %}
+                    <span class="w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-black text-white {% if a.completado %}bg-emerald-500{% else %}bg-slate-400{% endif %}">{{ a.usuario.get_full_name|default:a.usuario.username|slice:":2"|upper }}</span>
+                    {% endfor %}
+                    {% if t.espera %}<span class="text-[9px] font-black uppercase text-rose-500"><i class="fa-solid fa-lock mr-0.5"></i>espera</span>{% endif %}
+                </div>
+            </div>
+            <div class="text-right flex-none">
+                {% include 'admon_tareas/_estado_badge.html' with estado=t.estado display=t.get_estado_display %}
+                <p class="text-[10px] font-bold {% if t.fecha_fin_plan and t.fecha_fin_plan < hoy and t.estado != 'COMP' %}text-rose-500{% else %}text-slate-400{% endif %} mt-1">{{ t.fecha_fin_plan|date:"d/m/y"|default:"—" }}</p>
+            </div>
+        </div>
+    </a>
+    {% endif %}
+    {% empty %}
+    <div class="bg-white rounded-2xl p-6 text-center text-slate-400 italic text-sm shadow-sm">Sin tareas.</div>
+    {% endfor %}
+</div>
+{% endblock %}

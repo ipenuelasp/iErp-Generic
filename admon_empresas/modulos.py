@@ -88,7 +88,7 @@ SECCIONES = [
      'urls': ['ordenes_produccion', 'orden_produccion_detalle']},
     # Tareas
     {'clave': 'tareas.tableros', 'nombre': 'Tableros', 'modulo': 'tareas',
-     'urls': ['tableros', 'tablero_detalle', 'tarea_panel', 'adjunto_descarga', 'movil']},
+     'urls': ['tableros', 'tablero_detalle', 'tarea_panel', 'adjunto_descarga', 'movil', 'movil_tarea']},
     {'clave': 'tareas.mis_tareas', 'nombre': 'Mis tareas', 'modulo': 'tareas',
      'urls': ['mis_tareas']},
 ]
