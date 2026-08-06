@@ -337,6 +337,15 @@
                 <button type="submit" class="bg-brand text-white px-7 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar ajustes</button>
             </div>
         </form>
+        <form method="POST" class="px-8 pb-8 -mt-3"
+              data-confirm="¿Archivar este tablero? No se borra; podrás reactivarlo desde «Archivados» en la lista de tableros."
+              data-confirm-title="Archivar tablero" data-confirm-ok="Sí, archivar" data-confirm-variant="ok">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="archivar_tablero">
+            <div class="border-t border-slate-100 pt-4">
+                <button type="submit" class="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-700"><i class="fa-solid fa-box-archive mr-1"></i> Archivar tablero (ocultar de la lista)</button>
+            </div>
+        </form>
     </div>
 </div>
 {% endif %}

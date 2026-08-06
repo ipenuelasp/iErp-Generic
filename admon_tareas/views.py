@@ -182,17 +182,21 @@ class TablerosView(LoginRequiredMixin, View):
         if not empresa:
             return redirect('home')
         from django.db.models import Q
-        qs = Tablero.objects.operativos().filter(empresa=empresa)
+        ver_archivados = request.GET.get('archivados') == '1'
+        base = Tablero.objects.operativos().filter(empresa=empresa)
         admin = _es_admin_tareas(request.user)
         if not admin:
             # Solo los tableros donde está involucrado (invitado explícito o por tarea).
-            qs = qs.filter(Q(responsable=request.user) | Q(creado_por=request.user)
-                           | Q(miembros=request.user)
-                           | Q(tareas__asignaciones__usuario=request.user)).distinct()
+            base = base.filter(Q(responsable=request.user) | Q(creado_por=request.user)
+                               | Q(miembros=request.user)
+                               | Q(tareas__asignaciones__usuario=request.user)).distinct()
+        n_archivados = base.filter(activo=False).count()
+        qs = base.filter(activo=not ver_archivados)
         tableros = list(qs.select_related('responsable')
                         .prefetch_related('tareas__asignaciones__usuario'))
         for t in tableros:
             t.stats = _stats_tablero(t, list(t.tareas.all()))
+            t.puede_gestionar = _puede_gestionar_tablero(request.user, t)
         plantillas = list(Tablero.objects.filter(empresa=empresa, es_plantilla=True, activo=True)
                           .order_by('nombre')) if admin else []
         for p in plantillas:
@@ -207,6 +211,8 @@ class TablerosView(LoginRequiredMixin, View):
             'tipos_todos': TipoTablero.objects.filter(empresa=empresa),
             'modos': Tablero.MODO_CIERRE,
             'visibilidades': Tablero.VISIBILIDAD,
+            'ver_archivados': ver_archivados,
+            'n_archivados': n_archivados,
             'seccion': 'tareas',
         }
         return render(request, self.template_name, context)
@@ -218,6 +224,19 @@ class TablerosView(LoginRequiredMixin, View):
         accion = request.POST.get('accion') or 'crear_tablero'
 
         es_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+        if accion in ('archivar_tablero', 'reactivar_tablero'):
+            from django.urls import reverse
+            tb = Tablero.objects.filter(id=request.POST.get('tablero_id'), empresa=empresa).first()
+            if not tb or not _puede_gestionar_tablero(request.user, tb):
+                messages.error(request, "No puedes archivar ese tablero.")
+                return redirect('admon_tareas:tableros')
+            tb.activo = (accion == 'reactivar_tablero')
+            tb.save(update_fields=['activo'])
+            messages.success(request, f"Tablero «{tb.nombre}» "
+                             f"{'reactivado' if tb.activo else 'archivado'}.")
+            destino = reverse('admon_tareas:tableros')
+            return redirect(f"{destino}?archivados=1" if not tb.activo else destino)
 
         if accion == 'crear_tipo':
             nombre = (request.POST.get('nombre') or '').strip()
@@ -306,7 +325,7 @@ class MisTareasView(LoginRequiredMixin, View):
         fin_semana = hoy + _dt.timedelta(days=(6 - hoy.weekday()))
 
         asigs = list(TareaAsignacion.objects.filter(
-            usuario=request.user, tarea__empresa=empresa)
+            usuario=request.user, tarea__empresa=empresa, tarea__tablero__activo=True)
             .exclude(tarea__estado__in=['COMP', 'CANC'])
             .select_related('tarea', 'tarea__tablero'))
 
@@ -447,6 +466,16 @@ class TableroDetalleView(LoginRequiredMixin, View):
             tablero.miembros.set(_usuarios_empresa(empresa).filter(id__in=ids))
             messages.success(request, "Ajustes del tablero actualizados.")
             return redirect(base_url)
+
+        if accion == 'archivar_tablero':
+            if not _puede_gestionar_tablero(request.user, tablero):
+                messages.error(request, "No puedes archivar este tablero.")
+                return redirect(base_url)
+            tablero.activo = False
+            tablero.save(update_fields=['activo'])
+            messages.success(request, f"Tablero «{tablero.nombre}» archivado. "
+                             "Puedes reactivarlo desde «Archivados».")
+            return redirect('admon_tareas:tableros')
 
         if accion == 'fijar_linea_base':
             from django.db.models import Max as _Max

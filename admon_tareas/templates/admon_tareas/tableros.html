@@ -4,15 +4,23 @@
 <div class="max-w-screen-2xl mx-auto p-8">
     <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Tableros de tareas</h1>
-            <p class="text-slate-500 mt-2 font-medium">Cada tablero agrupa tareas con subtareas, asignados y fechas. Da clic para abrirlo.</p>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Tableros de tareas{% if ver_archivados %} · <span class="text-slate-400">Archivados</span>{% endif %}</h1>
+            <p class="text-slate-500 mt-2 font-medium">{% if ver_archivados %}Tableros archivados: no aparecen en la lista normal y no se borran. Puedes reactivarlos.{% else %}Cada tablero agrupa tareas con subtareas, asignados y fechas. Da clic para abrirlo.{% endif %}</p>
         </div>
-        <button type="button" onclick="document.getElementById('modalTablero').classList.remove('hidden')" class="bg-brand text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Nuevo tablero</button>
+        <div class="flex items-center gap-2">
+            {% if ver_archivados %}
+                <a href="{% url 'admon_tareas:tableros' %}" class="bg-white border border-slate-200 text-slate-500 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-arrow-left mr-1"></i> Volver a activos</a>
+            {% else %}
+                {% if n_archivados %}<a href="?archivados=1" class="bg-white border border-slate-200 text-slate-500 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all" title="Ver tableros archivados"><i class="fa-solid fa-box-archive mr-1"></i> Archivados ({{ n_archivados }})</a>{% endif %}
+                <button type="button" onclick="document.getElementById('modalTablero').classList.remove('hidden')" class="bg-brand text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Nuevo tablero</button>
+            {% endif %}
+        </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {% for t in tableros %}
-        <a href="{% url 'admon_tareas:tablero_detalle' t.pk %}" class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 hover:-translate-y-1 transition-all block">
+        <div class="relative">
+        <a href="{% url 'admon_tareas:tablero_detalle' t.pk %}" class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border {% if ver_archivados %}border-slate-200 opacity-80 hover:opacity-100{% else %}border-slate-100{% endif %} p-6 hover:-translate-y-1 transition-all block">
             <div class="flex items-center gap-2 mb-2 flex-wrap">
                 <span class="text-[10px] font-mono text-slate-400">{{ t.codigo }}</span>
                 {% if t.tipo %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-500">{{ t.tipo.nombre }}</span>{% endif %}
@@ -50,9 +58,25 @@
             </div>
             {% endif %}
         </a>
+        {% if t.puede_gestionar %}
+        <form method="post" class="absolute top-5 right-5 z-10"
+              data-confirm="{% if ver_archivados %}¿Reactivar este tablero? Volverá a aparecer en la lista.{% else %}¿Archivar este tablero? No se borra; podrás reactivarlo desde «Archivados».{% endif %}"
+              data-confirm-title="{% if ver_archivados %}Reactivar tablero{% else %}Archivar tablero{% endif %}"
+              data-confirm-ok="{% if ver_archivados %}Sí, reactivar{% else %}Sí, archivar{% endif %}" data-confirm-variant="ok">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="{% if ver_archivados %}reactivar_tablero{% else %}archivar_tablero{% endif %}">
+            <input type="hidden" name="tablero_id" value="{{ t.id }}">
+            {% if ver_archivados %}
+            <button type="submit" title="Reactivar" class="w-8 h-8 rounded-lg bg-white/90 border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-200 shadow-sm flex items-center justify-center"><i class="fa-solid fa-rotate-left text-xs"></i></button>
+            {% else %}
+            <button type="submit" title="Archivar (ocultar de la lista)" class="w-8 h-8 rounded-lg bg-white/90 border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 shadow-sm flex items-center justify-center"><i class="fa-solid fa-box-archive text-xs"></i></button>
+            {% endif %}
+        </form>
+        {% endif %}
+        </div>
         {% empty %}
         <div class="col-span-full bg-white rounded-[2rem] border border-slate-100 p-12 text-center text-slate-400 italic">
-            Aún no hay tableros. Crea el primero con <b>Nuevo tablero</b>.
+            {% if ver_archivados %}No tienes tableros archivados.{% else %}Aún no hay tableros. Crea el primero con <b>Nuevo tablero</b>.{% endif %}
         </div>
         {% endfor %}
     </div>
