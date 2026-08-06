@@ -66,7 +66,10 @@ def gestion_usuarios(request):
     if q:
         empleados = empleados.filter(Q(email__icontains=q) | Q(first_name__icontains=q)
                                      | Q(last_name__icontains=q) | Q(username__icontains=q))
-    empleados = empleados.distinct().order_by('first_name', 'username')
+    # Se evalúa UNA vez con prefetch (evita N+1 al pintar accesos/sucursales/grupos,
+    # crítico porque la BD es remota y cada query cuesta latencia de red).
+    empleados = list(empleados.distinct().order_by('first_name', 'username')
+                     .prefetch_related('perfil__empresas', 'perfil__sucursales__empresa', 'groups'))
 
     filtros = {'empresa': sel_empresas, 'estatus': sel_estatus, 'invitacion': sel_invit, 'q': q}
     estatus_opciones = [('activo', 'Activo'), ('inactivo', 'Desactivado')]
@@ -134,14 +137,17 @@ def gestion_usuarios(request):
     # Módulos ya asignados a cada empleado (en la empresa del gestor)
     from admon_empresas.modulos import secciones_de_modulo
     from admon_empresas.models import SeccionOcultaUsuario
-    modulos_por_usuario = {}
-    ocultas_por_usuario = {}
-    if empresa_gestor:
-        for emp in empleados:
-            modulos_por_usuario[emp.id] = list(AccesoModuloUsuario.objects.filter(
-                usuario=emp, empresa=empresa_gestor).values_list('modulo', flat=True))
-            ocultas_por_usuario[emp.id] = list(SeccionOcultaUsuario.objects.filter(
-                usuario=emp, empresa=empresa_gestor).values_list('seccion', flat=True))
+    # En 2 consultas (no 2 por usuario): traemos todo y agrupamos en memoria.
+    user_ids = [e.id for e in empleados]
+    modulos_por_usuario = {uid: [] for uid in user_ids}
+    ocultas_por_usuario = {uid: [] for uid in user_ids}
+    if empresa_gestor and user_ids:
+        for uid, modulo in AccesoModuloUsuario.objects.filter(
+                empresa=empresa_gestor, usuario_id__in=user_ids).values_list('usuario_id', 'modulo'):
+            modulos_por_usuario.setdefault(uid, []).append(modulo)
+        for uid, seccion in SeccionOcultaUsuario.objects.filter(
+                empresa=empresa_gestor, usuario_id__in=user_ids).values_list('usuario_id', 'seccion'):
+            ocultas_por_usuario.setdefault(uid, []).append(seccion)
     # Secciones (pantallas) por módulo contratado, para el árbol de permisos finos
     secciones_por_modulo = {m['clave']: secciones_de_modulo(m['clave']) for m in modulos_empresa}
 
