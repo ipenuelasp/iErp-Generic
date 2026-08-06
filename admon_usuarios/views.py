@@ -72,6 +72,31 @@ def gestion_usuarios(request):
     estatus_opciones = [('activo', 'Activo'), ('inactivo', 'Desactivado')]
     invit_opciones = [('aceptada', 'Aceptada'), ('pendiente', 'Pendiente')]
 
+    # Pills de filtros activos: cada uno con su link de "quitar" (conserva el resto).
+    def _url_sin(key, value):
+        qd = request.GET.copy()
+        qd.setlist(key, [v for v in qd.getlist(key) if v != value])
+        enc = qd.urlencode()
+        return f"{request.path}?{enc}" if enc else request.path
+
+    emp_by_id = {str(e.id): e for e in empresas_gestionables}
+    est_lbl, inv_lbl = dict(estatus_opciones), dict(invit_opciones)
+    filtros_activos = []
+    for v in sel_empresas:
+        e = emp_by_id.get(v)
+        if e:
+            filtros_activos.append({'label': e.nombre_fiscal, 'icon': 'fa-building',
+                                    'cls': 'bg-blue-50 text-blue-700', 'url': _url_sin('empresa', v)})
+    for v in sel_estatus:
+        filtros_activos.append({'label': est_lbl.get(v, v), 'icon': 'fa-circle-half-stroke',
+                                'cls': 'bg-indigo-50 text-indigo-700', 'url': _url_sin('estatus', v)})
+    for v in sel_invit:
+        filtros_activos.append({'label': inv_lbl.get(v, v), 'icon': 'fa-paper-plane',
+                                'cls': 'bg-emerald-50 text-emerald-700', 'url': _url_sin('invitacion', v)})
+    if q:
+        filtros_activos.append({'label': f'“{q}”', 'icon': 'fa-magnifying-glass',
+                                'cls': 'bg-slate-100 text-slate-600', 'url': _url_sin('q', q)})
+
     sucursales = Sucursal.objects.filter(empresa__in=empresas_gestionables)
     grupos = Group.objects.all()
     empresas_con_sucursales = empresas_gestionables
@@ -132,6 +157,7 @@ def gestion_usuarios(request):
         'ocultas_por_usuario': ocultas_por_usuario,
         'empresas_gestionables': empresas_gestionables,
         'filtros': filtros,
+        'filtros_activos': filtros_activos,
         'estatus_opciones': estatus_opciones,
         'invit_opciones': invit_opciones,
         'titulo_pagina': "Gestión de Personal"

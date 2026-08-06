@@ -102,6 +102,19 @@
                 <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-sm"></i>
                 <input type="text" name="q" value="{{ filtros.q }}" placeholder="Buscar por nombre o correo…" class="w-full md:w-96 pl-11 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm focus:border-brand transition-all">
             </div>
+
+            {% if filtros_activos %}
+            <div class="flex flex-wrap items-center gap-1.5 mt-3 pt-3 border-t border-slate-100">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest self-center mr-1">Filtros activos:</span>
+                {% for f in filtros_activos %}
+                <a href="{{ f.url }}" class="inline-flex items-center gap-1.5 {{ f.cls }} text-xs px-2.5 py-1 rounded-full font-bold hover:opacity-80 transition-opacity" title="Quitar filtro">
+                    <i class="fa-solid {{ f.icon }} text-[9px]"></i>{{ f.label }}
+                    <i class="fa-solid fa-xmark text-[10px] opacity-60"></i>
+                </a>
+                {% endfor %}
+                <a href="{% url 'gestion_usuarios' %}" class="text-[10px] font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest ml-1 self-center">Quitar todos</a>
+            </div>
+            {% endif %}
         </form>
         <div class="overflow-x-auto">
             <table class="w-full text-left border-separate border-spacing-y-3">
