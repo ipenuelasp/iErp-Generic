@@ -52,13 +52,25 @@ def _es_admin_tareas(user):
 
 
 def _puede_ver_tablero(user, tablero):
-    """Un usuario ve un tablero si es admin, su responsable, lo creó, o tiene al
-    menos una tarea asignada en él (está 'invitado')."""
+    """Un usuario ve un tablero si es admin, su responsable, lo creó, es miembro
+    invitado explícito, o tiene al menos una tarea asignada en él."""
     if _es_admin_tareas(user):
         return True
     if tablero.responsable_id == user.id or tablero.creado_por_id == user.id:
         return True
+    if tablero.miembros.filter(id=user.id).exists():
+        return True
     return TareaAsignacion.objects.filter(tarea__tablero=tablero, usuario=user).exists()
+
+
+def _ve_todo_el_tablero(user, tablero):
+    """True si el usuario ve TODAS las tareas del tablero (no solo las suyas):
+    admin, responsable, creador, o tableros con visibilidad 'TODO'."""
+    if tablero.visibilidad != 'ASIGNADAS':
+        return True
+    if _es_admin_tareas(user):
+        return True
+    return tablero.responsable_id == user.id or tablero.creado_por_id == user.id
 
 
 def _stats_tablero(tablero, dets):
@@ -165,8 +177,9 @@ class TablerosView(LoginRequiredMixin, View):
         qs = Tablero.objects.operativos().filter(empresa=empresa)
         admin = _es_admin_tareas(request.user)
         if not admin:
-            # Solo los tableros donde está involucrado (invitado).
+            # Solo los tableros donde está involucrado (invitado explícito o por tarea).
             qs = qs.filter(Q(responsable=request.user) | Q(creado_por=request.user)
+                           | Q(miembros=request.user)
                            | Q(tareas__asignaciones__usuario=request.user)).distinct()
         tableros = list(qs.select_related('responsable')
                         .prefetch_related('tareas__asignaciones__usuario'))
@@ -185,6 +198,7 @@ class TablerosView(LoginRequiredMixin, View):
             'tipos': tipos_de(empresa),
             'tipos_todos': TipoTablero.objects.filter(empresa=empresa),
             'modos': Tablero.MODO_CIERRE,
+            'visibilidades': Tablero.VISIBILIDAD,
             'seccion': 'tareas',
         }
         return render(request, self.template_name, context)
@@ -249,16 +263,24 @@ class TablerosView(LoginRequiredMixin, View):
             return redirect('admon_tareas:tableros')
         n = Tablero.objects.filter(empresa=empresa).count() + 1
         tipo = TipoTablero.objects.filter(id=request.POST.get('tipo'), empresa=empresa).first()
+        visibilidad = request.POST.get('visibilidad')
+        if visibilidad not in dict(Tablero.VISIBILIDAD):
+            visibilidad = 'TODO'
         tablero = Tablero.objects.create(
             empresa=empresa, codigo=(request.POST.get('codigo') or f'TAB-{n:04d}').strip()[:20],
             nombre=nombre, descripcion=(request.POST.get('descripcion') or '').strip(),
             tipo=tipo,
             modo_cierre=request.POST.get('modo_cierre') or 'TODOS',
+            visibilidad=visibilidad,
             responsable_id=request.POST.get('responsable') or None,
             fecha_inicio=request.POST.get('fecha_inicio') or None,
             fecha_fin=request.POST.get('fecha_fin') or None,
             es_plantilla=bool(request.POST.get('es_plantilla')),
             creado_por=request.user)
+        # Miembros invitados explícitos (pueden ver el tablero aunque no tengan tarea).
+        ids = [int(i) for i in request.POST.getlist('miembros') if i.isdigit()]
+        if ids:
+            tablero.miembros.set(_usuarios_empresa(empresa).filter(id__in=ids))
         messages.success(request, f"Tablero {tablero.codigo} creado.")
         return redirect('admon_tareas:tablero_detalle', pk=tablero.pk)
 
@@ -324,8 +346,23 @@ class TableroDetalleView(LoginRequiredMixin, View):
         tareas = list(tablero.tareas.select_related('padre')
                       .prefetch_related('asignaciones__usuario')
                       .order_by('orden', 'ruta_wbs', 'id'))
-        deps = (TareaDependencia.objects.filter(sucesora__tablero=tablero)
-                .select_related('predecesora'))
+        deps = list(TareaDependencia.objects.filter(sucesora__tablero=tablero)
+                    .select_related('predecesora'))
+        # Visibilidad "solo mis tareas": un miembro limitado ve únicamente las tareas
+        # que tiene asignadas (más sus fases/ancestros como contexto de la jerarquía).
+        solo_mias = not _ve_todo_el_tablero(request.user, tablero)
+        if solo_mias:
+            mis_ids = set(TareaAsignacion.objects.filter(
+                tarea__tablero=tablero, usuario=request.user).values_list('tarea_id', flat=True))
+            by_id = {t.id: t for t in tareas}
+            visibles = set(mis_ids)
+            for tid in list(mis_ids):
+                t = by_id.get(tid)
+                while t and t.padre_id:
+                    visibles.add(t.padre_id)
+                    t = by_id.get(t.padre_id)
+            tareas = [t for t in tareas if t.id in visibles]
+            deps = [d for d in deps if d.predecesora_id in visibles and d.sucesora_id in visibles]
         # Cada bloqueante se muestra debajo de la tarea que bloquea.
         bloqueante_de = {d.predecesora_id: d.sucesora_id for d in deps if d.origen == 'BLOQUEO'}
         ordenadas = _orden_jerarquico(tareas, bloqueante_de)
@@ -355,6 +392,7 @@ class TableroDetalleView(LoginRequiredMixin, View):
             'prioridades': Tarea.PRIORIDAD,
             'roles': TareaAsignacion.ROL,
             'tipos_dep': TareaDependencia.TIPO,
+            'solo_mias': solo_mias,
             'seccion': 'tareas',
         }
         return render(request, self.template_name, context)

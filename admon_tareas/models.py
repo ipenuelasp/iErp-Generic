@@ -78,6 +78,11 @@ class Tablero(models.Model):
         ('EMPRESA', 'Solo esta empresa'),
         ('GLOBAL', 'Catálogo del proveedor'),
     ]
+    # Qué ven los invitados (miembros/asignados) que NO son responsable/creador/admin.
+    VISIBILIDAD = [
+        ('TODO', 'Todos los involucrados ven todas las tareas'),
+        ('ASIGNADAS', 'Cada quien ve solo sus tareas asignadas'),
+    ]
 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='tableros')
     codigo = models.CharField(max_length=20)
@@ -88,6 +93,11 @@ class Tablero(models.Model):
     modo_cierre = models.CharField(max_length=12, choices=MODO_CIERRE, default='TODOS')
     responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
                                     null=True, blank=True, related_name='tableros_a_cargo')
+    # Invitados explícitos: pueden ver el tablero aunque aún no tengan tareas.
+    miembros = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True,
+                                      related_name='tableros_invitado',
+                                      db_table='tareas_tablero_miembros')
+    visibilidad = models.CharField(max_length=10, choices=VISIBILIDAD, default='TODO')
     fecha_inicio = models.DateField(null=True, blank=True)
     fecha_fin = models.DateField(null=True, blank=True)
     # Línea base: fin planeado "de la primera vista" para medir reprogramaciones.

@@ -174,6 +174,19 @@ function instanciar(id, nombre){
                         {% for u in usuarios %}<option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
                     </select>
                 </div>
+                <div class="md:col-span-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Quién puede verlo</label>
+                    <select name="miembros" multiple data-placeholder="Elige a las personas invitadas…" class="w-full mt-1">
+                        {% for u in usuarios %}<option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+                    </select>
+                    <p class="text-[10px] text-slate-400 mt-1 ml-1">Los invitados verán el tablero aunque aún no tengan tareas. El responsable y tú siempre lo ven.</p>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Qué ven los invitados</label>
+                    <select name="visibilidad" class="w-full mt-1">
+                        {% for k,v in visibilidades %}<option value="{{ k }}">{{ v }}</option>{% endfor %}
+                    </select>
+                </div>
                 <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Inicio</label><input type="date" name="fecha_inicio" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold"></div>
                 <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Fin</label><input type="date" name="fecha_fin" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold"></div>
                 <div class="md:col-span-2">
