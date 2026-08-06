@@ -16,8 +16,8 @@
         {% endif %}
     </div>
 
-    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
-        <form method="get" id="form-filtros" class="mb-6">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-4">
+        <form method="get" id="form-filtros">
             <div class="flex flex-wrap gap-2 items-center">
 
                 <!-- Empresa (multi-select con búsqueda) -->
@@ -116,34 +116,37 @@
             </div>
             {% endif %}
         </form>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-separate border-spacing-y-3">
-                <thead>
-                    <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        <th class="px-8 py-4">Usuario</th>
-                        <th class="px-8 py-4">Accesos</th>
-                        <th class="px-8 py-4 text-center">Invitación</th>
-                        <th class="px-8 py-4 text-right">Acciones</th>
+            <table class="w-full text-sm text-left">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        <th class="px-5 py-3 text-left">Usuario</th>
+                        <th class="px-5 py-3 text-left">Accesos</th>
+                        <th class="px-5 py-3 text-center">Invitación</th>
+                        <th class="px-5 py-3 text-right">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for empleado in empleados %}
-                    <tr class="bg-white border-b border-slate-50 hover:bg-slate-50/50 transition-all group">
-                        <td class="px-8 py-5">
+                    <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                        <td class="px-5 py-3.5">
                             <div class="flex items-center">
-                                <div class="h-10 w-10 rounded-full bg-brand/10 flex items-center justify-center text-brand font-black mr-3 italic">
+                                <div class="h-9 w-9 rounded-full bg-brand/10 flex items-center justify-center text-brand font-black mr-3 text-sm">
                                     {{ empleado.username|slice:":1"|upper }}
                                 </div>
                                 <div>
-                                    <div class="text-sm font-black text-slate-800 leading-tight">{{ empleado.first_name|default:empleado.username }}
+                                    <div class="text-sm font-bold text-slate-800 leading-tight">{{ empleado.first_name|default:empleado.username }}
                                         {% if not empleado.is_active %}<span class="ml-1 text-[8px] font-black uppercase bg-rose-50 text-rose-500 px-2 py-0.5 rounded-full border border-rose-100">Desactivado</span>{% endif %}
                                     </div>
-                                    <div class="text-[10px] text-slate-400 font-bold uppercase">{{ empleado.email }}</div>
+                                    <div class="text-xs text-slate-400 font-medium">{{ empleado.email }}</div>
                                 </div>
                             </div>
                         </td>
                         <!-- ACCESOS: empresa → sucursales agrupadas -->
-                        <td class="px-8 py-5">
+                        <td class="px-5 py-3.5">
                             {% with accesos=accesos_por_usuario|get_item:empleado.id %}
                             {% if accesos %}
                             <div class="flex flex-col gap-2 max-w-[280px]">
@@ -169,18 +172,18 @@
                             {% endif %}
                             {% endwith %}
                         </td>
-                        <td class="px-8 py-5 text-center">
-                            {% if empleado.last_login %}
-                                <span class="bg-emerald-50 text-emerald-500 text-[8px] font-black px-3 py-1 rounded-full border border-emerald-100 uppercase italic">
-                                    <i class="fa-solid fa-check-double mr-1"></i> Aceptada
+                        <td class="px-5 py-3.5 text-center">
+                            {% if empleado.perfil.invitacion_aceptada %}
+                                <span class="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-100">
+                                    <i class="fa-solid fa-check-double mr-1 text-[8px]"></i>Aceptada
                                 </span>
                             {% else %}
-                                <span class="bg-amber-50 text-amber-600 text-[8px] font-black px-3 py-1 rounded-full border border-amber-100 uppercase italic animate-pulse">
-                                    <i class="fa-solid fa-clock mr-1"></i> Pendiente
+                                <span class="bg-amber-50 text-amber-600 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-amber-100">
+                                    <i class="fa-solid fa-clock mr-1 text-[8px]"></i>Pendiente
                                 </span>
                             {% endif %}
                         </td>
-                        <td class="px-8 py-5 text-right">
+                        <td class="px-5 py-3.5 text-right">
                             <div class="flex justify-end gap-2">
                                 <form method="post" action="{% url 'reenviar_invitacion' empleado.id %}">
                                     {% csrf_token %}
@@ -231,7 +234,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4" class="px-8 py-12 text-center text-slate-300 italic text-sm">
+                    <tr><td colspan="4" class="px-5 py-12 text-center text-slate-300 italic text-sm">
                         {% if filtros.q %}No hay usuarios que coincidan con «{{ filtros.q }}».{% else %}No hay usuarios con estos filtros.{% endif %}
                     </td></tr>
                     {% endfor %}
