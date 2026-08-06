@@ -17,12 +17,29 @@
     </div>
 
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+        <form method="get" class="flex flex-col md:flex-row md:items-end gap-3 mb-6">
+            <div>
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Empresa</label>
+                <select name="empresa" onchange="this.form.submit()" class="w-full md:w-72 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm focus:border-brand transition-all">
+                    {% for e in empresas_gestionables %}
+                    <option value="{{ e.id }}" {% if empresa_sel and e.id == empresa_sel.id %}selected{% endif %}>{{ e.nombre_fiscal }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex-1">
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Buscar por correo o nombre</label>
+                <div class="flex gap-2">
+                    <input type="text" name="q" value="{{ q }}" placeholder="correo@ejemplo.com o nombre" class="flex-1 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm focus:border-brand transition-all">
+                    <button type="submit" class="bg-brand text-white px-5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-magnifying-glass"></i></button>
+                    {% if q %}<a href="?empresa={{ empresa_sel.id }}" class="px-4 flex items-center text-slate-400 hover:text-slate-600 font-black text-[10px] uppercase tracking-widest">Limpiar</a>{% endif %}
+                </div>
+            </div>
+        </form>
         <div class="overflow-x-auto">
             <table class="w-full text-left border-separate border-spacing-y-3">
                 <thead>
                     <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                         <th class="px-8 py-4">Usuario</th>
-                        <th class="px-8 py-4">Rol</th>
                         <th class="px-8 py-4">Accesos</th>
                         <th class="px-8 py-4 text-center">Invitación</th>
                         <th class="px-8 py-4 text-right">Acciones</th>
@@ -43,12 +60,6 @@
                                     <div class="text-[10px] text-slate-400 font-bold uppercase">{{ empleado.email }}</div>
                                 </div>
                             </div>
-                        </td>
-                        <!-- ROL -->
-                        <td class="px-8 py-5">
-                            <span class="text-[9px] font-black uppercase text-slate-700">
-                                {% for g in empleado.groups.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% empty %}Sin Rol{% endfor %}
-                            </span>
                         </td>
                         <!-- ACCESOS: empresa → sucursales agrupadas -->
                         <td class="px-8 py-5">
@@ -138,6 +149,10 @@
                             </div>
                         </td>
                     </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="px-8 py-12 text-center text-slate-300 italic text-sm">
+                        {% if q %}No hay usuarios que coincidan con «{{ q }}» en esta empresa.{% else %}No hay usuarios con acceso a esta empresa todavía.{% endif %}
+                    </td></tr>
                     {% endfor %}
                 </tbody>
             </table>
