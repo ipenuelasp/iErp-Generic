@@ -44,45 +44,46 @@ def gestion_usuarios(request):
     empresas_gestionables = list(request.empresas.prefetch_related('sucursales'))
     if request.user.is_superuser and not empresas_gestionables:
         empresas_gestionables = list(Empresa.objects.prefetch_related('sucursales').all())
+    gest_ids = {e.id for e in empresas_gestionables}
 
-    # Empresa seleccionada en el filtro (por GET, o la activa); siempre dentro de
-    # las gestionables (no se puede colar una empresa fuera de tu alcance).
-    # "Todas las empresas" solo para el proveedor (superuser); un OWNER filtra de
-    # una en una para no ver usuarios de otras empresas.
-    sel_id = request.GET.get('empresa')
-    ver_todas = request.user.is_superuser and sel_id == 'todas'
-    empresa_sel = None
-    if not ver_todas:
-        if sel_id:
-            empresa_sel = next((e for e in empresas_gestionables if str(e.id) == str(sel_id)), None)
-        if not empresa_sel and request.empresa in empresas_gestionables:
-            empresa_sel = request.empresa
-        if not empresa_sel and empresas_gestionables:
-            empresa_sel = empresas_gestionables[0]
-
-    # Búsqueda por correo o nombre
+    # --- Filtros por columna (chips multi-select, estilo panel de tickets) ---
+    # Empresa: se aceptan varias; vacío = todas las gestionables. Solo ids válidos
+    # dentro de tu alcance (no se puede colar una empresa de otro cliente).
+    sel_empresas = [i for i in request.GET.getlist('empresa') if i.isdigit() and int(i) in gest_ids]
+    sel_estatus = [v for v in request.GET.getlist('estatus') if v in ('activo', 'inactivo')]
+    sel_invit = [v for v in request.GET.getlist('invitacion') if v in ('aceptada', 'pendiente')]
     q = (request.GET.get('q') or '').strip()
 
     empleados = User.objects.select_related('perfil')
-    if ver_todas:
-        empleados = empleados.filter(perfil__empresas__in=empresas_gestionables)
-    elif empresa_sel:
-        empleados = empleados.filter(perfil__empresas=empresa_sel)
+    if sel_empresas:
+        empleados = empleados.filter(perfil__empresas__id__in=sel_empresas)
     else:
-        empleados = empleados.none()
+        empleados = empleados.filter(perfil__empresas__in=empresas_gestionables)
+    if sel_estatus and set(sel_estatus) != {'activo', 'inactivo'}:
+        empleados = empleados.filter(is_active=('activo' in sel_estatus))
+    if sel_invit and set(sel_invit) != {'aceptada', 'pendiente'}:
+        empleados = empleados.filter(perfil__invitacion_aceptada=('aceptada' in sel_invit))
     if q:
         empleados = empleados.filter(Q(email__icontains=q) | Q(first_name__icontains=q)
                                      | Q(last_name__icontains=q) | Q(username__icontains=q))
     empleados = empleados.distinct().order_by('first_name', 'username')
 
+    filtros = {'empresa': sel_empresas, 'estatus': sel_estatus, 'invitacion': sel_invit, 'q': q}
+    estatus_opciones = [('activo', 'Activo'), ('inactivo', 'Desactivado')]
+    invit_opciones = [('aceptada', 'Aceptada'), ('pendiente', 'Pendiente')]
+
     sucursales = Sucursal.objects.filter(empresa__in=empresas_gestionables)
     grupos = Group.objects.all()
     empresas_con_sucursales = empresas_gestionables
 
+    # Empresa destino para el modal (asignar módulos): la 1ª filtrada, o la activa.
+    empresa_sel = None
+    if sel_empresas:
+        empresa_sel = next((e for e in empresas_gestionables if str(e.id) == sel_empresas[0]), None)
+
     # Pre-calcular accesos por empresa para cada empleado: {user_id: [(empresa, [sucursales])}
     # Solo mostramos accesos dentro de las empresas gestionables (no filtrar aquí
     # revelaría que un usuario también pertenece a empresas de otros clientes).
-    gest_ids = {e.id for e in empresas_gestionables}
     accesos_por_usuario = {}
     for emp in empleados:
         p = emp.perfil
@@ -130,9 +131,9 @@ def gestion_usuarios(request):
         'secciones_por_modulo': secciones_por_modulo,
         'ocultas_por_usuario': ocultas_por_usuario,
         'empresas_gestionables': empresas_gestionables,
-        'empresa_sel': empresa_sel,
-        'ver_todas': ver_todas,
-        'q': q,
+        'filtros': filtros,
+        'estatus_opciones': estatus_opciones,
+        'invit_opciones': invit_opciones,
         'titulo_pagina': "Gestión de Personal"
     })
 
