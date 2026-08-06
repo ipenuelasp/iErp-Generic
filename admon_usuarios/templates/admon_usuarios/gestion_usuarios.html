@@ -16,7 +16,7 @@
         {% endif %}
     </div>
 
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-4">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-4">
         <form method="get" id="form-filtros">
             <div class="flex flex-wrap gap-2 items-center">
 
@@ -97,11 +97,8 @@
                 <a href="{% url 'gestion_usuarios' %}" class="px-4 py-3 border-2 border-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-colors">Limpiar</a>
             </div>
 
-            <!-- Búsqueda por nombre o correo -->
-            <div class="relative mt-3">
-                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-sm"></i>
-                <input type="text" name="q" value="{{ filtros.q }}" placeholder="Buscar por nombre o correo…" class="w-full md:w-96 pl-11 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm focus:border-brand transition-all">
-            </div>
+            <!-- conserva la búsqueda al aplicar filtros -->
+            <input type="hidden" name="q" value="{{ filtros.q }}">
 
             {% if filtros_activos %}
             <div class="flex flex-wrap items-center gap-1.5 mt-3 pt-3 border-t border-slate-100">
@@ -115,6 +112,19 @@
                 <a href="{% url 'gestion_usuarios' %}" class="text-[10px] font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest ml-1 self-center">Quitar todos</a>
             </div>
             {% endif %}
+        </form>
+    </div>
+
+    <!-- Card de búsqueda libre (todo el ancho), conserva los filtros activos -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-4">
+        <form method="get" id="form-busqueda" class="relative">
+            {% for v in filtros.empresa %}<input type="hidden" name="empresa" value="{{ v }}">{% endfor %}
+            {% for v in filtros.estatus %}<input type="hidden" name="estatus" value="{{ v }}">{% endfor %}
+            {% for v in filtros.invitacion %}<input type="hidden" name="invitacion" value="{{ v }}">{% endfor %}
+            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-sm pointer-events-none"></i>
+            <input type="search" name="q" value="{{ filtros.q }}" autocomplete="off"
+                   placeholder="Buscar por nombre o correo…"
+                   class="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm focus:border-brand transition-all">
         </form>
     </div>
 
@@ -600,5 +610,15 @@ function mfClearAll(btn) {
   dd.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = false; });
   dd.querySelectorAll('input[type=checkbox]')[0]?.dispatchEvent(new Event('change'));
 }
+
+// Búsqueda con debounce (envía el form de búsqueda, que conserva los filtros)
+(function () {
+  const f = document.getElementById('form-busqueda');
+  if (!f) return;
+  const inp = f.querySelector('input[name=q]');
+  let t;
+  inp.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => f.submit(), 450); });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(t); f.submit(); } });
+})();
 </script>
 {% endblock %}
