@@ -122,15 +122,20 @@ LOGIN_URL = 'login'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'mssql', 
+        'ENGINE': 'mssql',
         'NAME': os.environ.get('DB_NAME'),
         'USER': os.environ.get('DB_USER'),
         'PASSWORD': os.environ.get('DB_PASS'),
         'HOST': os.environ.get('DB_HOST'), # Sin la IP aquí
         'PORT': os.environ.get('DB_PORT', '1433'),
+        # La BD es REMOTA: reconectar en cada request cuesta decenas/cientos de ms.
+        # Con conexiones persistentes cada worker reutiliza su conexión; los health
+        # checks (Django 4.1+) reciclan las que se hayan caído al inicio del request.
+        'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '60')),
+        'CONN_HEALTH_CHECKS': True,
         'OPTIONS': {
             'driver': 'ODBC Driver 18 for SQL Server',
-            'extra_params': 'TrustServerCertificate=yes;Encrypt=no', 
+            'extra_params': 'TrustServerCertificate=yes;Encrypt=no',
             'connection_timeout': 30,
         },
     }
