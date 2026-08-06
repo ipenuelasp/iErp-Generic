@@ -24,6 +24,9 @@
                 <input type="hidden" name="accion" value="fijar_linea_base">
                 <button type="submit" class="bg-white border border-slate-200 text-slate-500 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all" title="Guarda el fin planeado actual como referencia"><i class="fa-solid fa-flag mr-1"></i> Línea base</button>
             </form>
+            {% if puede_gestionar %}
+            <button type="button" onclick="document.getElementById('modalAjustes').classList.remove('hidden')" class="bg-white border border-slate-200 text-slate-500 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all" title="Editar responsable, miembros y visibilidad"><i class="fa-solid fa-gear mr-1"></i> Ajustes</button>
+            {% endif %}
             <button type="button" onclick="abrirCrear('')" class="bg-brand text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Nueva tarea</button>
         </div>
     </div>
@@ -281,6 +284,62 @@
         </form>
     </div>
 </div>
+
+{% if puede_gestionar %}
+<!-- Modal Ajustes del tablero -->
+<div id="modalAjustes" class="hidden fixed inset-0 bg-slate-900/50 z-[60] flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-8 pt-7 pb-2">
+            <h3 class="text-xl font-black text-slate-800 italic uppercase tracking-tight">Ajustes del tablero</h3>
+            <button type="button" onclick="document.getElementById('modalAjustes').classList.add('hidden')" class="text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <form method="POST" class="px-8 pb-8 pt-2">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="editar_tablero">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div class="md:col-span-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Nombre</label>
+                    <input type="text" name="nombre" required value="{{ tablero.nombre }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Descripción (opcional)</label>
+                    <textarea name="descripcion" rows="2" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold">{{ tablero.descripcion }}</textarea>
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Responsable</label>
+                    <select name="responsable" data-placeholder="Sin responsable" class="w-full mt-1">
+                        <option value=""></option>
+                        {% for u in usuarios %}<option value="{{ u.id }}" {% if u.id == tablero.responsable_id %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Modo de cierre</label>
+                    <select name="modo_cierre" class="w-full mt-1">
+                        {% for k,v in modos %}<option value="{{ k }}" {% if k == tablero.modo_cierre %}selected{% endif %}>{{ v }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Quién puede verlo</label>
+                    <select name="miembros" multiple data-placeholder="Elige a las personas invitadas…" class="w-full mt-1">
+                        {% for u in usuarios %}<option value="{{ u.id }}" {% if u.id in miembros_ids %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+                    </select>
+                    <p class="text-[10px] text-slate-400 mt-1 ml-1">Los invitados ven el tablero aunque no tengan tareas. El responsable y el creador siempre lo ven.</p>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Qué ven los invitados</label>
+                    <select name="visibilidad" class="w-full mt-1">
+                        {% for k,v in visibilidades %}<option value="{{ k }}" {% if k == tablero.visibilidad %}selected{% endif %}>{{ v }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 pt-6">
+                <button type="button" onclick="document.getElementById('modalAjustes').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cancelar</button>
+                <button type="submit" class="bg-brand text-white px-7 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar ajustes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
 
 <!-- Drawer detalle -->
 <div id="scrim" onclick="cerrarTarea()" class="hidden fixed inset-0 bg-slate-900/40 z-[55]"></div>

@@ -63,6 +63,14 @@ def _puede_ver_tablero(user, tablero):
     return TareaAsignacion.objects.filter(tarea__tablero=tablero, usuario=user).exists()
 
 
+def _puede_gestionar_tablero(user, tablero):
+    """Quién puede editar los ajustes del tablero (nombre, responsable, miembros,
+    visibilidad, modo de cierre): admin, su responsable o quien lo creó."""
+    if _es_admin_tareas(user):
+        return True
+    return tablero.responsable_id == user.id or tablero.creado_por_id == user.id
+
+
 def _ve_todo_el_tablero(user, tablero):
     """True si el usuario ve TODAS las tareas del tablero (no solo las suyas):
     admin, responsable, creador, o tableros con visibilidad 'TODO'."""
@@ -393,6 +401,10 @@ class TableroDetalleView(LoginRequiredMixin, View):
             'roles': TareaAsignacion.ROL,
             'tipos_dep': TareaDependencia.TIPO,
             'solo_mias': solo_mias,
+            'modos': Tablero.MODO_CIERRE,
+            'visibilidades': Tablero.VISIBILIDAD,
+            'puede_gestionar': _puede_gestionar_tablero(request.user, tablero),
+            'miembros_ids': list(tablero.miembros.values_list('id', flat=True)),
             'seccion': 'tareas',
         }
         return render(request, self.template_name, context)
@@ -413,6 +425,28 @@ class TableroDetalleView(LoginRequiredMixin, View):
             tid = request.POST.get('tarea_id')
             return redirect(f"{base_url}?t={tid}" if tid else base_url)
         volver = volver_a_tarea()
+
+        if accion == 'editar_tablero':
+            if not _puede_gestionar_tablero(request.user, tablero):
+                messages.error(request, "No puedes editar los ajustes de este tablero.")
+                return redirect(base_url)
+            nombre = (request.POST.get('nombre') or '').strip()
+            if nombre:
+                tablero.nombre = nombre[:180]
+            tablero.descripcion = (request.POST.get('descripcion') or '').strip()
+            modo = request.POST.get('modo_cierre')
+            if modo in dict(Tablero.MODO_CIERRE):
+                tablero.modo_cierre = modo
+            vis = request.POST.get('visibilidad')
+            if vis in dict(Tablero.VISIBILIDAD):
+                tablero.visibilidad = vis
+            tablero.responsable_id = request.POST.get('responsable') or None
+            tablero.save(update_fields=['nombre', 'descripcion', 'modo_cierre',
+                                        'visibilidad', 'responsable'])
+            ids = [int(i) for i in request.POST.getlist('miembros') if i.isdigit()]
+            tablero.miembros.set(_usuarios_empresa(empresa).filter(id__in=ids))
+            messages.success(request, "Ajustes del tablero actualizados.")
+            return redirect(base_url)
 
         if accion == 'fijar_linea_base':
             from django.db.models import Max as _Max
