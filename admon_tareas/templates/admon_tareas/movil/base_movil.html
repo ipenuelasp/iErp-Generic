@@ -1,0 +1,83 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>{% block title %}Tareas{% endblock %} | {{ empresa.nombre_fiscal|default:"iErp" }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1e2d4f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="{{ empresa.nombre_fiscal|default:'iErp' }}">
+  <link rel="apple-touch-icon" href="{% if empresa.isotipo %}{{ empresa.isotipo.url }}{% else %}{% static 'img/icons/icon-192x192.png' %}{% endif %}">
+  <style>
+    body { background:#f1f5f9; padding-bottom:76px; }
+    .safe-top { padding-top: env(safe-area-inset-top, 0px); }
+    .bottom-bar { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+    .tap:active { opacity:.7; transform:scale(.98); }
+    * { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="safe-top sticky top-0 z-20 bg-[#1e2d4f] text-white shadow-lg">
+  <div class="flex items-center gap-3 px-4 py-3">
+    {% if empresa.isotipo %}<img src="{{ empresa.isotipo.url }}" class="w-8 h-8 rounded-lg object-contain bg-white/10 p-0.5">
+    {% else %}<img src="{% static 'img/icons/icon-192x192.png' %}" class="w-8 h-8 rounded-lg object-contain">{% endif %}
+    <div class="flex-1 min-w-0">
+      <p class="font-black leading-tight truncate">{% block topbar_title %}Tareas{% endblock %}</p>
+      <p class="text-[10px] text-blue-200/80 truncate">{{ empresa.nombre_fiscal|default:"iErp" }}</p>
+    </div>
+    {% block topbar_actions %}{% endblock %}
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+      <button type="submit" title="Salir" class="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 tap"><i class="fa-solid fa-right-from-bracket text-sm"></i></button>
+    </form>
+  </div>
+</div>
+
+{% if messages %}
+<div class="px-4 pt-3 space-y-2 max-w-lg mx-auto">
+  {% for m in messages %}
+  <div class="p-3 rounded-xl text-sm font-medium flex items-center gap-2
+    {% if m.tags == 'error' %}bg-red-50 text-red-700 border border-red-100
+    {% elif m.tags == 'success' %}bg-emerald-50 text-emerald-700 border border-emerald-100
+    {% else %}bg-blue-50 text-blue-700 border border-blue-100{% endif %}">
+    <i class="fa-solid fa-circle-info"></i>{{ m }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="px-4 pt-4 max-w-lg mx-auto space-y-4">
+  {% block content %}{% endblock %}
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-slate-100 shadow-lg bottom-bar">
+  <div class="flex items-center justify-around pt-2 max-w-lg mx-auto">
+    <a href="{% url 'admon_tareas:movil' %}" class="flex flex-col items-center gap-0.5 tap w-20">
+      <i class="fa-solid fa-house {% block nav_inicio %}text-[#1e2d4f]{% endblock %}"></i>
+      <span class="text-[10px] {% block nav_inicio_t %}text-[#1e2d4f]{% endblock %} font-bold">Inicio</span>
+    </a>
+    <a href="#tableros" class="flex flex-col items-center gap-0.5 tap w-20">
+      <i class="fa-solid fa-list-check text-slate-400"></i>
+      <span class="text-[10px] text-slate-400 font-bold">Tableros</span>
+    </a>
+    <a href="{% url 'admon_tareas:tableros' %}" class="flex flex-col items-center gap-0.5 tap w-20">
+      <i class="fa-solid fa-desktop text-slate-400"></i>
+      <span class="text-[10px] text-slate-400 font-bold">Escritorio</span>
+    </a>
+  </div>
+</div>
+
+<script>
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function(){}); }
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

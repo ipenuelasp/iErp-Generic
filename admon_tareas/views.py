@@ -395,6 +395,65 @@ class MisTareasView(LoginRequiredMixin, View):
         return render(request, self.template_name, context)
 
 
+def _es_movil(request):
+    """Celular o PWA instalada (excluye iPad → usa escritorio). Una vez detectado
+    ?pwa=1 se recuerda en sesión para que la app instalada siga en modo móvil."""
+    ua = request.META.get('HTTP_USER_AGENT', '').lower()
+    es_tel = ('ipad' not in ua) and any(k in ua for k in ('android', 'iphone', 'mobile'))
+    if request.GET.get('pwa') == '1':
+        request.session['pwa_mode'] = True
+    return es_tel or bool(request.session.get('pwa_mode'))
+
+
+class MovilView(LoginRequiredMixin, View):
+    """Pantalla móvil (PWA) del módulo de tareas: Mis tareas + mis tableros."""
+    template_name = 'admon_tareas/movil/home.html'
+
+    def get(self, request):
+        import datetime as _dt
+        from django.db.models import Q
+        empresa = _empresa(request)
+        if not empresa:
+            return redirect('home')
+        # En escritorio/iPad manda a la vista normal (a menos que sea PWA).
+        if not _es_movil(request):
+            return redirect('admon_tareas:tableros')
+
+        hoy = timezone.localdate()
+        fin_semana = hoy + _dt.timedelta(days=(6 - hoy.weekday()))
+        asigs = list(TareaAsignacion.objects.filter(
+            usuario=request.user, tarea__empresa=empresa, tarea__tablero__activo=True)
+            .exclude(tarea__estado__in=['COMP', 'CANC'])
+            .select_related('tarea', 'tarea__tablero'))
+        asigs.sort(key=lambda a: a.tarea.fecha_fin_plan or _dt.date.max)
+        bloqueos = [a for a in asigs if a.tarea.es_bloqueante]
+        resto = [a for a in asigs if not a.tarea.es_bloqueante]
+        atrasadas = [a for a in resto if a.tarea.estado != 'BLOQ'
+                     and a.tarea.fecha_fin_plan and a.tarea.fecha_fin_plan < hoy]
+        semana = [a for a in resto if a.tarea.estado != 'BLOQ'
+                  and a.tarea.fecha_fin_plan and hoy <= a.tarea.fecha_fin_plan <= fin_semana]
+        urgentes = bloqueos + atrasadas + semana
+        proximas = [a for a in resto if a.tarea.estado != 'BLOQ'
+                    and (not a.tarea.fecha_fin_plan or a.tarea.fecha_fin_plan > fin_semana)]
+
+        qs = Tablero.objects.operativos().filter(empresa=empresa, activo=True)
+        if not _es_admin_tareas(request.user):
+            qs = qs.filter(Q(responsable=request.user) | Q(creado_por=request.user)
+                           | Q(miembros=request.user)
+                           | Q(tareas__asignaciones__usuario=request.user)).distinct()
+        tableros = list(qs.select_related('responsable')
+                        .prefetch_related('tareas__asignaciones__usuario'))
+        for t in tableros:
+            t.stats = _stats_tablero(t, list(t.tareas.all()))
+
+        return render(request, self.template_name, {
+            'empresa': empresa, 'hoy': hoy, 'total': len(asigs),
+            'bloqueos': bloqueos, 'atrasadas': atrasadas, 'semana': semana,
+            'urgentes': urgentes, 'proximas': proximas, 'tableros': tableros,
+            'seccion': 'tareas',
+        })
+
+
 class TableroDetalleView(LoginRequiredMixin, View):
     template_name = 'admon_tareas/tablero_detalle.html'
 

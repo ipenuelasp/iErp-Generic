@@ -1,0 +1,77 @@
+{% extends "admon_tareas/movil/base_movil.html" %}
+{% block title %}Mis tareas{% endblock %}
+{% block topbar_title %}Mis tareas{% endblock %}
+
+{% block content %}
+<!-- KPIs -->
+<div class="grid grid-cols-4 gap-2">
+    <div class="bg-white rounded-2xl p-3 text-center shadow-sm"><p class="text-2xl font-black text-slate-800">{{ total }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide font-bold">Pend.</p></div>
+    <div class="bg-white rounded-2xl p-3 text-center shadow-sm"><p class="text-2xl font-black {% if atrasadas %}text-rose-600{% else %}text-slate-300{% endif %}">{{ atrasadas|length }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide font-bold">Atras.</p></div>
+    <div class="bg-white rounded-2xl p-3 text-center shadow-sm"><p class="text-2xl font-black {% if semana %}text-amber-600{% else %}text-slate-300{% endif %}">{{ semana|length }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide font-bold">Semana</p></div>
+    <div class="bg-white rounded-2xl p-3 text-center shadow-sm"><p class="text-2xl font-black {% if bloqueos %}text-rose-600{% else %}text-slate-300{% endif %}">{{ bloqueos|length }}</p><p class="text-[9px] text-slate-400 uppercase tracking-wide font-bold">Bloq.</p></div>
+</div>
+
+<!-- Urgentes -->
+<div>
+    <p class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2 mt-1">Prioritarias</p>
+    {% for a in urgentes %}
+    <a href="{% url 'admon_tareas:tablero_detalle' a.tarea.tablero_id %}?t={{ a.tarea_id }}" class="tap block bg-white rounded-2xl p-3.5 shadow-sm mb-2 border-l-4 {% if a.tarea.es_bloqueante %}border-rose-500{% elif a.tarea.fecha_fin_plan and a.tarea.fecha_fin_plan < hoy %}border-rose-400{% else %}border-amber-400{% endif %}">
+        <div class="flex items-center gap-2">
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold text-slate-800 truncate">{% if a.tarea.es_bloqueante %}⛔ {% elif a.tarea.es_hito %}<i class="fa-solid fa-diamond text-violet-500 text-[10px]"></i> {% endif %}{{ a.tarea.titulo }}</p>
+                <p class="text-[11px] text-slate-400 truncate"><i class="fa-solid fa-list-check mr-1"></i>{{ a.tarea.tablero.nombre }}</p>
+            </div>
+            <div class="text-right flex-none">
+                {% include 'admon_tareas/_estado_badge.html' with estado=a.tarea.estado display=a.tarea.get_estado_display %}
+                <p class="text-[10px] font-bold {% if a.tarea.fecha_fin_plan and a.tarea.fecha_fin_plan < hoy %}text-rose-500{% else %}text-slate-400{% endif %} mt-1">{{ a.tarea.fecha_fin_plan|date:"d/m/Y"|default:"sin fecha" }}</p>
+            </div>
+        </div>
+    </a>
+    {% empty %}
+    <div class="bg-white rounded-2xl p-6 text-center text-slate-400 italic text-sm shadow-sm">Nada urgente. 🎉</div>
+    {% endfor %}
+</div>
+
+<!-- Próximas -->
+{% if proximas %}
+<div>
+    <p class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">Próximas</p>
+    {% for a in proximas %}
+    <a href="{% url 'admon_tareas:tablero_detalle' a.tarea.tablero_id %}?t={{ a.tarea_id }}" class="tap block bg-white rounded-2xl p-3 shadow-sm mb-2">
+        <div class="flex items-center gap-2">
+            <p class="text-sm font-bold text-slate-700 truncate flex-1">{{ a.tarea.titulo }}</p>
+            <span class="text-[10px] font-bold text-slate-400 flex-none">{{ a.tarea.fecha_fin_plan|date:"d/m/Y"|default:"—" }}</span>
+        </div>
+        <p class="text-[11px] text-slate-400 truncate">{{ a.tarea.tablero.nombre }}</p>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Tableros -->
+<div id="tableros">
+    <p class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2 mt-1">Mis tableros</p>
+    {% for t in tableros %}
+    <a href="{% url 'admon_tareas:tablero_detalle' t.pk %}" class="tap block bg-white rounded-2xl p-4 shadow-sm mb-2">
+        <div class="flex items-center justify-between mb-2">
+            <p class="text-sm font-black text-slate-800 truncate pr-2">{{ t.nombre }}</p>
+            {% if t.stats.salud == 'atrasado' %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 flex-none">Atrasado</span>
+            {% elif t.stats.salud == 'completo' %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 flex-none">Completo</span>
+            {% elif t.stats.n %}<span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 flex-none">En tiempo</span>{% endif %}
+        </div>
+        <div class="flex items-center gap-2 mb-2">
+            <div class="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full {% if t.stats.salud == 'atrasado' %}bg-rose-500{% elif t.stats.avance == 100 %}bg-emerald-500{% else %}bg-indigo-500{% endif %}" style="width:{{ t.stats.avance }}%"></div></div>
+            <span class="text-xs font-black text-slate-700 flex-none">{{ t.stats.avance }}%</span>
+        </div>
+        <div class="flex items-center gap-4 text-[11px] text-slate-400 font-bold">
+            <span>{{ t.stats.n }} tareas</span>
+            <span class="text-emerald-600">{{ t.stats.comp }} listas</span>
+            {% if t.stats.atrasadas %}<span class="text-rose-500">{{ t.stats.atrasadas }} atras.</span>{% endif %}
+            {% if t.stats.vencen %}<span class="text-amber-600">{{ t.stats.vencen }} vencen</span>{% endif %}
+        </div>
+    </a>
+    {% empty %}
+    <div class="bg-white rounded-2xl p-6 text-center text-slate-400 italic text-sm shadow-sm">No tienes tableros todavía.</div>
+    {% endfor %}
+</div>
+{% endblock %}

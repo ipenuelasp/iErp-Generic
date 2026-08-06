@@ -87,7 +87,7 @@ def manifest(request):
         "name": nombre,
         "short_name": (nombre[:12] if empresa else 'iErp'),
         "description": "iErp: ERP multiempresa (inventarios, ventas, compras, finanzas, tareas y más).",
-        "start_url": "/tareas/",
+        "start_url": "/tareas/movil/?pwa=1",
         "scope": "/",
         "display": "standalone",
         "orientation": "portrait-primary",
@@ -96,8 +96,8 @@ def manifest(request):
         "lang": "es-MX",
         "icons": icons,
         "shortcuts": [
-            {"name": "Tableros de tareas", "short_name": "Tableros", "url": "/tareas/"},
-            {"name": "Mis tareas", "short_name": "Mis tareas", "url": "/tareas/mis-tareas/"},
+            {"name": "Mis tareas", "short_name": "Mis tareas", "url": "/tareas/movil/?pwa=1"},
+            {"name": "Tableros (escritorio)", "short_name": "Tableros", "url": "/tareas/"},
         ],
     }
     return JsonResponse(data, content_type='application/manifest+json')
