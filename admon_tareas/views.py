@@ -81,6 +81,41 @@ def _ve_todo_el_tablero(user, tablero):
     return tablero.responsable_id == user.id or tablero.creado_por_id == user.id
 
 
+_AVATAR_COLORS = ['bg-indigo-500', 'bg-emerald-500', 'bg-rose-500', 'bg-amber-500',
+                  'bg-blue-500', 'bg-violet-500', 'bg-cyan-600', 'bg-pink-600']
+
+
+def _personas_tablero(tablero, dets=None):
+    """Quiénes pueden VER el tablero y con qué papel. Devuelve dicts:
+    {'user', 'rol', 'interactua', 'color'}. 'interactua'=False → solo visor.
+    Prioridad de rol: Responsable > Colaborador (asignado) > Creador > Solo visor."""
+    dets = dets if dets is not None else list(tablero.tareas.all())
+    orden = {'Responsable': 0, 'Colaborador': 1, 'Creador': 2, 'Solo visor': 3}
+    personas = {}
+
+    def add(u, rol, interactua):
+        if not u:
+            return
+        prev = personas.get(u.id)
+        if not prev or orden[rol] < orden[prev['rol']]:
+            personas[u.id] = {'user': u, 'rol': rol, 'interactua': interactua}
+
+    add(tablero.responsable, 'Responsable', True)
+    for x in dets:
+        for a in x.asignaciones.all():
+            add(a.usuario, 'Colaborador', True)
+    add(tablero.creado_por, 'Creador', True)
+    for u in tablero.miembros.all():
+        add(u, 'Solo visor', False)
+
+    lista = sorted(personas.values(),
+                   key=lambda p: (not p['interactua'],
+                                  (p['user'].get_full_name() or p['user'].username).lower()))
+    for i, p in enumerate(lista):
+        p['color'] = _AVATAR_COLORS[i % len(_AVATAR_COLORS)]
+    return lista
+
+
 def _stats_tablero(tablero, dets):
     """Métricas para la tarjeta/encabezado: avance, atrasadas, bloqueadas,
     ventana de fechas, reprogramación vs la línea base y salud."""
@@ -192,10 +227,12 @@ class TablerosView(LoginRequiredMixin, View):
                                | Q(tareas__asignaciones__usuario=request.user)).distinct()
         n_archivados = base.filter(activo=False).count()
         qs = base.filter(activo=not ver_archivados)
-        tableros = list(qs.select_related('responsable')
-                        .prefetch_related('tareas__asignaciones__usuario'))
+        tableros = list(qs.select_related('responsable', 'creado_por')
+                        .prefetch_related('tareas__asignaciones__usuario', 'miembros'))
         for t in tableros:
-            t.stats = _stats_tablero(t, list(t.tareas.all()))
+            dets = list(t.tareas.all())
+            t.stats = _stats_tablero(t, dets)
+            t.personas = _personas_tablero(t, dets)
             t.puede_gestionar = _puede_gestionar_tablero(request.user, t)
         plantillas = list(Tablero.objects.filter(empresa=empresa, es_plantilla=True, activo=True)
                           .order_by('nombre')) if admin else []
@@ -377,6 +414,7 @@ class TableroDetalleView(LoginRequiredMixin, View):
                       .order_by('orden', 'ruta_wbs', 'id'))
         deps = list(TareaDependencia.objects.filter(sucesora__tablero=tablero)
                     .select_related('predecesora'))
+        personas = _personas_tablero(tablero, tareas)   # roster completo (antes de filtrar)
         # Visibilidad "solo mis tareas": un miembro limitado ve únicamente las tareas
         # que tiene asignadas (más sus fases/ancestros como contexto de la jerarquía).
         solo_mias = not _ve_todo_el_tablero(request.user, tablero)
@@ -426,6 +464,7 @@ class TableroDetalleView(LoginRequiredMixin, View):
             'visibilidades': Tablero.VISIBILIDAD,
             'puede_gestionar': _puede_gestionar_tablero(request.user, tablero),
             'miembros_ids': list(tablero.miembros.values_list('id', flat=True)),
+            'personas': personas,
             'seccion': 'tareas',
         }
         return render(request, self.template_name, context)

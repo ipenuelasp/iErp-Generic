@@ -38,14 +38,26 @@
         <div><p class="text-2xl font-black {% if resumen.vencen %}text-amber-600{% else %}text-slate-300{% endif %}">{{ resumen.vencen }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Vencen esta sem.</p></div>
         <div><p class="text-2xl font-black {% if resumen.atrasadas %}text-rose-600{% else %}text-slate-300{% endif %}">{{ resumen.atrasadas }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Atrasadas</p></div>
         <div><p class="text-2xl font-black {% if resumen.bloq %}text-rose-600{% else %}text-slate-300{% endif %}">{{ resumen.bloq }}</p><p class="text-[10px] text-slate-400 uppercase tracking-widest">Bloqueadas</p></div>
-        {% if resumen.equipo %}
-        <div class="ml-auto">
-            <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Equipo · {{ resumen.equipo|length }}</p>
+        {% if personas and not solo_mias %}
+        <div class="ml-auto relative group/eq">
+            <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Equipo · {{ personas|length }} <i class="fa-solid fa-chevron-down text-[8px]"></i></p>
             <div class="flex -space-x-1.5">
-                {% for u in resumen.equipo|slice:":10" %}
-                <span title="{{ u.get_full_name|default:u.username }}" class="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black text-white border-2 border-white {% cycle 'bg-indigo-500' 'bg-emerald-500' 'bg-rose-500' 'bg-amber-500' 'bg-blue-500' 'bg-violet-500' 'bg-cyan-600' 'bg-pink-600' %}">{{ u.get_full_name|default:u.username|slice:":2"|upper }}</span>
+                {% for p in personas|slice:":10" %}
+                <span title="{{ p.user.get_full_name|default:p.user.username }}" class="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black text-white border-2 border-white {{ p.color }}">{{ p.user.get_full_name|default:p.user.username|slice:":2"|upper }}</span>
                 {% endfor %}
-                {% if resumen.equipo|length > 10 %}<span class="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black text-slate-500 bg-slate-100 border-2 border-white">+{{ resumen.equipo|length|add:"-10" }}</span>{% endif %}
+                {% if personas|length > 10 %}<span class="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black text-slate-500 bg-slate-100 border-2 border-white">+{{ personas|length|add:"-10" }}</span>{% endif %}
+            </div>
+            <!-- Popover con nombres y rol -->
+            <div class="hidden group-hover/eq:block absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-30">
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2 pt-1 pb-2">Quién puede ver este tablero</p>
+                {% for p in personas %}
+                <div class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50">
+                    <span class="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-black text-white flex-shrink-0 {{ p.color }}">{{ p.user.get_full_name|default:p.user.username|slice:":2"|upper }}</span>
+                    <span class="text-xs font-bold text-slate-700 flex-1 truncate">{{ p.user.get_full_name|default:p.user.username }}</span>
+                    {% if p.interactua %}<span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">{{ p.rol }}</span>
+                    {% else %}<span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500"><i class="fa-regular fa-eye mr-0.5"></i>Solo visor</span>{% endif %}
+                </div>
+                {% endfor %}
             </div>
         </div>
         {% endif %}
