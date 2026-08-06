@@ -50,9 +50,54 @@ def service_worker(request):
     return HttpResponse(content, content_type='application/javascript')
 
 
+def _empresa_para_pwa(request):
+    """Empresa que define la marca del PWA: la activa, o la del subdominio
+    (tenant) aunque no haya sesión (para el prompt de instalar en el login)."""
+    empresa = getattr(request, 'empresa', None)
+    if empresa:
+        return empresa
+    tenant = getattr(request, 'tenant', None)
+    if tenant:
+        from admon_empresas.models import Empresa
+        return (Empresa.objects.filter(cliente=tenant).exclude(isotipo='')
+                .exclude(isotipo__isnull=True).first()
+                or Empresa.objects.filter(cliente=tenant).first())
+    return None
+
+
+_ICONOS_IERP = [
+    {"src": f"/static/img/icons/icon-{s}x{s}.png", "sizes": f"{s}x{s}", "type": "image/png",
+     **({"purpose": "any maskable"} if s in (192, 512) else {})}
+    for s in (72, 96, 128, 144, 152, 192, 384, 512)
+]
+
+
 def manifest(request):
-    """Sirve el manifest.json desde la raíz."""
-    manifest_path = os.path.join(settings.BASE_DIR, 'static', 'manifest.json')
-    with open(manifest_path, 'r') as f:
-        content = f.read()
-    return HttpResponse(content, content_type='application/manifest+json')
+    """Manifest PWA dinámico: usa el isotipo de la empresa (activa o del
+    subdominio) como ícono e identidad; si no tiene, cae al ícono de iErp."""
+    from django.http import JsonResponse
+    empresa = _empresa_para_pwa(request)
+    nombre = empresa.nombre_fiscal if empresa else 'iErp'
+    if empresa and empresa.isotipo:
+        u = empresa.isotipo.url
+        icons = [{"src": u, "sizes": "192x192"}, {"src": u, "sizes": "512x512"}]
+    else:
+        icons = _ICONOS_IERP
+    data = {
+        "name": nombre,
+        "short_name": (nombre[:12] if empresa else 'iErp'),
+        "description": "iErp: ERP multiempresa (inventarios, ventas, compras, finanzas, tareas y más).",
+        "start_url": "/tareas/",
+        "scope": "/",
+        "display": "standalone",
+        "orientation": "portrait-primary",
+        "theme_color": "#1e2d4f",
+        "background_color": "#1e2d4f",
+        "lang": "es-MX",
+        "icons": icons,
+        "shortcuts": [
+            {"name": "Tableros de tareas", "short_name": "Tableros", "url": "/tareas/"},
+            {"name": "Mis tareas", "short_name": "Mis tareas", "url": "/tareas/mis-tareas/"},
+        ],
+    }
+    return JsonResponse(data, content_type='application/manifest+json')

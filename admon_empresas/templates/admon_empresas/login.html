@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar Sesión | Tickets TI – Grupo Gonza</title>
+    <title>Iniciar Sesión | {{ empresa.nombre_fiscal|default:"iErp" }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- PWA -->
@@ -12,8 +12,8 @@
     <meta name="theme-color" content="#1e2d4f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Helpdesk TI">
-    <link rel="apple-touch-icon" href="/static/img/icons/icon-152x152.png">
+    <meta name="apple-mobile-web-app-title" content="{{ empresa.nombre_fiscal|default:'iErp' }}">
+    <link rel="apple-touch-icon" href="{% if empresa.isotipo %}{{ empresa.isotipo.url }}{% else %}/static/img/icons/icon-192x192.png{% endif %}">
     <link rel="icon" type="image/png" href="/static/img/favicon.png">
 </head>
 <body class="min-h-screen flex items-center justify-center p-6" style="background-color:#f1f5f9;">

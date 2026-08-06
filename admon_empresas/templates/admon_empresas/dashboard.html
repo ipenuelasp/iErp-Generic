@@ -5,6 +5,16 @@
     <title>{% block title %}Panel{% endblock %} | {{ empresa.nombre_fiscal|default:"iErp" }}</title>
     {% load static %}
     <link rel="icon" type="image/png" href="{% if empresa.isotipo %}{{ empresa.isotipo.url }}{% elif empresa.logo %}{{ empresa.logo.url }}{% else %}{% static 'img/iErp_4k_sinfondo.png' %}{% endif %}">
+    <!-- PWA (marca por empresa; isotipo o iErp) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1e2d4f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ empresa.nombre_fiscal|default:'iErp' }}">
+    <link rel="apple-touch-icon" href="{% if empresa.isotipo %}{{ empresa.isotipo.url }}{% else %}{% static 'img/icons/icon-192x192.png' %}{% endif %}">
+    <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}</script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {

@@ -1,8 +1,8 @@
 {
-  "name": "Helpdesk TI — Grupo Gonza",
-  "short_name": "Helpdesk TI",
-  "description": "Sistema de soporte técnico de la Gerencia de Tecnologías de Información",
-  "start_url": "/sistemas/movil/",
+  "name": "iErp — Gestión",
+  "short_name": "iErp",
+  "description": "iErp: ERP multiempresa (inventarios, ventas, compras, finanzas, tareas y más).",
+  "start_url": "/tareas/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
@@ -21,15 +21,15 @@
   ],
   "shortcuts": [
     {
-      "name": "Nuevo ticket",
-      "short_name": "Nuevo",
-      "url": "/sistemas/tickets/nueva-solicitud/",
+      "name": "Tableros de tareas",
+      "short_name": "Tableros",
+      "url": "/tareas/",
       "icons": [{ "src": "/static/img/icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {
-      "name": "Mis tickets",
-      "short_name": "Tickets",
-      "url": "/sistemas/panel/tickets/",
+      "name": "Mis tareas",
+      "short_name": "Mis tareas",
+      "url": "/tareas/mis-tareas/",
       "icons": [{ "src": "/static/img/icons/icon-96x96.png", "sizes": "96x96" }]
     }
   ]
