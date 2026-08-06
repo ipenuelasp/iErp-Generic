@@ -11,7 +11,7 @@
     <div class="flex items-center gap-2 flex-wrap">
         {% include 'admon_tareas/_estado_badge.html' with estado=t.estado display=t.get_estado_display %}
         <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Prioridad {{ t.get_prioridad_display }}</span>
-        {% if t.es_resumen %}<span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Fase</span>{% endif %}
+        {% if t.es_etapa %}<span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600"><i class="fa-solid fa-layer-group mr-1"></i>Etapa</span>{% elif t.es_resumen %}<span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Fase</span>{% endif %}
     </div>
 </div>
 
@@ -275,6 +275,9 @@
             <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Prioridad</label>
                 <select name="prioridad" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs font-bold">
                     {% for k,v in t.PRIORIDAD %}<option value="{{ k }}" {% if k == t.prioridad %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+            {% if t.es_etapa %}
+            <p class="text-[11px] text-slate-400 italic bg-slate-50 rounded-xl px-3 py-2">Esta es una <b>etapa</b>: no tiene duración propia; sus fechas y avance se calculan de las tareas que contiene.</p>
+            {% else %}
             <div class="grid grid-cols-3 gap-2">
                 <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Días háb.</label><input type="number" name="duracion_dias" min="0" value="{{ t.duracion_dias|default_if_none:'' }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs font-bold text-right"></div>
                 <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Horas</label><input type="number" name="duracion_horas" min="0" max="23" value="{{ t.duracion_horas|default:'' }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs font-bold text-right"></div>
@@ -289,6 +292,7 @@
                 </span>
                 <span class="text-xs font-bold text-slate-600">Es hito <span class="text-slate-400 font-medium">(rombo, marca sin duración)</span></span>
             </label>
+            {% endif %}
             {% if not t.es_resumen %}
             <div><label class="text-[10px] font-black text-slate-400 uppercase ml-1">Avance %</label>
                 <input type="number" name="avance" min="0" max="100" value="{{ t.avance|floatformat:0 }}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-right"></div>

@@ -222,6 +222,9 @@ class Tarea(AdjuntableMixin):
     avance = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     peso = models.DecimalField(max_digits=6, decimal_places=2, default=1)
     es_hito = models.BooleanField('Es hito', default=False)
+    # Etapa/grupo (tipo Monday): título de sección sin duración propia; agrupa
+    # tareas y su rango de fechas/avance se calcula de ellas. Puede existir vacía.
+    es_etapa = models.BooleanField('Es etapa', default=False)
     es_resumen = models.BooleanField(default=False, editable=False)
     es_bloqueante = models.BooleanField(default=False, editable=False)
 

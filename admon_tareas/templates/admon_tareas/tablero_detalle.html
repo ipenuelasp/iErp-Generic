@@ -27,6 +27,7 @@
             {% if puede_gestionar %}
             <button type="button" onclick="document.getElementById('modalAjustes').classList.remove('hidden')" class="bg-white border border-slate-200 text-slate-500 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all" title="Editar responsable, miembros y visibilidad"><i class="fa-solid fa-gear mr-1"></i> Ajustes</button>
             {% endif %}
+            <button type="button" onclick="document.getElementById('modalEtapa').classList.remove('hidden')" class="bg-white border border-slate-200 text-slate-500 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all" title="Agregar una etapa (título de grupo)"><i class="fa-solid fa-layer-group mr-1"></i> Etapa</button>
             <button type="button" onclick="abrirCrear('')" class="bg-brand text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Nueva tarea</button>
         </div>
     </div>
@@ -94,7 +95,25 @@
             </thead>
             <tbody>
                 {% for t in tareas %}
-                <tr onclick="abrirTarea({{ t.id }})" class="group border-b border-slate-50 hover:bg-slate-50/60 cursor-pointer {% if t.es_resumen %}bg-slate-50/40{% endif %} {% if t.es_bloqueante %}bg-rose-50/40{% endif %}">
+                {% if t.es_etapa %}
+                <tr class="bg-slate-100 border-y border-slate-200" data-etapa="{{ t.id }}">
+                    <td class="px-4 py-2.5 text-center"><button type="button" onclick="toggleEtapa({{ t.id }})" class="text-slate-400 hover:text-slate-700"><i id="chev-{{ t.id }}" class="fa-solid fa-chevron-down text-xs"></i></button></td>
+                    <td class="px-4 py-2.5" colspan="6">
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <span class="text-sm font-black text-slate-800 uppercase tracking-wide"><i class="fa-solid fa-layer-group text-slate-400 mr-1.5 text-xs"></i>{{ t.titulo }}</span>
+                            <span class="text-[10px] font-bold text-slate-400">{{ t.n_hijas }} tarea{{ t.n_hijas|pluralize }}</span>
+                            {% if t.fecha_inicio_plan %}<span class="text-[10px] font-mono text-slate-400">{{ t.fecha_inicio_plan|date:"d/m/y" }} → {{ t.fecha_fin_plan|date:"d/m/y" }}</span>{% endif %}
+                            <span class="ml-auto flex items-center gap-2">
+                                <div class="w-24 h-1.5 rounded-full bg-slate-200 overflow-hidden"><div class="h-full rounded-full {% if t.avance >= 100 %}bg-emerald-500{% else %}bg-brand{% endif %}" style="width:{{ t.avance|floatformat:0 }}%"></div></div>
+                                <span class="text-[10px] font-bold text-slate-500 w-8 text-right">{{ t.avance|floatformat:0 }}%</span>
+                                <button type="button" onclick="abrirCrear('{{ t.id }}')" class="text-[10px] font-black text-brand uppercase tracking-wide hover:underline whitespace-nowrap"><i class="fa-solid fa-plus"></i> tarea</button>
+                                <button type="button" onclick="abrirTarea({{ t.id }})" class="text-slate-300 hover:text-slate-600" title="Editar etapa"><i class="fa-solid fa-pen text-[10px]"></i></button>
+                            </span>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr onclick="abrirTarea({{ t.id }})" data-grupo="{{ t.grupo }}" class="fila-tarea group border-b border-slate-50 hover:bg-slate-50/60 cursor-pointer {% if t.es_resumen %}bg-slate-50/40{% endif %} {% if t.es_bloqueante %}bg-rose-50/40{% endif %}">
                     <td class="px-4 py-3 text-[11px] font-mono text-slate-400">{% if t.es_bloqueante %}<span class="text-rose-400">⛔</span>{% else %}{{ t.ruta_wbs }}{% endif %}</td>
                     <td class="px-4 py-3">
                         <div style="padding-left:{{ t.nivel|add:t.nivel }}0px" class="min-w-0 flex items-center gap-1">
@@ -125,8 +144,9 @@
                     </td>
                     <td class="px-4 py-3 text-[11px] font-bold text-slate-400 whitespace-nowrap">{{ t.fecha_fin_plan|date:"d/m/Y"|default:"—" }}</td>
                 </tr>
+                {% endif %}
                 {% empty %}
-                <tr><td colspan="7" class="px-8 py-16 text-center text-slate-400 italic">Este tablero aún no tiene tareas. Crea la primera con <b>Nueva tarea</b>.</td></tr>
+                <tr><td colspan="7" class="px-8 py-16 text-center text-slate-400 italic">Este tablero aún no tiene tareas. Crea la primera con <b>Nueva tarea</b> o una <b>Etapa</b>.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -362,6 +382,26 @@
 </div>
 {% endif %}
 
+<!-- Modal Nueva etapa -->
+<div id="modalEtapa" class="hidden fixed inset-0 bg-slate-900/50 z-[60] flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-xl font-black text-slate-800 italic uppercase tracking-tight">Nueva etapa</h3>
+            <button type="button" onclick="document.getElementById('modalEtapa').classList.add('hidden')" class="text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">Un título de grupo (como en Monday). No tiene duración: sus fechas y avance salen de las tareas que metas dentro.</p>
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="crear_etapa">
+            <input type="text" name="titulo" required autofocus placeholder="Ej. Alta de proyecto" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold">
+            <div class="flex justify-end gap-3 pt-5">
+                <button type="button" onclick="document.getElementById('modalEtapa').classList.add('hidden')" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 px-4">Cancelar</button>
+                <button type="submit" class="bg-brand text-white px-7 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-plus mr-1"></i> Crear etapa</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Drawer detalle -->
 <div id="scrim" onclick="cerrarTarea()" class="hidden fixed inset-0 bg-slate-900/40 z-[55]"></div>
 <aside id="drawer" class="fixed top-0 right-0 bottom-0 w-full max-w-xl bg-white shadow-2xl z-[56] translate-x-full transition-transform duration-200 overflow-y-auto">
@@ -426,6 +466,18 @@ function initGanttDrag(){
             .then(r => r.json()).then(() => location.reload()).catch(() => location.reload());
     });
 }
+function toggleEtapa(id){
+    const chev = document.getElementById('chev-'+id);
+    const abierto = !chev.classList.contains('fa-chevron-right');
+    document.querySelectorAll('tr.fila-tarea[data-grupo="'+id+'"]').forEach(r=>r.classList.toggle('hidden', abierto));
+    chev.classList.toggle('fa-chevron-down', !abierto);
+    chev.classList.toggle('fa-chevron-right', abierto);
+    try { const k='etapas_cerradas_'+TAB_PK; const s=new Set(JSON.parse(localStorage.getItem(k)||'[]'));
+          if(abierto) s.add(id); else s.delete(id); localStorage.setItem(k, JSON.stringify([...s])); } catch(e){}
+}
+document.addEventListener('DOMContentLoaded', function(){
+    try { const s=JSON.parse(localStorage.getItem('etapas_cerradas_'+TAB_PK)||'[]'); s.forEach(id=>{ if(document.getElementById('chev-'+id)) toggleEtapa(id); }); } catch(e){}
+});
 function cambiarVista(v){
     document.querySelectorAll('.vista-tareas').forEach(el=>el.classList.toggle('hidden', el.dataset.vista !== v));
     document.querySelectorAll('.tab-tareas').forEach(b=>{

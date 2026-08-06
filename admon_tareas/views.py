@@ -441,6 +441,21 @@ class TableroDetalleView(LoginRequiredMixin, View):
                     d.predecesora.ruta_wbs or d.predecesora.folio)
         for t in ordenadas:
             t.espera = espera.get(t.id)
+        # Grupo (etapa raíz) de cada fila, para agrupar/colapsar en la Lista, y
+        # conteo de tareas hoja por etapa.
+        _by_id = {t.id: t for t in ordenadas}
+
+        def _raiz(t):
+            while t.padre_id and _by_id.get(t.padre_id):
+                t = _by_id[t.padre_id]
+            return t
+        for t in ordenadas:
+            t.n_hijas = 0
+        for t in ordenadas:
+            r = _raiz(t)
+            t.grupo = r.id if r.es_etapa else ''
+            if r.es_etapa and not t.es_etapa and not t.es_resumen and not t.es_bloqueante:
+                r.n_hijas += 1
         resumen = _stats_tablero(tablero, tareas)
         gantt = _datos_gantt(ordenadas, tablero, list(deps))
         # Kanban: tareas hoja (no resumen) por estado
@@ -525,6 +540,17 @@ class TableroDetalleView(LoginRequiredMixin, View):
             tablero.fecha_fin_base = fin
             tablero.save(update_fields=['fecha_fin_base'])
             messages.success(request, "Línea base fijada al plan actual.")
+            return redirect(base_url)
+
+        if accion == 'crear_etapa':
+            titulo = (request.POST.get('titulo') or '').strip()
+            if not titulo:
+                messages.error(request, "La etapa necesita un título.")
+                return volver
+            # Una etapa es un grupo de primer nivel (sin padre) y sin duración propia.
+            services.crear_tarea(tablero=tablero, usuario=request.user, titulo=titulo,
+                                 padre=None, es_etapa=True)
+            messages.success(request, f"Etapa «{titulo}» agregada.")
             return redirect(base_url)
 
         if accion == 'crear_tarea':

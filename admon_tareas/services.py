@@ -283,7 +283,7 @@ def recalcular_tablero(tablero):
             i += 1
             wbs = f"{prefijo}{i}" if not prefijo else f"{prefijo}.{i}"
             hijos = [h for h in por_padre.get(t.id, []) if not h.es_bloqueante]
-            es_res = bool(hijos)
+            es_res = bool(hijos) or t.es_etapa   # una etapa siempre es resumen
             if t.ruta_wbs != wbs or t.nivel != nivel or t.es_resumen != es_res:
                 t.ruta_wbs = wbs
                 t.nivel = nivel
