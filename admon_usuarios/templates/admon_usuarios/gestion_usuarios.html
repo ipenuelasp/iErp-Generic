@@ -17,23 +17,90 @@
     </div>
 
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
-        <form method="get" class="flex flex-col md:flex-row md:items-end gap-3 mb-6">
-            <div>
-                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Empresa</label>
-                <select name="empresa" onchange="this.form.submit()" class="w-full md:w-72 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm focus:border-brand transition-all">
-                    {% if user.is_superuser %}<option value="todas" {% if ver_todas %}selected{% endif %}>Todas las empresas</option>{% endif %}
-                    {% for e in empresas_gestionables %}
-                    <option value="{{ e.id }}" {% if empresa_sel and e.id == empresa_sel.id %}selected{% endif %}>{{ e.nombre_fiscal }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="flex-1">
-                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Buscar por correo o nombre</label>
-                <div class="flex gap-2">
-                    <input type="text" name="q" value="{{ q }}" placeholder="correo@ejemplo.com o nombre" class="flex-1 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm focus:border-brand transition-all">
-                    <button type="submit" class="bg-brand text-white px-5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-magnifying-glass"></i></button>
-                    {% if q %}<a href="?empresa={% if ver_todas %}todas{% else %}{{ empresa_sel.id }}{% endif %}" class="px-4 flex items-center text-slate-400 hover:text-slate-600 font-black text-[10px] uppercase tracking-widest">Limpiar</a>{% endif %}
+        <form method="get" id="form-filtros" class="mb-6">
+            <div class="flex flex-wrap gap-2 items-center">
+
+                <!-- Empresa (multi-select con búsqueda) -->
+                <div class="relative multi-filter-wrap">
+                    <button type="button" class="multi-filter-btn border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm bg-slate-50 flex items-center gap-2 hover:border-slate-300 transition-colors min-w-[150px]" data-target="dd-empresa">
+                        <i class="fa-solid fa-building text-slate-400 text-xs"></i>
+                        <span class="multi-filter-label font-bold text-slate-600" data-default="Empresa">Empresa</span>
+                        <i class="fa-solid fa-chevron-down text-slate-400 text-xs ml-auto"></i>
+                    </button>
+                    <div id="dd-empresa" class="multi-filter-dropdown hidden absolute z-50 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl w-72 p-2">
+                        <div class="flex gap-2 mb-1.5 px-1">
+                            <button type="button" onclick="mfSelectAll(this)" class="text-[10px] text-brand hover:underline font-black uppercase tracking-widest">Seleccionar todo</button>
+                            <span class="text-slate-300">·</span>
+                            <button type="button" onclick="mfClearAll(this)" class="text-[10px] text-slate-400 hover:underline font-black uppercase tracking-widest">Limpiar</button>
+                        </div>
+                        <input type="text" placeholder="Buscar empresa..." class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs mb-2 focus:outline-none focus:ring-2 focus:ring-brand" oninput="filterMFOptions(this)">
+                        <div class="max-h-52 overflow-y-auto space-y-0.5">
+                            {% for e in empresas_gestionables %}
+                            <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700">
+                                <input type="checkbox" name="empresa" value="{{ e.id }}" class="rounded border-slate-300 text-brand focus:ring-brand" {% if e.id|stringformat:"s" in filtros.empresa %}checked{% endif %}>
+                                {{ e.nombre_fiscal }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Estatus -->
+                <div class="relative multi-filter-wrap">
+                    <button type="button" class="multi-filter-btn border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm bg-slate-50 flex items-center gap-2 hover:border-slate-300 transition-colors min-w-[140px]" data-target="dd-estatus">
+                        <i class="fa-solid fa-circle-half-stroke text-slate-400 text-xs"></i>
+                        <span class="multi-filter-label font-bold text-slate-600" data-default="Estatus">Estatus</span>
+                        <i class="fa-solid fa-chevron-down text-slate-400 text-xs ml-auto"></i>
+                    </button>
+                    <div id="dd-estatus" class="multi-filter-dropdown hidden absolute z-50 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl w-56 p-2">
+                        <div class="flex gap-2 mb-1.5 px-1">
+                            <button type="button" onclick="mfSelectAll(this)" class="text-[10px] text-brand hover:underline font-black uppercase tracking-widest">Seleccionar todo</button>
+                            <span class="text-slate-300">·</span>
+                            <button type="button" onclick="mfClearAll(this)" class="text-[10px] text-slate-400 hover:underline font-black uppercase tracking-widest">Limpiar</button>
+                        </div>
+                        <div class="space-y-0.5">
+                            {% for val, label in estatus_opciones %}
+                            <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700">
+                                <input type="checkbox" name="estatus" value="{{ val }}" class="rounded border-slate-300 text-brand focus:ring-brand" {% if val in filtros.estatus %}checked{% endif %}>
+                                {{ label }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invitación -->
+                <div class="relative multi-filter-wrap">
+                    <button type="button" class="multi-filter-btn border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm bg-slate-50 flex items-center gap-2 hover:border-slate-300 transition-colors min-w-[150px]" data-target="dd-invitacion">
+                        <i class="fa-solid fa-paper-plane text-slate-400 text-xs"></i>
+                        <span class="multi-filter-label font-bold text-slate-600" data-default="Invitación">Invitación</span>
+                        <i class="fa-solid fa-chevron-down text-slate-400 text-xs ml-auto"></i>
+                    </button>
+                    <div id="dd-invitacion" class="multi-filter-dropdown hidden absolute z-50 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl w-56 p-2">
+                        <div class="flex gap-2 mb-1.5 px-1">
+                            <button type="button" onclick="mfSelectAll(this)" class="text-[10px] text-brand hover:underline font-black uppercase tracking-widest">Seleccionar todo</button>
+                            <span class="text-slate-300">·</span>
+                            <button type="button" onclick="mfClearAll(this)" class="text-[10px] text-slate-400 hover:underline font-black uppercase tracking-widest">Limpiar</button>
+                        </div>
+                        <div class="space-y-0.5">
+                            {% for val, label in invit_opciones %}
+                            <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700">
+                                <input type="checkbox" name="invitacion" value="{{ val }}" class="rounded border-slate-300 text-brand focus:ring-brand" {% if val in filtros.invitacion %}checked{% endif %}>
+                                {{ label }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="bg-brand text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-filter"></i> Filtrar</button>
+                <a href="{% url 'gestion_usuarios' %}" class="px-4 py-3 border-2 border-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-colors">Limpiar</a>
+            </div>
+
+            <!-- Búsqueda por nombre o correo -->
+            <div class="relative mt-3">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-sm"></i>
+                <input type="text" name="q" value="{{ filtros.q }}" placeholder="Buscar por nombre o correo…" class="w-full md:w-96 pl-11 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm focus:border-brand transition-all">
             </div>
         </form>
         <div class="overflow-x-auto">
@@ -152,7 +219,7 @@
                     </tr>
                     {% empty %}
                     <tr><td colspan="4" class="px-8 py-12 text-center text-slate-300 italic text-sm">
-                        {% if q %}No hay usuarios que coincidan con «{{ q }}» en esta empresa.{% else %}No hay usuarios con acceso a esta empresa todavía.{% endif %}
+                        {% if filtros.q %}No hay usuarios que coincidan con «{{ filtros.q }}».{% else %}No hay usuarios con estos filtros.{% endif %}
                     </td></tr>
                     {% endfor %}
                 </tbody>
@@ -453,5 +520,69 @@
     }
 
     function cerrarModal() { modal.classList.add('hidden'); }
+</script>
+
+<!-- Filtros multi-select estilo chips (como el panel de tickets) -->
+<script>
+(function () {
+  document.querySelectorAll('.multi-filter-btn').forEach(btn => {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      const id = this.dataset.target;
+      document.querySelectorAll('.multi-filter-dropdown').forEach(d => {
+        if (d.id !== id) d.classList.add('hidden');
+      });
+      document.getElementById(id).classList.toggle('hidden');
+    });
+  });
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.multi-filter-dropdown').forEach(d => d.classList.add('hidden'));
+  });
+  document.querySelectorAll('.multi-filter-dropdown').forEach(d => {
+    d.addEventListener('click', e => e.stopPropagation());
+  });
+
+  function updateLabel(dropdown) {
+    const wrap = dropdown.closest('.multi-filter-wrap');
+    if (!wrap) return;
+    const label = wrap.querySelector('.multi-filter-label');
+    const chip = wrap.querySelector('.multi-filter-btn');
+    const checked = Array.from(dropdown.querySelectorAll('input[type=checkbox]:checked'));
+    if (checked.length === 0) {
+      label.textContent = label.dataset.default;
+      chip.classList.remove('border-brand', 'text-brand');
+    } else if (checked.length === 1) {
+      label.textContent = checked[0].closest('label').textContent.trim();
+      chip.classList.add('border-brand');
+    } else {
+      label.textContent = checked.length + ' seleccionadas';
+      chip.classList.add('border-brand');
+    }
+  }
+  document.querySelectorAll('.multi-filter-dropdown').forEach(dd => {
+    updateLabel(dd);
+    dd.querySelectorAll('input[type=checkbox]').forEach(cb => {
+      cb.addEventListener('change', () => updateLabel(dd));
+    });
+  });
+})();
+
+function filterMFOptions(input) {
+  const q = input.value.toLowerCase();
+  input.closest('.multi-filter-dropdown').querySelectorAll('label').forEach(label => {
+    label.style.display = label.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+function mfSelectAll(btn) {
+  const dd = btn.closest('.multi-filter-dropdown');
+  dd.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = true; });
+  dd.querySelectorAll('label').forEach(l => { l.style.display = ''; });
+  dd.querySelectorAll('input[type=checkbox]')[0]?.dispatchEvent(new Event('change'));
+}
+function mfClearAll(btn) {
+  const dd = btn.closest('.multi-filter-dropdown');
+  dd.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = false; });
+  dd.querySelectorAll('input[type=checkbox]')[0]?.dispatchEvent(new Event('change'));
+}
 </script>
 {% endblock %}
