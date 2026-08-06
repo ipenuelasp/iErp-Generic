@@ -215,19 +215,22 @@ def crear_usuario(request):
         from admon_empresas.models import AccesoModuloUsuario, SeccionOcultaUsuario
         from admon_empresas.modulos import secciones_de_modulo
         gestor = request.user.perfil
-        empresa_gestor = gestor.empresa_default
-        if empresa_gestor and (request.user.is_superuser or gestor.tipo_usuario == 'OWNER'):
+        # El acceso a módulos se guarda para la empresa del USUARIO gestionado
+        # (su empresa por defecto), no la del gestor. Antes se guardaba en la del
+        # gestor y por eso el usuario no veía sus módulos en su propia empresa.
+        empresa_destino = perfil.empresa_default
+        if empresa_destino and (request.user.is_superuser or gestor.tipo_usuario == 'OWNER'):
             modulos_ids = request.POST.getlist('modulos')
-            AccesoModuloUsuario.objects.filter(usuario=nuevo_user, empresa=empresa_gestor).delete()
+            AccesoModuloUsuario.objects.filter(usuario=nuevo_user, empresa=empresa_destino).delete()
             for clave in modulos_ids:
-                AccesoModuloUsuario.objects.create(usuario=nuevo_user, empresa=empresa_gestor, modulo=clave)
-            SeccionOcultaUsuario.objects.filter(usuario=nuevo_user, empresa=empresa_gestor).delete()
+                AccesoModuloUsuario.objects.create(usuario=nuevo_user, empresa=empresa_destino, modulo=clave)
+            SeccionOcultaUsuario.objects.filter(usuario=nuevo_user, empresa=empresa_destino).delete()
             visibles = set(request.POST.getlist('seccion_visible'))
             for clave_mod in modulos_ids:
                 for s in secciones_de_modulo(clave_mod):
                     if s['clave'] not in visibles:
                         SeccionOcultaUsuario.objects.create(
-                            usuario=nuevo_user, empresa=empresa_gestor, seccion=s['clave'])
+                            usuario=nuevo_user, empresa=empresa_destino, seccion=s['clave'])
 
         # 4. Enviar Invitación
         if enviar_correo_bienvenida(nuevo_user, request):
@@ -278,24 +281,25 @@ def editar_usuario(request, usuario_id):
         # 3. Módulos visibles (Capa 2): sincronizar para la empresa del gestor
         from admon_empresas.models import AccesoModuloUsuario
         gestor = request.user.perfil
-        empresa_gestor = gestor.empresa_default
-        if empresa_gestor and (request.user.is_superuser or gestor.tipo_usuario == 'OWNER'):
+        # Se guarda para la empresa del usuario gestionado, no la del gestor.
+        empresa_destino = perfil.empresa_default
+        if empresa_destino and (request.user.is_superuser or gestor.tipo_usuario == 'OWNER'):
             modulos_ids = request.POST.getlist('modulos')
-            AccesoModuloUsuario.objects.filter(usuario=empleado, empresa=empresa_gestor).delete()
+            AccesoModuloUsuario.objects.filter(usuario=empleado, empresa=empresa_destino).delete()
             for clave in modulos_ids:
-                AccesoModuloUsuario.objects.create(usuario=empleado, empresa=empresa_gestor, modulo=clave)
+                AccesoModuloUsuario.objects.create(usuario=empleado, empresa=empresa_destino, modulo=clave)
 
             # Capa 3: secciones OCULTAS. Las pantallas marcadas (visibles) llegan en
             # 'seccion_visible'; ocultamos las que NO estén marcadas, de los módulos asignados.
             from admon_empresas.models import SeccionOcultaUsuario
             from admon_empresas.modulos import secciones_de_modulo
-            SeccionOcultaUsuario.objects.filter(usuario=empleado, empresa=empresa_gestor).delete()
+            SeccionOcultaUsuario.objects.filter(usuario=empleado, empresa=empresa_destino).delete()
             visibles = set(request.POST.getlist('seccion_visible'))
             for clave_mod in modulos_ids:
                 for s in secciones_de_modulo(clave_mod):
                     if s['clave'] not in visibles:
                         SeccionOcultaUsuario.objects.create(
-                            usuario=empleado, empresa=empresa_gestor, seccion=s['clave'])
+                            usuario=empleado, empresa=empresa_destino, seccion=s['clave'])
 
         messages.success(request, f"Los accesos de {empleado.username} han sido actualizados.")
         return redirect('gestion_usuarios')
