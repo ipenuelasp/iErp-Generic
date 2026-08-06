@@ -47,20 +47,29 @@ def gestion_usuarios(request):
 
     # Empresa seleccionada en el filtro (por GET, o la activa); siempre dentro de
     # las gestionables (no se puede colar una empresa fuera de tu alcance).
+    # "Todas las empresas" solo para el proveedor (superuser); un OWNER filtra de
+    # una en una para no ver usuarios de otras empresas.
     sel_id = request.GET.get('empresa')
+    ver_todas = request.user.is_superuser and sel_id == 'todas'
     empresa_sel = None
-    if sel_id:
-        empresa_sel = next((e for e in empresas_gestionables if str(e.id) == str(sel_id)), None)
-    if not empresa_sel and request.empresa in empresas_gestionables:
-        empresa_sel = request.empresa
-    if not empresa_sel and empresas_gestionables:
-        empresa_sel = empresas_gestionables[0]
+    if not ver_todas:
+        if sel_id:
+            empresa_sel = next((e for e in empresas_gestionables if str(e.id) == str(sel_id)), None)
+        if not empresa_sel and request.empresa in empresas_gestionables:
+            empresa_sel = request.empresa
+        if not empresa_sel and empresas_gestionables:
+            empresa_sel = empresas_gestionables[0]
 
     # Búsqueda por correo o nombre
     q = (request.GET.get('q') or '').strip()
 
     empleados = User.objects.select_related('perfil')
-    empleados = empleados.filter(perfil__empresas=empresa_sel) if empresa_sel else empleados.none()
+    if ver_todas:
+        empleados = empleados.filter(perfil__empresas__in=empresas_gestionables)
+    elif empresa_sel:
+        empleados = empleados.filter(perfil__empresas=empresa_sel)
+    else:
+        empleados = empleados.none()
     if q:
         empleados = empleados.filter(Q(email__icontains=q) | Q(first_name__icontains=q)
                                      | Q(last_name__icontains=q) | Q(username__icontains=q))
@@ -88,7 +97,10 @@ def gestion_usuarios(request):
     # Módulos contratados por la empresa del gestor (para repartir entre usuarios)
     from admon_empresas.modulos import MODULOS_DISPONIBLES
     from admon_empresas.models import EmpresaModulo, AccesoModuloUsuario
-    empresa_gestor = empresa_sel
+    # Para el modal (asignar módulos) se necesita una empresa concreta; si estás
+    # viendo "Todas", se usa la empresa activa como destino por defecto.
+    empresa_gestor = empresa_sel or (request.empresa if request.empresa in empresas_gestionables
+                                     else (empresas_gestionables[0] if empresas_gestionables else None))
     contratados = set(EmpresaModulo.objects.filter(
         empresa=empresa_gestor, activo=True).values_list('modulo', flat=True)) if empresa_gestor else set()
     modulos_empresa = [m for m in MODULOS_DISPONIBLES if m['clave'] in contratados]
@@ -119,6 +131,7 @@ def gestion_usuarios(request):
         'ocultas_por_usuario': ocultas_por_usuario,
         'empresas_gestionables': empresas_gestionables,
         'empresa_sel': empresa_sel,
+        'ver_todas': ver_todas,
         'q': q,
         'titulo_pagina': "Gestión de Personal"
     })

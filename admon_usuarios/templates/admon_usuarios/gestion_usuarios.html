@@ -21,6 +21,7 @@
             <div>
                 <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Empresa</label>
                 <select name="empresa" onchange="this.form.submit()" class="w-full md:w-72 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm focus:border-brand transition-all">
+                    {% if user.is_superuser %}<option value="todas" {% if ver_todas %}selected{% endif %}>Todas las empresas</option>{% endif %}
                     {% for e in empresas_gestionables %}
                     <option value="{{ e.id }}" {% if empresa_sel and e.id == empresa_sel.id %}selected{% endif %}>{{ e.nombre_fiscal }}</option>
                     {% endfor %}
@@ -31,7 +32,7 @@
                 <div class="flex gap-2">
                     <input type="text" name="q" value="{{ q }}" placeholder="correo@ejemplo.com o nombre" class="flex-1 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm focus:border-brand transition-all">
                     <button type="submit" class="bg-brand text-white px-5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-magnifying-glass"></i></button>
-                    {% if q %}<a href="?empresa={{ empresa_sel.id }}" class="px-4 flex items-center text-slate-400 hover:text-slate-600 font-black text-[10px] uppercase tracking-widest">Limpiar</a>{% endif %}
+                    {% if q %}<a href="?empresa={% if ver_todas %}todas{% else %}{{ empresa_sel.id }}{% endif %}" class="px-4 flex items-center text-slate-400 hover:text-slate-600 font-black text-[10px] uppercase tracking-widest">Limpiar</a>{% endif %}
                 </div>
             </div>
         </form>
