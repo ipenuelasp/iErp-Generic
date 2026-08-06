@@ -16,6 +16,19 @@
 </div>
 
 <div class="px-6 py-5 space-y-6">
+    {% if not t.es_etapa and not t.es_bloqueante and etapas %}
+    <!-- Mover a etapa -->
+    <form method="post" class="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="mover_a_etapa">
+        <input type="hidden" name="tarea_id" value="{{ t.id }}">
+        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex-none"><i class="fa-solid fa-layer-group mr-1"></i>Etapa</span>
+        <select name="etapa_id" onchange="this.form.submit()" class="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold no-select2">
+            <option value="">— Sin etapa —</option>
+            {% for e in etapas %}<option value="{{ e.id }}" {% if t.padre_id == e.id %}selected{% endif %}>{{ e.titulo }}</option>{% endfor %}
+        </select>
+    </form>
+    {% endif %}
     <!-- Datos -->
     <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-[13px]">
         <span class="text-slate-400">Tablero</span><span class="font-bold text-slate-700 text-right">{{ tablero.nombre }}</span>

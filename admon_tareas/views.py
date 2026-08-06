@@ -597,6 +597,27 @@ class TableroDetalleView(LoginRequiredMixin, View):
         tarea = get_object_or_404(tablero.tareas, id=request.POST.get('tarea_id')) \
             if request.POST.get('tarea_id') else None
 
+        if accion == 'mover_a_etapa' and tarea:
+            if tarea.es_etapa or tarea.es_bloqueante:
+                messages.error(request, "Esa fila no se puede mover a una etapa.")
+                return volver
+            etapa_id = request.POST.get('etapa_id') or ''
+            nueva_padre = None
+            if etapa_id:
+                nueva_padre = tablero.tareas.filter(id=etapa_id, es_etapa=True).first()
+                if not nueva_padre:
+                    messages.error(request, "Etapa no válida.")
+                    return volver
+            from django.db.models import Max as _Max
+            orden = (tablero.tareas.filter(padre=nueva_padre).aggregate(m=_Max('orden'))['m'] or 0) + 1
+            tarea.padre = nueva_padre
+            tarea.orden = orden
+            tarea.save(update_fields=['padre', 'orden'])
+            services.recalcular_tablero(tablero)
+            messages.success(request, f"Tarea movida a «{nueva_padre.titulo}»." if nueva_padre
+                             else "Tarea movida fuera de etapas.")
+            return volver
+
         if accion == 'editar_tarea' and tarea:
             tarea.titulo = (request.POST.get('titulo') or tarea.titulo).strip()
             tarea.descripcion = request.POST.get('descripcion', tarea.descripcion)
@@ -906,6 +927,8 @@ class TareaPanelView(LoginRequiredMixin, View):
             # Bloqueo formal: tareas bloqueantes (origen BLOQUEO).
             'bloqueos': [d for d in todas_deps if d.origen == 'BLOQUEO'],
             'puede_bloquear': tarea.estado not in ('BLOQ', 'COMP', 'CANC') and not tarea.es_bloqueante,
+            # Etapas del tablero para el selector "Mover a etapa".
+            'etapas': list(tarea.tablero.tareas.filter(es_etapa=True).order_by('orden', 'ruta_wbs')),
         }
         return render(request, self.template_name, context)
 
