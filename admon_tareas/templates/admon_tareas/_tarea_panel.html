@@ -18,15 +18,18 @@
 <div class="px-6 py-5 space-y-6">
     {% if not t.es_etapa and not t.es_bloqueante and etapas %}
     <!-- Mover a etapa -->
-    <form method="post" class="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2">
+    <form method="post" class="bg-slate-50 rounded-xl px-3 py-2.5">
         {% csrf_token %}
         <input type="hidden" name="accion" value="mover_a_etapa">
         <input type="hidden" name="tarea_id" value="{{ t.id }}">
-        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex-none"><i class="fa-solid fa-layer-group mr-1"></i>Etapa</span>
-        <select name="etapa_id" onchange="this.form.submit()" class="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold no-select2">
-            <option value="">— Sin etapa —</option>
-            {% for e in etapas %}<option value="{{ e.id }}" {% if t.padre_id == e.id %}selected{% endif %}>{{ e.titulo }}</option>{% endfor %}
-        </select>
+        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-0.5"><i class="fa-solid fa-layer-group mr-1"></i>Etapa</label>
+        <div class="flex items-center gap-2 mt-1">
+            <select name="etapa_id" data-placeholder="— Sin etapa —" class="flex-1 text-xs font-bold">
+                <option value="">— Sin etapa —</option>
+                {% for e in etapas %}<option value="{{ e.id }}" {% if t.padre_id == e.id %}selected{% endif %}>{{ e.titulo }}</option>{% endfor %}
+            </select>
+            <button type="submit" class="flex-none bg-slate-800 text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-700">Mover</button>
+        </div>
     </form>
     {% endif %}
     <!-- Datos -->

@@ -106,10 +106,17 @@
                             <span class="ml-auto flex items-center gap-2">
                                 <div class="w-24 h-1.5 rounded-full bg-slate-200 overflow-hidden"><div class="h-full rounded-full {% if t.avance >= 100 %}bg-emerald-500{% else %}bg-brand{% endif %}" style="width:{{ t.avance|floatformat:0 }}%"></div></div>
                                 <span class="text-[10px] font-bold text-slate-500 w-8 text-right">{{ t.avance|floatformat:0 }}%</span>
-                                <button type="button" onclick="abrirCrear('{{ t.id }}')" class="text-[10px] font-black text-brand uppercase tracking-wide hover:underline whitespace-nowrap"><i class="fa-solid fa-plus"></i> tarea</button>
+                                <button type="button" onclick="toggleQuickAdd({{ t.id }})" class="text-[10px] font-black text-brand uppercase tracking-wide hover:underline whitespace-nowrap"><i class="fa-solid fa-plus"></i> tarea</button>
                                 <button type="button" onclick="abrirTarea({{ t.id }})" class="text-slate-300 hover:text-slate-600" title="Editar etapa"><i class="fa-solid fa-pen text-[10px]"></i></button>
                             </span>
                         </div>
+                    </td>
+                </tr>
+                <tr id="qa-{{ t.id }}" class="hidden bg-slate-50/60 border-b border-slate-100">
+                    <td></td>
+                    <td colspan="6" class="px-4 py-2">
+                        <input type="text" placeholder="Escribe una tarea y presiona Enter…" onkeydown="qaKey(event, this, '{{ t.id }}')"
+                               class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-brand">
                     </td>
                 </tr>
                 {% else %}
@@ -148,9 +155,22 @@
                 {% empty %}
                 <tr><td colspan="7" class="px-8 py-16 text-center text-slate-400 italic">Este tablero aún no tiene tareas. Crea la primera con <b>Nueva tarea</b> o una <b>Etapa</b>.</td></tr>
                 {% endfor %}
+                <tr class="border-t border-slate-100">
+                    <td class="px-4 py-2.5 text-center text-slate-300"><i class="fa-solid fa-plus text-xs"></i></td>
+                    <td colspan="6" class="px-4 py-2.5">
+                        <input type="text" placeholder="Agregar tarea… (escribe y presiona Enter)" onkeydown="qaKey(event, this, '')"
+                               class="w-full bg-transparent text-sm font-medium text-slate-600 outline-none placeholder:text-slate-300">
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
+    <!-- Alta rápida de tareas (Enter) -->
+    <form id="qform" method="post" class="hidden">{% csrf_token %}
+        <input type="hidden" name="accion" value="crear_tarea">
+        <input type="hidden" name="titulo" id="qtitulo">
+        <input type="hidden" name="padre" id="qpadre">
+    </form>
     <p class="text-[11px] text-slate-400 mt-3 italic">Da clic en cualquier tarea para abrir su detalle: asignados, subtareas, comentarios y archivos.</p>
     </div><!-- /vista lista -->
 
@@ -488,6 +508,21 @@ function cambiarVista(v){
         b.classList.toggle('border-transparent', !on);
     });
     try { localStorage.setItem('tareas_vista_'+TAB_PK, v); } catch(e){}
+}
+function toggleQuickAdd(id){
+    const r = document.getElementById('qa-'+id);
+    if(!r) return;
+    r.classList.remove('hidden');
+    const i = r.querySelector('input'); if(i) i.focus();
+}
+function qaKey(e, inp, padreId){
+    if(e.key !== 'Enter') return;
+    e.preventDefault();
+    const v = inp.value.trim();
+    if(!v) return;
+    document.getElementById('qtitulo').value = v;
+    document.getElementById('qpadre').value = padreId || '';
+    document.getElementById('qform').submit();
 }
 function abrirCrear(padreId){
     document.getElementById('crearPadre').value = padreId || '';
