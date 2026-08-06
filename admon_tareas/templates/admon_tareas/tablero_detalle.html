@@ -495,9 +495,7 @@ function toggleEtapa(id){
     try { const k='etapas_cerradas_'+TAB_PK; const s=new Set(JSON.parse(localStorage.getItem(k)||'[]'));
           if(abierto) s.add(id); else s.delete(id); localStorage.setItem(k, JSON.stringify([...s])); } catch(e){}
 }
-document.addEventListener('DOMContentLoaded', function(){
-    try { const s=JSON.parse(localStorage.getItem('etapas_cerradas_'+TAB_PK)||'[]'); s.forEach(id=>{ if(document.getElementById('chev-'+id)) toggleEtapa(id); }); } catch(e){}
-});
+document.addEventListener('DOMContentLoaded', function(){ reaplicarColapso(); });
 function cambiarVista(v){
     document.querySelectorAll('.vista-tareas').forEach(el=>el.classList.toggle('hidden', el.dataset.vista !== v));
     document.querySelectorAll('.tab-tareas').forEach(b=>{
@@ -515,14 +513,34 @@ function toggleQuickAdd(id){
     r.classList.remove('hidden');
     const i = r.querySelector('input'); if(i) i.focus();
 }
+function reaplicarColapso(){
+    try { const s = JSON.parse(localStorage.getItem('etapas_cerradas_'+TAB_PK)||'[]');
+          s.forEach(id => { if(document.getElementById('chev-'+id)) toggleEtapa(id); }); } catch(e){}
+}
 function qaKey(e, inp, padreId){
     if(e.key !== 'Enter') return;
     e.preventDefault();
     const v = inp.value.trim();
     if(!v) return;
-    document.getElementById('qtitulo').value = v;
-    document.getElementById('qpadre').value = padreId || '';
-    document.getElementById('qform').submit();
+    inp.disabled = true;
+    const fd = new FormData();
+    fd.append('accion', 'crear_tarea');
+    fd.append('titulo', v);
+    fd.append('padre', padreId || '');
+    fd.append('csrfmiddlewaretoken', CSRF);
+    fetch(POST_URL, { method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'} })
+        .then(r => r.text()).then(html => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const nb = doc.querySelector('[data-vista="lista"] tbody');
+            const cur = document.querySelector('[data-vista="lista"] tbody');
+            if(nb && cur){
+                cur.innerHTML = nb.innerHTML;
+                reaplicarColapso();
+                // Reabre el input donde estabas para seguir capturando.
+                if(padreId){ toggleQuickAdd(padreId); }
+                else { const b = cur.querySelector('tr:last-child input'); if(b) b.focus(); }
+            } else { location.reload(); }
+        }).catch(() => location.reload());
 }
 function abrirCrear(padreId){
     document.getElementById('crearPadre').value = padreId || '';
