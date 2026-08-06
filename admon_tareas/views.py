@@ -235,8 +235,10 @@ class TablerosView(LoginRequiredMixin, View):
             tb.save(update_fields=['activo'])
             messages.success(request, f"Tablero «{tb.nombre}» "
                              f"{'reactivado' if tb.activo else 'archivado'}.")
+            # Quédate en la lista desde la que actuaste: archivar viene de activos,
+            # reactivar viene de archivados.
             destino = reverse('admon_tareas:tableros')
-            return redirect(f"{destino}?archivados=1" if not tb.activo else destino)
+            return redirect(f"{destino}?archivados=1" if accion == 'reactivar_tablero' else destino)
 
         if accion == 'crear_tipo':
             nombre = (request.POST.get('nombre') or '').strip()
