@@ -22,7 +22,16 @@ class CustomLoginView(LoginView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['empresa'] = Empresa.objects.first()
+        # El logo del login depende del SUBDOMINIO (tenant), no de la primera
+        # empresa de la BD. Sin tenant (dominio raíz/staging) se usa el logo
+        # genérico de iErp — nunca el de otro cliente (antes salía Acuagro).
+        tenant = getattr(self.request, 'tenant', None)
+        empresa = None
+        if tenant:
+            empresa = (Empresa.objects.filter(cliente=tenant)
+                       .exclude(logo='').exclude(logo__isnull=True).first()
+                       or Empresa.objects.filter(cliente=tenant).first())
+        ctx['empresa'] = empresa
         return ctx
 
 
