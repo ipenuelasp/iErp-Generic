@@ -36,30 +36,48 @@ def gestion_usuarios(request):
     if not (request.user.is_superuser or es_dueno_autorizado):
         raise PermissionDenied("No tienes autorización para gestionar personal.")
 
-    # 2. FILTRADO: ¿Qué usuarios y sucursales puede ver?
-    if request.user.is_superuser:
-        empleados = User.objects.all().select_related('perfil')
-        sucursales = Sucursal.objects.all() 
-    else:
-        empleados = User.objects.filter(
-            perfil__empresa_default=perfil_logueado.empresa_default
-        ).select_related('perfil')
-        sucursales = Sucursal.objects.filter(empresa=perfil_logueado.empresa_default)
-
-    grupos = Group.objects.all()
-
-    # Empresas con sus sucursales para el selector del modal
+    # 2. FILTRADO: solo se gestionan las empresas a las que el gestor tiene acceso
+    #    (ya acotadas por subdominio en TenantMiddleware). Así, aunque varios
+    #    clientes vivan en el mismo servidor, un OWNER no ve usuarios de otros.
+    from django.db.models import Q
     from admon_empresas.models import Empresa
-    if request.user.is_superuser:
-        empresas_con_sucursales = Empresa.objects.prefetch_related('sucursales').all()
-    else:
-        empresas_con_sucursales = perfil_logueado.empresas.prefetch_related('sucursales').all()
+    empresas_gestionables = list(request.empresas.prefetch_related('sucursales'))
+    if request.user.is_superuser and not empresas_gestionables:
+        empresas_gestionables = list(Empresa.objects.prefetch_related('sucursales').all())
+
+    # Empresa seleccionada en el filtro (por GET, o la activa); siempre dentro de
+    # las gestionables (no se puede colar una empresa fuera de tu alcance).
+    sel_id = request.GET.get('empresa')
+    empresa_sel = None
+    if sel_id:
+        empresa_sel = next((e for e in empresas_gestionables if str(e.id) == str(sel_id)), None)
+    if not empresa_sel and request.empresa in empresas_gestionables:
+        empresa_sel = request.empresa
+    if not empresa_sel and empresas_gestionables:
+        empresa_sel = empresas_gestionables[0]
+
+    # Búsqueda por correo o nombre
+    q = (request.GET.get('q') or '').strip()
+
+    empleados = User.objects.select_related('perfil')
+    empleados = empleados.filter(perfil__empresas=empresa_sel) if empresa_sel else empleados.none()
+    if q:
+        empleados = empleados.filter(Q(email__icontains=q) | Q(first_name__icontains=q)
+                                     | Q(last_name__icontains=q) | Q(username__icontains=q))
+    empleados = empleados.distinct().order_by('first_name', 'username')
+
+    sucursales = Sucursal.objects.filter(empresa__in=empresas_gestionables)
+    grupos = Group.objects.all()
+    empresas_con_sucursales = empresas_gestionables
 
     # Pre-calcular accesos por empresa para cada empleado: {user_id: [(empresa, [sucursales])}
+    # Solo mostramos accesos dentro de las empresas gestionables (no filtrar aquí
+    # revelaría que un usuario también pertenece a empresas de otros clientes).
+    gest_ids = {e.id for e in empresas_gestionables}
     accesos_por_usuario = {}
     for emp in empleados:
         p = emp.perfil
-        empresas_emp = p.empresas.all()
+        empresas_emp = [e for e in p.empresas.all() if e.id in gest_ids]
         sucs_emp = list(p.sucursales.all().select_related('empresa'))
         fila = []
         for empresa in empresas_emp:
@@ -70,7 +88,7 @@ def gestion_usuarios(request):
     # Módulos contratados por la empresa del gestor (para repartir entre usuarios)
     from admon_empresas.modulos import MODULOS_DISPONIBLES
     from admon_empresas.models import EmpresaModulo, AccesoModuloUsuario
-    empresa_gestor = perfil_logueado.empresa_default
+    empresa_gestor = empresa_sel
     contratados = set(EmpresaModulo.objects.filter(
         empresa=empresa_gestor, activo=True).values_list('modulo', flat=True)) if empresa_gestor else set()
     modulos_empresa = [m for m in MODULOS_DISPONIBLES if m['clave'] in contratados]
@@ -99,6 +117,9 @@ def gestion_usuarios(request):
         'modulos_por_usuario': modulos_por_usuario,
         'secciones_por_modulo': secciones_por_modulo,
         'ocultas_por_usuario': ocultas_por_usuario,
+        'empresas_gestionables': empresas_gestionables,
+        'empresa_sel': empresa_sel,
+        'q': q,
         'titulo_pagina': "Gestión de Personal"
     })
 
