@@ -195,7 +195,7 @@
                         </td>
                         <td class="px-5 py-3.5 text-right">
                             <div class="flex justify-end gap-2">
-                                <form method="post" action="{% url 'reenviar_invitacion' empleado.id %}">
+                                <form method="post" action="{% url 'reenviar_invitacion_usuario' empleado.id %}">
                                     {% csrf_token %}
                                     <button type="submit" title="Reenviar correo de acceso"
                                         class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-amber-200 text-amber-500 hover:bg-amber-50 shadow-sm transition-all">
