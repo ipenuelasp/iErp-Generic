@@ -153,10 +153,15 @@
                             {% endif %}
                         </div>
                         {% if not t.es_bloqueante %}
-                        <select id="asg-sel-{{ t.id }}" class="hidden mt-1 w-40 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold no-select2" onchange="asignarDesdeLista({{ t.id }}, this.value)">
-                            <option value="">Asignar…</option>
-                            {% for u in usuarios %}<option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
-                        </select>
+                        <div id="asg-box-{{ t.id }}" class="hidden mt-1 flex items-center gap-1">
+                            <select id="asg-rol-{{ t.id }}" title="Rol" class="no-select2 bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-1 text-[10px] font-bold">
+                                {% for k,v in roles %}<option value="{{ k }}" {% if k == 'COLA' %}selected{% endif %}>{{ v }}</option>{% endfor %}
+                            </select>
+                            <select id="asg-sel-{{ t.id }}" class="no-select2 text-xs" style="width:11rem">
+                                <option></option>
+                                {% for u in usuarios %}<option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+                            </select>
+                        </div>
                         {% endif %}
                     </td>
                     <td class="px-4 py-3">
@@ -565,16 +570,32 @@ function qaKey(e, inp, padreId){
     });
 }
 function toggleAsignar(id){
-    const s = document.getElementById('asg-sel-'+id);
-    if(!s) return;
-    s.classList.toggle('hidden');
-    if(!s.classList.contains('hidden')) s.focus();
+    const box = document.getElementById('asg-box-'+id);
+    if(!box) return;
+    const oculto = box.classList.toggle('hidden');
+    if(oculto) return;
+    const sel = document.getElementById('asg-sel-'+id);
+    if(window.jQuery && sel){
+        const $s = jQuery(sel);
+        if(!sel.dataset.s2){
+            sel.dataset.s2 = '1';
+            $s.select2({ width:'11rem', placeholder:'Asignar persona…', allowClear:false,
+                language:{ noResults:function(){return 'Sin resultados';}, searching:function(){return 'Buscando...';} } });
+            $s.on('change', function(){ asignarDesdeLista(id, this.value); });
+        }
+        $s.select2('open');
+    }
 }
 function asignarDesdeLista(id, userId){
     if(!userId) return;
+    const box = document.getElementById('asg-box-'+id);
+    const rolSel = document.getElementById('asg-rol-'+id);
+    const rol = rolSel ? rolSel.value : 'COLA';
+    if(box) box.innerHTML = '<span class="text-[11px] text-slate-400 font-bold whitespace-nowrap"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Asignando…</span>';
     const fd = new FormData();
     fd.append('accion', 'asignar'); fd.append('tarea_id', id);
-    fd.append('usuario', userId); fd.append('csrfmiddlewaretoken', CSRF);
+    fd.append('usuario', userId); fd.append('rol', rol);
+    fd.append('csrfmiddlewaretoken', CSRF);
     refrescarLista(fd);
 }
 function abrirCrear(padreId){
