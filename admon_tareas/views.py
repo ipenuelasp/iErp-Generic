@@ -1042,17 +1042,30 @@ class TableroDetalleView(LoginRequiredMixin, View):
                 for f in request.FILES.getlist('archivos'):
                     _guardar_adjunto(empresa, com, f, request.user)
                 services.registrar_actividad(tarea, request.user, 'COMENTO', detalle="Comentó")
-                # Notifica a los asignados + responsable del tablero (menos el autor).
+                quien = request.user.get_full_name() or request.user.username
+                # Menciones @usuario: notifica a los mencionados (por username o nombre).
+                import re
+                tokens = {t.lower() for t in re.findall(r'@([\wáéíóúñÁÉÍÓÚÑ.]+)', texto)}
+                mencionados = set()
+                if tokens:
+                    for u in _usuarios_empresa(empresa):
+                        nom = (u.first_name or '').lower()
+                        if u.username.lower() in tokens or (nom and nom in tokens):
+                            mencionados.add(u.id)
+                    mencionados.discard(request.user.id)
+                    for u in User.objects.filter(id__in=mencionados):
+                        _notificar_tarea(u, request.user, empresa, 'COMENTARIO',
+                                         f"Te mencionaron en «{tarea.titulo}»",
+                                         f"{quien}: {texto[:100]}", tarea, 'fa-at')
+                # Notifica a asignados + responsable del tablero (menos autor y mencionados).
                 dest = {a.usuario_id for a in tarea.asignaciones.all()}
                 if tarea.tablero.responsable_id:
                     dest.add(tarea.tablero.responsable_id)
-                dest.discard(request.user.id)
-                if dest:
-                    quien = request.user.get_full_name() or request.user.username
-                    for u in User.objects.filter(id__in=dest):
-                        _notificar_tarea(u, request.user, empresa, 'COMENTARIO',
-                                         f"Nuevo comentario en «{tarea.titulo}»",
-                                         f"{quien}: {texto[:100]}", tarea, 'fa-comment')
+                dest -= {request.user.id} | mencionados
+                for u in User.objects.filter(id__in=dest):
+                    _notificar_tarea(u, request.user, empresa, 'COMENTARIO',
+                                     f"Nuevo comentario en «{tarea.titulo}»",
+                                     f"{quien}: {texto[:100]}", tarea, 'fa-comment')
                 messages.success(request, "Comentario agregado.")
 
         elif accion == 'subir_adjunto' and tarea:
