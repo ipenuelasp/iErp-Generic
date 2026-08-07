@@ -1,7 +1,9 @@
 {% extends "admon_empresas/dashboard.html" %}
 {% load humanize %}
 {% block main_content %}
-<div id="guardando" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-[80] bg-slate-800 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-full shadow-lg flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i> Guardando…</div>
+<div id="guardando" class="hidden fixed inset-0 z-[80] cursor-wait" style="background:rgba(15,23,42,0.06)">
+    <div class="fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-full shadow-lg flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i> Guardando…</div>
+</div>
 <div class="max-w-screen-2xl mx-auto p-8">
     <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -551,14 +553,19 @@ function reaplicarColapso(){
           s.forEach(id => { if(document.getElementById('chev-'+id)) toggleEtapa(id); }); } catch(e){}
 }
 // Refresca SOLO el tbody de la Lista tras un POST (sin recargar la página).
+// Mientras procesa, bloquea la interacción (overlay) y no acepta otra acción.
+let _procesando = false;
 function refrescarLista(fd, cb){
+    if(_procesando) return;
+    _procesando = true;
     const g = document.getElementById('guardando'); if(g) g.classList.remove('hidden');
     fetch(POST_URL, { method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'} })
         .then(r => r.text()).then(html => {
             const doc = new DOMParser().parseFromString(html, 'text/html');
             const nb = doc.querySelector('[data-vista="lista"] tbody');
             const cur = document.querySelector('[data-vista="lista"] tbody');
-            if(nb && cur){ cur.innerHTML = nb.innerHTML; reaplicarColapso(); if(g) g.classList.add('hidden'); if(cb) cb(cur); }
+            if(nb && cur){ cur.innerHTML = nb.innerHTML; reaplicarColapso();
+                if(g) g.classList.add('hidden'); _procesando = false; if(cb) cb(cur); }
             else { location.reload(); }
         }).catch(() => location.reload());
 }
@@ -619,6 +626,7 @@ function quitarAsignado(id, asigId){
 // ── Arrastrar tareas de la lista a otra etapa (reparent) ──
 let _dragTarea = null;
 function dragStart(e, id){
+    if(_procesando){ e.preventDefault(); return; }
     _dragTarea = id;
     e.dataTransfer.effectAllowed = 'move';
     try { e.dataTransfer.setData('text/plain', String(id)); } catch(_){}
