@@ -127,6 +127,24 @@ def _notificar_tarea(usuario, actor, empresa, tipo, titulo, mensaje, tarea, icon
                        titulo=titulo, mensaje=mensaje, url=_url_tarea(tarea), icono=icono)
 
 
+def _notificar_tablero(usuario, actor, empresa, tipo, titulo, mensaje, tablero, icono=''):
+    from admon_comunes.models import Notificacion
+    from django.urls import reverse
+    url = reverse('admon_tareas:tablero_detalle', kwargs={'pk': tablero.pk})
+    Notificacion.crear(usuario=usuario, actor=actor, empresa=empresa, tipo=tipo,
+                       titulo=titulo, mensaje=mensaje, url=url, icono=icono)
+
+
+def _notificar_nuevos_miembros(tablero, nuevos_ids, actor, empresa):
+    nuevos = {int(i) for i in nuevos_ids} - {actor.id}
+    if not nuevos:
+        return
+    for u in User.objects.filter(id__in=nuevos):
+        _notificar_tablero(u, actor, empresa, 'GENERAL',
+                           f"Te agregaron al tablero «{tablero.nombre}»",
+                           "Ahora puedes verlo", tablero, 'fa-user-group')
+
+
 def _stats_tablero(tablero, dets):
     """Métricas para la tarjeta/encabezado: avance, atrasadas, bloqueadas,
     ventana de fechas, reprogramación vs la línea base y salud."""
@@ -358,6 +376,8 @@ class TablerosView(LoginRequiredMixin, View):
         ids = [int(i) for i in request.POST.getlist('miembros') if i.isdigit()]
         if ids:
             tablero.miembros.set(_usuarios_empresa(empresa).filter(id__in=ids))
+            _notificar_nuevos_miembros(
+                tablero, tablero.miembros.values_list('id', flat=True), request.user, empresa)
         messages.success(request, f"Tablero {tablero.codigo} creado.")
         return redirect('admon_tareas:tablero_detalle', pk=tablero.pk)
 
@@ -625,7 +645,10 @@ class TableroDetalleView(LoginRequiredMixin, View):
             tablero.save(update_fields=['nombre', 'descripcion', 'modo_cierre',
                                         'visibilidad', 'responsable'])
             ids = [int(i) for i in request.POST.getlist('miembros') if i.isdigit()]
+            antes = set(tablero.miembros.values_list('id', flat=True))
             tablero.miembros.set(_usuarios_empresa(empresa).filter(id__in=ids))
+            despues = set(tablero.miembros.values_list('id', flat=True))
+            _notificar_nuevos_miembros(tablero, despues - antes, request.user, empresa)
             messages.success(request, "Ajustes del tablero actualizados.")
             return redirect(base_url)
 
@@ -841,6 +864,13 @@ class TableroDetalleView(LoginRequiredMixin, View):
             bloqueante = services.bloquear(
                 tarea=tarea, usuario=request.user, motivo=motivo, titulo=titulo,
                 asignados_ids=asignados, fecha_compromiso=fecha)
+            # Avisa a quienes deben resolver el bloqueo.
+            resolv = {int(u) for u in asignados} - {request.user.id}
+            for u in User.objects.filter(id__in=resolv):
+                _notificar_tarea(u, request.user, empresa, 'BLOQUEO',
+                                 f"Bloqueo por resolver: «{titulo}»",
+                                 f"Bloquea «{tarea.titulo}» · {motivo[:80]}",
+                                 bloqueante, 'fa-hand')
             messages.warning(request, f"Tarea bloqueada. Se creó {bloqueante.folio} para desbloquearla.")
             return volver
 
@@ -875,6 +905,17 @@ class TableroDetalleView(LoginRequiredMixin, View):
                 services.recalcular_tablero(tablero)
                 services.registrar_actividad(tarea, request.user, 'ESTADO',
                                              campo='estado', valor_ant=ant, valor_nue=nuevo)
+                # Notifica a asignados + responsable del tablero (menos quien lo cambió).
+                dest = {a.usuario_id for a in tarea.asignaciones.all()}
+                if tarea.tablero.responsable_id:
+                    dest.add(tarea.tablero.responsable_id)
+                dest.discard(request.user.id)
+                if dest:
+                    quien = request.user.get_full_name() or request.user.username
+                    for u in User.objects.filter(id__in=dest):
+                        _notificar_tarea(u, request.user, empresa, 'ESTADO',
+                                         f"«{tarea.titulo}» → {tarea.get_estado_display()}",
+                                         f"{quien} cambió el estado", tarea, 'fa-circle-half-stroke')
                 messages.success(request, "Estado actualizado.")
 
         elif accion == 'aprobar_tarea' and tarea:
