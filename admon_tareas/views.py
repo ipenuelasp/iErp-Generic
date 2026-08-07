@@ -697,8 +697,23 @@ class TableroDetalleView(LoginRequiredMixin, View):
                 messages.error(request, "Esa fila no se puede mover a una etapa.")
                 return volver
             etapa_id = request.POST.get('etapa_id') or ''
+            padre_id = request.POST.get('padre_id') or ''   # soltada como subtarea de otra tarea
             nueva_padre = None
-            if etapa_id:
+            if padre_id:
+                cand = tablero.tareas.filter(id=padre_id).exclude(es_bloqueante=True).first()
+                if not cand or cand.id == tarea.id:
+                    messages.error(request, "No se puede anidar ahí.")
+                    return volver
+                # Evita ciclos: el nuevo padre no puede ser descendiente de la tarea.
+                _by = {x.id: x for x in tablero.tareas.all()}
+                cur = cand
+                while cur is not None:
+                    if cur.id == tarea.id:
+                        messages.error(request, "Eso crearía un ciclo.")
+                        return volver
+                    cur = _by.get(cur.padre_id)
+                nueva_padre = cand
+            elif etapa_id:
                 nueva_padre = tablero.tareas.filter(id=etapa_id, es_etapa=True).first()
                 if not nueva_padre:
                     messages.error(request, "Etapa no válida.")

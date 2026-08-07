@@ -1,6 +1,7 @@
 {% extends "admon_empresas/dashboard.html" %}
 {% load humanize %}
 {% block main_content %}
+<div id="dropHint" class="hidden fixed z-[85] pointer-events-none bg-indigo-600 text-white text-[11px] font-black px-2.5 py-1 rounded-lg shadow-lg"></div>
 <div id="guardando" class="hidden fixed inset-0 z-[80] cursor-wait" style="background:rgba(15,23,42,0.06)">
     <div class="fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-full shadow-lg flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i> Guardando…</div>
 </div>
@@ -100,7 +101,7 @@
                 {% for t in tareas %}
                 {% if t.es_etapa %}
                 <tr class="bg-slate-100 border-y border-slate-200" data-etapa="{{ t.id }}"
-                    ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropEn(event,'{{ t.id }}')">
+                    ondragover="dragOver(event,'En esta etapa (al final)')" ondragleave="dragLeave(event)" ondrop="dropEn(event,'{{ t.id }}')">
                     <td class="px-4 py-2.5 text-center"><button type="button" onclick="toggleEtapa({{ t.id }})" class="text-slate-400 hover:text-slate-700"><i id="chev-{{ t.id }}" class="fa-solid fa-chevron-down text-xs"></i></button></td>
                     <td class="px-4 py-2.5" colspan="6">
                         <div class="flex items-center gap-3 flex-wrap">
@@ -190,7 +191,7 @@
                 {% empty %}
                 <tr><td colspan="7" class="px-8 py-16 text-center text-slate-400 italic">Este tablero aún no tiene tareas. Crea la primera con <b>Nueva tarea</b> o una <b>Etapa</b>.</td></tr>
                 {% endfor %}
-                <tr class="border-t border-slate-100" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropEn(event,'')">
+                <tr class="border-t border-slate-100" ondragover="dragOver(event,'Sin etapa (raíz)')" ondragleave="dragLeave(event)" ondrop="dropEn(event,'')">
                     <td class="px-4 py-2.5 text-center text-slate-300"><i class="fa-solid fa-plus text-xs"></i></td>
                     <td colspan="6" class="px-4 py-2.5">
                         <input type="text" placeholder="Agregar tarea… (escribe y presiona Enter)  ·  o suelta aquí una tarea para sacarla de su etapa" onkeydown="qaKey(event, this, '')"
@@ -634,24 +635,40 @@ function dragStart(e, id){
 }
 function dragEnd(e){
     if(e.currentTarget) e.currentTarget.style.opacity = '';
-    document.querySelectorAll('[data-vista="lista"] tr').forEach(r => { r.style.outline=''; });
-    _dragTarea = null;
+    _limpiarDrag(); _ocultarHint(); _dragTarea = null;
 }
-function dragOver(e){   // etapas y pie: agrega al final del grupo
+function _hint(e, txt){
+    const h = document.getElementById('dropHint'); if(!h) return;
+    h.textContent = txt; h.style.left = (e.clientX + 14) + 'px'; h.style.top = (e.clientY + 14) + 'px';
+    h.classList.remove('hidden');
+}
+function _ocultarHint(){ const h = document.getElementById('dropHint'); if(h) h.classList.add('hidden'); }
+function dragOver(e, txt){   // etapas y pie: agrega al final del grupo
     if(_dragTarea == null) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     e.currentTarget.style.outline = '2px solid #6366f1';
     e.currentTarget.style.outlineOffset = '-2px';
+    _hint(e, txt || 'Al final del grupo');
 }
-function dragOverFila(e){   // fila de tarea: inserta antes/después según la mitad
+function dragOverFila(e){   // fila de tarea: 3 zonas → antes / subtarea / después
     if(_dragTarea == null) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    const tr = e.currentTarget, r = tr.getBoundingClientRect();
-    const arriba = (e.clientY - r.top) < r.height / 2;
-    tr.dataset.pos = arriba ? 'antes' : 'despues';
-    tr.style.boxShadow = arriba ? 'inset 0 3px 0 #6366f1' : 'inset 0 -3px 0 #6366f1';
+    const tr = e.currentTarget, r = tr.getBoundingClientRect(), rel = e.clientY - r.top;
+    let mode;
+    if(rel < r.height * 0.30) mode = 'antes';
+    else if(rel > r.height * 0.70) mode = 'despues';
+    else mode = 'subtarea';
+    tr.dataset.pos = mode;
+    if(mode === 'subtarea'){
+        tr.style.boxShadow = ''; tr.style.outline = '2px solid #6366f1'; tr.style.outlineOffset = '-2px';
+        _hint(e, '↳ Como subtarea');
+    } else {
+        tr.style.outline = '';
+        tr.style.boxShadow = mode === 'antes' ? 'inset 0 3px 0 #6366f1' : 'inset 0 -3px 0 #6366f1';
+        _hint(e, mode === 'antes' ? '⬆ Antes' : '⬇ Después');
+    }
 }
 function dragLeave(e){ e.currentTarget.style.outline = ''; e.currentTarget.style.boxShadow = ''; }
 function _limpiarDrag(){
@@ -661,22 +678,26 @@ function _limpiarDrag(){
 }
 function dropEn(e, grupoId){   // soltar en etapa / pie → al final del grupo
     e.preventDefault();
-    const id = _dragTarea; _dragTarea = null; _limpiarDrag();
+    const id = _dragTarea; _dragTarea = null; _limpiarDrag(); _ocultarHint();
     if(!id) return;
     const fd = new FormData();
     fd.append('accion', 'mover_a_etapa'); fd.append('tarea_id', id);
     fd.append('etapa_id', grupoId || ''); fd.append('csrfmiddlewaretoken', CSRF);
     refrescarLista(fd);
 }
-function dropFila(e, refId, grupoId){   // soltar sobre una tarea → posición exacta
+function dropFila(e, refId, grupoId){   // soltar sobre una tarea → posición o subtarea
     e.preventDefault();
-    const pos = e.currentTarget.dataset.pos || 'antes';
-    const id = _dragTarea; _dragTarea = null; _limpiarDrag();
+    const mode = e.currentTarget.dataset.pos || 'antes';
+    const id = _dragTarea; _dragTarea = null; _limpiarDrag(); _ocultarHint();
     if(!id || id === refId) return;
     const fd = new FormData();
     fd.append('accion', 'mover_a_etapa'); fd.append('tarea_id', id);
-    fd.append('etapa_id', grupoId || ''); fd.append('ref_id', refId);
-    fd.append('posicion', pos); fd.append('csrfmiddlewaretoken', CSRF);
+    if(mode === 'subtarea'){
+        fd.append('padre_id', refId);
+    } else {
+        fd.append('etapa_id', grupoId || ''); fd.append('ref_id', refId); fd.append('posicion', mode);
+    }
+    fd.append('csrfmiddlewaretoken', CSRF);
     refrescarLista(fd);
 }
 function abrirCrear(padreId){
