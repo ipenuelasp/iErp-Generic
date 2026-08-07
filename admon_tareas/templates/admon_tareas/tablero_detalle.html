@@ -130,12 +130,34 @@
                             {% if not t.es_bloqueante %}<button type="button" onclick="event.stopPropagation(); abrirCrear('{{ t.id }}')" title="Agregar subtarea" class="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-black text-brand uppercase tracking-wide hover:underline whitespace-nowrap ml-1"><i class="fa-solid fa-plus"></i> subtarea</button>{% endif %}
                         </div>
                     </td>
-                    <td class="px-4 py-3">
-                        <div class="flex -space-x-1.5">
-                            {% for a in t.asignaciones.all %}
-                            <span title="{{ a.usuario.get_full_name|default:a.usuario.username }}{% if a.completado %} · confirmó{% endif %}" class="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-black text-white border-2 border-white {% if a.completado %}bg-emerald-500{% else %}bg-slate-400{% endif %}">{{ a.usuario.get_full_name|default:a.usuario.username|slice:":2"|upper }}</span>
-                            {% empty %}<span class="text-[10px] text-slate-300">—</span>{% endfor %}
+                    <td class="px-4 py-3" onclick="event.stopPropagation()">
+                        <div class="relative group/asg flex items-center gap-1">
+                            <div class="flex -space-x-1.5">
+                                {% for a in t.asignaciones.all %}
+                                <span class="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-black text-white border-2 border-white {% if a.completado %}bg-emerald-500{% else %}bg-slate-400{% endif %}">{{ a.usuario.get_full_name|default:a.usuario.username|slice:":2"|upper }}</span>
+                                {% empty %}<span class="text-[10px] text-slate-300">—</span>{% endfor %}
+                            </div>
+                            {% if not t.es_bloqueante %}
+                            <button type="button" onclick="toggleAsignar({{ t.id }})" title="Asignar persona" class="opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 rounded-full bg-slate-100 text-slate-400 hover:text-brand hover:bg-slate-200 text-[9px] flex items-center justify-center flex-none"><i class="fa-solid fa-plus"></i></button>
+                            {% endif %}
+                            {% if t.asignaciones.all %}
+                            <div class="hidden group-hover/asg:block absolute left-0 top-full mt-1 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-2 z-30">
+                                {% for a in t.asignaciones.all %}
+                                <div class="flex items-center gap-2 px-1 py-1">
+                                    <span class="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white flex-none {% if a.completado %}bg-emerald-500{% else %}bg-slate-400{% endif %}">{{ a.usuario.get_full_name|default:a.usuario.username|slice:":2"|upper }}</span>
+                                    <span class="text-xs font-bold text-slate-700 flex-1 truncate">{{ a.usuario.get_full_name|default:a.usuario.username }}</span>
+                                    {% if a.completado %}<i class="fa-solid fa-circle-check text-emerald-500 text-[11px]" title="Confirmó"></i>{% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
+                        {% if not t.es_bloqueante %}
+                        <select id="asg-sel-{{ t.id }}" class="hidden mt-1 w-40 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold no-select2" onchange="asignarDesdeLista({{ t.id }}, this.value)">
+                            <option value="">Asignar…</option>
+                            {% for u in usuarios %}<option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+                        </select>
+                        {% endif %}
                     </td>
                     <td class="px-4 py-3">
                         {% include 'admon_tareas/_estado_badge.html' with estado=t.estado display=t.get_estado_display %}
@@ -517,6 +539,17 @@ function reaplicarColapso(){
     try { const s = JSON.parse(localStorage.getItem('etapas_cerradas_'+TAB_PK)||'[]');
           s.forEach(id => { if(document.getElementById('chev-'+id)) toggleEtapa(id); }); } catch(e){}
 }
+// Refresca SOLO el tbody de la Lista tras un POST (sin recargar la página).
+function refrescarLista(fd, cb){
+    fetch(POST_URL, { method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'} })
+        .then(r => r.text()).then(html => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const nb = doc.querySelector('[data-vista="lista"] tbody');
+            const cur = document.querySelector('[data-vista="lista"] tbody');
+            if(nb && cur){ cur.innerHTML = nb.innerHTML; reaplicarColapso(); if(cb) cb(cur); }
+            else { location.reload(); }
+        }).catch(() => location.reload());
+}
 function qaKey(e, inp, padreId){
     if(e.key !== 'Enter') return;
     e.preventDefault();
@@ -524,23 +557,25 @@ function qaKey(e, inp, padreId){
     if(!v) return;
     inp.disabled = true;
     const fd = new FormData();
-    fd.append('accion', 'crear_tarea');
-    fd.append('titulo', v);
-    fd.append('padre', padreId || '');
-    fd.append('csrfmiddlewaretoken', CSRF);
-    fetch(POST_URL, { method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'} })
-        .then(r => r.text()).then(html => {
-            const doc = new DOMParser().parseFromString(html, 'text/html');
-            const nb = doc.querySelector('[data-vista="lista"] tbody');
-            const cur = document.querySelector('[data-vista="lista"] tbody');
-            if(nb && cur){
-                cur.innerHTML = nb.innerHTML;
-                reaplicarColapso();
-                // Reabre el input donde estabas para seguir capturando.
-                if(padreId){ toggleQuickAdd(padreId); }
-                else { const b = cur.querySelector('tr:last-child input'); if(b) b.focus(); }
-            } else { location.reload(); }
-        }).catch(() => location.reload());
+    fd.append('accion', 'crear_tarea'); fd.append('titulo', v);
+    fd.append('padre', padreId || ''); fd.append('csrfmiddlewaretoken', CSRF);
+    refrescarLista(fd, function(cur){
+        if(padreId){ toggleQuickAdd(padreId); }
+        else { const b = cur.querySelector('tr:last-child input'); if(b) b.focus(); }
+    });
+}
+function toggleAsignar(id){
+    const s = document.getElementById('asg-sel-'+id);
+    if(!s) return;
+    s.classList.toggle('hidden');
+    if(!s.classList.contains('hidden')) s.focus();
+}
+function asignarDesdeLista(id, userId){
+    if(!userId) return;
+    const fd = new FormData();
+    fd.append('accion', 'asignar'); fd.append('tarea_id', id);
+    fd.append('usuario', userId); fd.append('csrfmiddlewaretoken', CSRF);
+    refrescarLista(fd);
 }
 function abrirCrear(padreId){
     document.getElementById('crearPadre').value = padreId || '';
