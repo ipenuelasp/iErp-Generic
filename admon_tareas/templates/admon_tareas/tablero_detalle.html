@@ -574,6 +574,11 @@ function toggleAsignar(id){
     if(!box) return;
     const oculto = box.classList.toggle('hidden');
     if(oculto) return;
+    const rol = document.getElementById('asg-rol-'+id);
+    if(window.jQuery && rol && !rol.dataset.s2){
+        rol.dataset.s2 = '1';
+        jQuery(rol).select2({ width:'8.5rem', minimumResultsForSearch: Infinity });
+    }
     const sel = document.getElementById('asg-sel-'+id);
     if(window.jQuery && sel){
         const $s = jQuery(sel);
