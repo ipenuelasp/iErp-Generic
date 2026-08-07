@@ -143,10 +143,11 @@
                             {% if t.asignaciones.all %}
                             <div class="hidden group-hover/asg:block absolute left-0 top-full mt-1 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-2 z-30">
                                 {% for a in t.asignaciones.all %}
-                                <div class="flex items-center gap-2 px-1 py-1">
+                                <div class="group/row flex items-center gap-2 px-1 py-1 rounded-lg hover:bg-slate-50">
                                     <span class="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white flex-none {% if a.completado %}bg-emerald-500{% else %}bg-slate-400{% endif %}">{{ a.usuario.get_full_name|default:a.usuario.username|slice:":2"|upper }}</span>
-                                    <span class="text-xs font-bold text-slate-700 flex-1 truncate">{{ a.usuario.get_full_name|default:a.usuario.username }}</span>
+                                    <span class="text-xs font-bold text-slate-700 flex-1 truncate">{{ a.usuario.get_full_name|default:a.usuario.username }}<span class="text-[9px] font-black uppercase text-slate-300 ml-1">{{ a.get_rol_display }}</span></span>
                                     {% if a.completado %}<i class="fa-solid fa-circle-check text-emerald-500 text-[11px]" title="Confirmó"></i>{% endif %}
+                                    <button type="button" onclick="quitarAsignado({{ t.id }}, {{ a.id }})" title="Quitar del equipo" class="opacity-0 group-hover/row:opacity-100 transition-opacity text-slate-300 hover:text-rose-500 flex-none w-5 h-5 flex items-center justify-center"><i class="fa-solid fa-xmark text-xs"></i></button>
                                 </div>
                                 {% endfor %}
                             </div>
@@ -601,6 +602,12 @@ function asignarDesdeLista(id, userId){
     fd.append('accion', 'asignar'); fd.append('tarea_id', id);
     fd.append('usuario', userId); fd.append('rol', rol);
     fd.append('csrfmiddlewaretoken', CSRF);
+    refrescarLista(fd);
+}
+function quitarAsignado(id, asigId){
+    const fd = new FormData();
+    fd.append('accion', 'quitar_asignacion'); fd.append('tarea_id', id);
+    fd.append('asignacion_id', asigId); fd.append('csrfmiddlewaretoken', CSRF);
     refrescarLista(fd);
 }
 function abrirCrear(padreId){
