@@ -703,11 +703,26 @@ class TableroDetalleView(LoginRequiredMixin, View):
                 if not nueva_padre:
                     messages.error(request, "Etapa no válida.")
                     return volver
-            from django.db.models import Max as _Max
-            orden = (tablero.tareas.filter(padre=nueva_padre).aggregate(m=_Max('orden'))['m'] or 0) + 1
+            # Hermanos del nuevo padre (sin la arrastrada ni bloqueantes), en orden.
+            hermanos = list(tablero.tareas.filter(padre=nueva_padre, es_bloqueante=False)
+                            .exclude(id=tarea.id).order_by('orden', 'ruta_wbs', 'id'))
+            # Posición exacta: antes/después de la tarea de referencia (ref_id).
+            ref_id = request.POST.get('ref_id')
+            posicion = request.POST.get('posicion')  # 'antes' | 'despues'
+            idx = len(hermanos)   # por defecto, al final
+            if ref_id and ref_id != str(tarea.id):
+                for i, h in enumerate(hermanos):
+                    if str(h.id) == str(ref_id):
+                        idx = i + 1 if posicion == 'despues' else i
+                        break
+            hermanos.insert(idx, tarea)
             tarea.padre = nueva_padre
-            tarea.orden = orden
+            for i, h in enumerate(hermanos, start=1):
+                h.orden = i
             tarea.save(update_fields=['padre', 'orden'])
+            otros = [h for h in hermanos if h.id != tarea.id]
+            if otros:
+                Tarea.objects.bulk_update(otros, ['orden'])
             services.recalcular_tablero(tablero)
             messages.success(request, f"Tarea movida a «{nueva_padre.titulo}»." if nueva_padre
                              else "Tarea movida fuera de etapas.")

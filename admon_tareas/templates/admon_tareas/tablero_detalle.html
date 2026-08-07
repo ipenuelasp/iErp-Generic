@@ -1,6 +1,7 @@
 {% extends "admon_empresas/dashboard.html" %}
 {% load humanize %}
 {% block main_content %}
+<div id="guardando" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-[80] bg-slate-800 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-full shadow-lg flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i> Guardando…</div>
 <div class="max-w-screen-2xl mx-auto p-8">
     <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -123,7 +124,7 @@
                 {% else %}
                 <tr onclick="abrirTarea({{ t.id }})" data-grupo="{{ t.grupo }}"
                     {% if not t.es_bloqueante %}draggable="true" ondragstart="dragStart(event,{{ t.id }})" ondragend="dragEnd(event)"{% endif %}
-                    ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropEn(event,'{{ t.grupo }}')"
+                    ondragover="dragOverFila(event)" ondragleave="dragLeave(event)" ondrop="dropFila(event, {{ t.id }}, '{{ t.grupo }}')"
                     class="fila-tarea group border-b border-slate-50 hover:bg-slate-50/60 cursor-pointer {% if t.es_resumen %}bg-slate-50/40{% endif %} {% if t.es_bloqueante %}bg-rose-50/40{% endif %}">
                     <td class="px-4 py-3 text-[11px] font-mono text-slate-400">{% if t.es_bloqueante %}<span class="text-rose-400">⛔</span>{% else %}{{ t.ruta_wbs }}{% endif %}</td>
                     <td class="px-4 py-3">
@@ -551,12 +552,13 @@ function reaplicarColapso(){
 }
 // Refresca SOLO el tbody de la Lista tras un POST (sin recargar la página).
 function refrescarLista(fd, cb){
+    const g = document.getElementById('guardando'); if(g) g.classList.remove('hidden');
     fetch(POST_URL, { method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'} })
         .then(r => r.text()).then(html => {
             const doc = new DOMParser().parseFromString(html, 'text/html');
             const nb = doc.querySelector('[data-vista="lista"] tbody');
             const cur = document.querySelector('[data-vista="lista"] tbody');
-            if(nb && cur){ cur.innerHTML = nb.innerHTML; reaplicarColapso(); if(cb) cb(cur); }
+            if(nb && cur){ cur.innerHTML = nb.innerHTML; reaplicarColapso(); if(g) g.classList.add('hidden'); if(cb) cb(cur); }
             else { location.reload(); }
         }).catch(() => location.reload());
 }
@@ -627,23 +629,46 @@ function dragEnd(e){
     document.querySelectorAll('[data-vista="lista"] tr').forEach(r => { r.style.outline=''; });
     _dragTarea = null;
 }
-function dragOver(e){
+function dragOver(e){   // etapas y pie: agrega al final del grupo
     if(_dragTarea == null) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     e.currentTarget.style.outline = '2px solid #6366f1';
     e.currentTarget.style.outlineOffset = '-2px';
 }
-function dragLeave(e){ e.currentTarget.style.outline = ''; }
-function dropEn(e, grupoId){
+function dragOverFila(e){   // fila de tarea: inserta antes/después según la mitad
+    if(_dragTarea == null) return;
     e.preventDefault();
-    e.currentTarget.style.outline = '';
-    const id = _dragTarea; _dragTarea = null;
-    document.querySelectorAll('[data-vista="lista"] tr').forEach(r => { r.style.opacity=''; });
+    e.dataTransfer.dropEffect = 'move';
+    const tr = e.currentTarget, r = tr.getBoundingClientRect();
+    const arriba = (e.clientY - r.top) < r.height / 2;
+    tr.dataset.pos = arriba ? 'antes' : 'despues';
+    tr.style.boxShadow = arriba ? 'inset 0 3px 0 #6366f1' : 'inset 0 -3px 0 #6366f1';
+}
+function dragLeave(e){ e.currentTarget.style.outline = ''; e.currentTarget.style.boxShadow = ''; }
+function _limpiarDrag(){
+    document.querySelectorAll('[data-vista="lista"] tr').forEach(r => {
+        r.style.opacity=''; r.style.outline=''; r.style.boxShadow='';
+    });
+}
+function dropEn(e, grupoId){   // soltar en etapa / pie → al final del grupo
+    e.preventDefault();
+    const id = _dragTarea; _dragTarea = null; _limpiarDrag();
     if(!id) return;
     const fd = new FormData();
     fd.append('accion', 'mover_a_etapa'); fd.append('tarea_id', id);
     fd.append('etapa_id', grupoId || ''); fd.append('csrfmiddlewaretoken', CSRF);
+    refrescarLista(fd);
+}
+function dropFila(e, refId, grupoId){   // soltar sobre una tarea → posición exacta
+    e.preventDefault();
+    const pos = e.currentTarget.dataset.pos || 'antes';
+    const id = _dragTarea; _dragTarea = null; _limpiarDrag();
+    if(!id || id === refId) return;
+    const fd = new FormData();
+    fd.append('accion', 'mover_a_etapa'); fd.append('tarea_id', id);
+    fd.append('etapa_id', grupoId || ''); fd.append('ref_id', refId);
+    fd.append('posicion', pos); fd.append('csrfmiddlewaretoken', CSRF);
     refrescarLista(fd);
 }
 function abrirCrear(padreId){
