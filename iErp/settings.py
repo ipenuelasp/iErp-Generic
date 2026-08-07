@@ -107,6 +107,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',                
                 'admon_empresas.context_processors.empresa_context',
+                'admon_comunes.context_processors.notificaciones',
             ],
         },
     },

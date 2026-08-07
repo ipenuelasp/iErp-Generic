@@ -116,6 +116,17 @@ def _personas_tablero(tablero, dets=None):
     return lista
 
 
+def _url_tarea(tarea):
+    from django.urls import reverse
+    return reverse('admon_tareas:tablero_detalle', kwargs={'pk': tarea.tablero_id}) + f'?t={tarea.id}'
+
+
+def _notificar_tarea(usuario, actor, empresa, tipo, titulo, mensaje, tarea, icono=''):
+    from admon_comunes.models import Notificacion
+    Notificacion.crear(usuario=usuario, actor=actor, empresa=empresa, tipo=tipo,
+                       titulo=titulo, mensaje=mensaje, url=_url_tarea(tarea), icono=icono)
+
+
 def _stats_tablero(tablero, dets):
     """Métricas para la tarjeta/encabezado: avance, atrasadas, bloqueadas,
     ventana de fechas, reprogramación vs la línea base y salud."""
@@ -917,6 +928,11 @@ class TableroDetalleView(LoginRequiredMixin, View):
                 if creada:
                     services.registrar_actividad(tarea, request.user, 'ASIGNO',
                                                  detalle=f"Asignó a {obj.usuario}")
+                    _notificar_tarea(
+                        obj.usuario, request.user, empresa, 'ASIGNACION',
+                        f"Te asignaron a «{tarea.titulo}»",
+                        f"{obj.get_rol_display()} · {tarea.tablero.nombre}",
+                        tarea, 'fa-user-plus')
                 messages.success(request, "Persona asignada.")
 
         elif accion == 'quitar_asignacion' and tarea:
@@ -985,6 +1001,17 @@ class TableroDetalleView(LoginRequiredMixin, View):
                 for f in request.FILES.getlist('archivos'):
                     _guardar_adjunto(empresa, com, f, request.user)
                 services.registrar_actividad(tarea, request.user, 'COMENTO', detalle="Comentó")
+                # Notifica a los asignados + responsable del tablero (menos el autor).
+                dest = {a.usuario_id for a in tarea.asignaciones.all()}
+                if tarea.tablero.responsable_id:
+                    dest.add(tarea.tablero.responsable_id)
+                dest.discard(request.user.id)
+                if dest:
+                    quien = request.user.get_full_name() or request.user.username
+                    for u in User.objects.filter(id__in=dest):
+                        _notificar_tarea(u, request.user, empresa, 'COMENTARIO',
+                                         f"Nuevo comentario en «{tarea.titulo}»",
+                                         f"{quien}: {texto[:100]}", tarea, 'fa-comment')
                 messages.success(request, "Comentario agregado.")
 
         elif accion == 'subir_adjunto' and tarea:
