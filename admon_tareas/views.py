@@ -536,6 +536,9 @@ class TableroDetalleView(LoginRequiredMixin, View):
         if solo_mias:
             mis_ids = set(TareaAsignacion.objects.filter(
                 tarea__tablero=tablero, usuario=request.user).values_list('tarea_id', flat=True))
+            # También ve lo que él mismo creó (si no, al crear una tarea nueva
+            # sin autoasignarse, "desaparece" de su vista).
+            mis_ids |= {t.id for t in tareas if t.creado_por_id == request.user.id}
             by_id = {t.id: t for t in tareas}
             visibles = set(mis_ids)
             for tid in list(mis_ids):
