@@ -61,6 +61,28 @@
 </div>
 {% endif %}
 
+<!-- Comentarios -->
+<div class="bg-white rounded-2xl p-4 shadow-sm">
+    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Comentarios</p>
+    <form method="post" action="{% url 'admon_tareas:tablero_detalle' tablero.pk %}" class="flex gap-2 mb-3">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="comentar">
+        <input type="hidden" name="tarea_id" value="{{ t.id }}">
+        <input type="hidden" name="next" value="movil">
+        <input type="text" name="texto" required placeholder="Escribe un comentario… @usuario" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1e2d4f]">
+        <button type="submit" class="tap bg-[#1e2d4f] text-white px-4 rounded-xl text-sm"><i class="fa-solid fa-paper-plane"></i></button>
+    </form>
+    {% for c in comentarios %}
+    <div class="flex gap-2 py-2 border-t border-slate-50">
+        <span class="w-7 h-7 rounded-full bg-slate-400 text-white flex items-center justify-center text-[9px] font-black flex-none">{{ c.autor.get_full_name|default:c.autor.username|slice:":2"|upper }}</span>
+        <div class="min-w-0 flex-1">
+            <p class="text-[11px] font-bold text-slate-600">{{ c.autor.get_full_name|default:c.autor.username }} <span class="text-slate-300 font-medium">· hace {{ c.creado_en|timesince }}</span></p>
+            <p class="text-sm text-slate-700">{{ c.texto }}</p>
+        </div>
+    </div>
+    {% empty %}<p class="text-xs text-slate-300 italic">Sé el primero en comentar.</p>{% endfor %}
+</div>
+
 <!-- Subtareas -->
 {% if subtareas %}
 <div>

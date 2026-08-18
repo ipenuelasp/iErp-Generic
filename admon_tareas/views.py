@@ -505,6 +505,7 @@ class MovilTareaView(LoginRequiredMixin, View):
             'asignaciones': tarea.asignaciones.select_related('usuario').all(),
             'subtareas': subtareas,
             'mi_asignacion': tarea.asignaciones.filter(usuario=request.user).first(),
+            'comentarios': tarea.comentarios.select_related('autor').order_by('-creado_en')[:20],
             'estados': Tarea.ESTADO,
             'seccion': 'tareas',
         })

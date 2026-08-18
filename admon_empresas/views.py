@@ -156,6 +156,17 @@ def home_view(request):
     if not request.user.is_superuser and not request.user.perfil.invitacion_aceptada:
         return redirect('cambiar_password_obligatorio')
 
+    # En celular, un usuario (no superadmin) con el módulo de tareas entra directo
+    # a la vista móvil de tareas.
+    if not request.user.is_superuser:
+        try:
+            from admon_tareas.views import _es_movil
+            from .modulos import modulos_visibles
+            if _es_movil(request) and 'tareas' in modulos_visibles(request.user, request.empresa):
+                return redirect('admon_tareas:movil')
+        except Exception:
+            pass
+
     return render(request, 'admon_empresas/home_corporativo.html', {
         'empresa': request.empresa,
     })

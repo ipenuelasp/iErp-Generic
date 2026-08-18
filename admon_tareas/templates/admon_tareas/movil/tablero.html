@@ -54,4 +54,12 @@
     <div class="bg-white rounded-2xl p-6 text-center text-slate-400 italic text-sm shadow-sm">Sin tareas.</div>
     {% endfor %}
 </div>
+
+<!-- Nueva tarea -->
+<form method="post" action="{% url 'admon_tareas:tablero_detalle' tablero.pk %}" class="flex gap-2 mt-2">
+    {% csrf_token %}
+    <input type="hidden" name="accion" value="crear_tarea">
+    <input type="text" name="titulo" required placeholder="Nueva tarea…" class="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#1e2d4f]">
+    <button type="submit" class="tap bg-[#1e2d4f] text-white w-12 rounded-xl flex items-center justify-center text-lg"><i class="fa-solid fa-plus"></i></button>
+</form>
 {% endblock %}
