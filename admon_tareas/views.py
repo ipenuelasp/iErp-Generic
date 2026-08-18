@@ -691,6 +691,13 @@ class TableroDetalleView(LoginRequiredMixin, View):
             if not titulo:
                 messages.error(request, "La tarea necesita un título.")
                 return volver
+            # @usuario en el título → autoasignar (y quitar el token del título).
+            import re
+            menc = {m.lower() for m in re.findall(r'@([\wáéíóúñ.]+)', titulo)}
+            if menc:
+                limpio = re.sub(r'\s*@[\wáéíóúñ.]+', '', titulo).strip()
+                if limpio:
+                    titulo = limpio
             padre = None
             if request.POST.get('padre'):
                 padre = tablero.tareas.filter(id=request.POST.get('padre')).first()
@@ -702,6 +709,17 @@ class TableroDetalleView(LoginRequiredMixin, View):
                 duracion_dias=dias, duracion_horas=horas,
                 es_hito=bool(request.POST.get('es_hito')),
                 perfil_sugerido=(request.POST.get('perfil_sugerido') or '').strip())
+            # Asigna a los mencionados y les notifica.
+            if menc:
+                for u in _usuarios_empresa(empresa):
+                    nom = (u.first_name or '').lower()
+                    if u.username.lower() in menc or (nom and nom in menc):
+                        _, creada = TareaAsignacion.objects.get_or_create(
+                            tarea=nueva, usuario=u, defaults={'rol': 'COLA', 'asignado_por': request.user})
+                        if creada:
+                            _notificar_tarea(u, request.user, empresa, 'ASIGNACION',
+                                             f"Te asignaron a «{nueva.titulo}»",
+                                             f"Colaborador · {tablero.nombre}", nueva, 'fa-user-plus')
             # Dependencia opcional capturada al crear (agiliza el armado).
             pred = tablero.tareas.filter(id=request.POST.get('predecesora')).first() \
                 if request.POST.get('predecesora') else None
