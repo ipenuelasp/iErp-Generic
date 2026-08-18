@@ -120,7 +120,7 @@
                 <tr id="qa-{{ t.id }}" class="hidden bg-slate-50/60 border-b border-slate-100">
                     <td></td>
                     <td colspan="6" class="px-4 py-2">
-                        <input type="text" placeholder="Escribe una tarea y presiona Enter…" onkeydown="qaKey(event, this, '{{ t.id }}')"
+                        <input type="text" placeholder="Escribe una tarea y Enter · /hito Nombre para un hito" onkeydown="qaKey(event, this, '{{ t.id }}')"
                                class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-brand">
                     </td>
                 </tr>
@@ -193,7 +193,7 @@
                     <td colspan="6" class="px-4 pb-2 pt-0.5">
                         <div class="flex items-center gap-1.5" style="margin-left:{{ t.nivel|add:t.nivel }}4px">
                             <span class="text-slate-300 text-xs">↳</span>
-                            <input type="text" placeholder="Subtarea… (Enter para agregar)" onkeydown="qaKey(event, this, '{{ t.id }}')"
+                            <input type="text" placeholder="Subtarea… (Enter · usa /hito Nombre para un hito)" onkeydown="qaKey(event, this, '{{ t.id }}')"
                                    class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] outline-none focus:border-brand focus:bg-white">
                         </div>
                     </td>
@@ -206,7 +206,7 @@
                 <tr class="border-t border-slate-100" ondragover="dragOver(event,'Sin etapa (raíz)')" ondragleave="dragLeave(event)" ondrop="dropEn(event,'')">
                     <td class="px-4 py-2.5 text-center text-slate-300"><i class="fa-solid fa-plus text-xs"></i></td>
                     <td colspan="6" class="px-4 py-2.5">
-                        <input type="text" placeholder="Agregar tarea… (escribe y presiona Enter)  ·  o suelta aquí una tarea para sacarla de su etapa" onkeydown="qaKey(event, this, '')"
+                        <input type="text" placeholder="Agregar tarea… (Enter · /hito Nombre para un hito)  ·  o suelta aquí una tarea para sacarla de su etapa" onkeydown="qaKey(event, this, '')"
                                class="w-full bg-transparent text-sm font-medium text-slate-600 outline-none placeholder:text-slate-300">
                     </td>
                 </tr>
@@ -558,8 +558,8 @@ function cambiarVista(v){
 function toggleQuickAdd(id){
     const r = document.getElementById('qa-'+id);
     if(!r) return;
-    r.classList.remove('hidden');
-    const i = r.querySelector('input'); if(i) i.focus();
+    const abierto = r.classList.toggle('hidden') === false;   // clic de nuevo lo cierra
+    if(abierto){ const i = r.querySelector('input'); if(i){ i.value=''; i.focus(); } }
 }
 function reaplicarColapso(){
     try { const s = JSON.parse(localStorage.getItem('etapas_cerradas_'+TAB_PK)||'[]');
@@ -585,15 +585,21 @@ function refrescarLista(fd, cb){
 function qaKey(e, inp, padreId){
     if(e.key !== 'Enter') return;
     e.preventDefault();
-    const v = inp.value.trim();
+    let v = inp.value.trim();
+    // Comando /hito Nombre → crea la tarea como hito (rombo, sin duración).
+    let hito = false;
+    const m = v.match(/^\/hito\b\s*(.*)$/i);
+    if(m){ hito = true; v = m[1].trim(); }
     if(!v) return;
     inp.disabled = true;
     const fd = new FormData();
     fd.append('accion', 'crear_tarea'); fd.append('titulo', v);
     fd.append('padre', padreId || ''); fd.append('csrfmiddlewaretoken', CSRF);
+    if(hito) fd.append('es_hito', '1');
     refrescarLista(fd, function(cur){
-        if(padreId){ toggleQuickAdd(padreId); }
-        else { const b = cur.querySelector('tr:last-child input'); if(b) b.focus(); }
+        // Con padre (etapa/subtarea): el cuadro se cierra tras crear (queda oculto
+        // al re-renderizar). En el nivel raíz, el input del pie sigue enfocado.
+        if(!padreId){ const b = cur.querySelector('tr:last-child input'); if(b) b.focus(); }
     });
 }
 function toggleAsignar(id){
