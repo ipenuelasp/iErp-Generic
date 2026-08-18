@@ -2,6 +2,7 @@
 {% load humanize %}
 {% block main_content %}
 <div id="dropHint" class="hidden fixed z-[85] pointer-events-none bg-indigo-600 text-white text-[11px] font-black px-2.5 py-1 rounded-lg shadow-lg"></div>
+<div id="qaAuto" class="hidden fixed z-[90] w-64 bg-white rounded-xl shadow-2xl border border-slate-100 py-1 max-h-56 overflow-y-auto"></div>
 <div id="guardando" class="hidden fixed inset-0 z-[80] cursor-wait" style="background:rgba(15,23,42,0.06)">
     <div class="fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-full shadow-lg flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i> Guardando…</div>
 </div>
@@ -120,8 +121,8 @@
                 <tr id="qa-{{ t.id }}" class="hidden bg-slate-50/60 border-b border-slate-100">
                     <td></td>
                     <td colspan="6" class="px-4 py-2">
-                        <input type="text" placeholder="Escribe y Enter · /hito · @usuario asigna" onkeydown="qaKey(event, this, '{{ t.id }}')"
-                               class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-brand">
+                        <input type="text" placeholder="Escribe y Enter · /hito · @usuario asigna" data-padre="{{ t.id }}"
+                               class="qa-input w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-brand">
                     </td>
                 </tr>
                 {% else %}
@@ -193,8 +194,8 @@
                     <td colspan="6" class="px-4 pb-2 pt-0.5">
                         <div class="flex items-center gap-1.5" style="margin-left:{{ t.nivel|add:t.nivel }}4px">
                             <span class="text-slate-300 text-xs">↳</span>
-                            <input type="text" placeholder="Subtarea… (Enter · /hito · @usuario asigna)" onkeydown="qaKey(event, this, '{{ t.id }}')"
-                                   class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] outline-none focus:border-brand focus:bg-white">
+                            <input type="text" placeholder="Subtarea… (Enter · /hito · @usuario asigna)" data-padre="{{ t.id }}"
+                                   class="qa-input flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] outline-none focus:border-brand focus:bg-white">
                         </div>
                     </td>
                 </tr>
@@ -206,8 +207,8 @@
                 <tr class="border-t border-slate-100" ondragover="dragOver(event,'Sin etapa (raíz)')" ondragleave="dragLeave(event)" ondrop="dropEn(event,'')">
                     <td class="px-4 py-2.5 text-center text-slate-300"><i class="fa-solid fa-plus text-xs"></i></td>
                     <td colspan="6" class="px-4 py-2.5">
-                        <input type="text" placeholder="Agregar tarea… (Enter · /etapa · /hito · @usuario)  ·  o suelta aquí una tarea para sacarla de su etapa" onkeydown="qaKey(event, this, '')"
-                               class="w-full bg-transparent text-sm font-medium text-slate-600 outline-none placeholder:text-slate-300">
+                        <input type="text" placeholder="Agregar tarea… (Enter · /etapa · /hito · @usuario)  ·  o suelta aquí una tarea para sacarla de su etapa" data-padre=""
+                               class="qa-input w-full bg-transparent text-sm font-medium text-slate-600 outline-none placeholder:text-slate-300">
                     </td>
                 </tr>
             </tbody>
@@ -482,6 +483,9 @@ const GANTT_CW = {{ gantt.cw }};
 const GANTT_DIAS = [{% for d in gantt.dias %}"{{ d.fecha }}"{% if not forloop.last %},{% endif %}{% endfor %}];
 const CSRF = '{{ csrf_token }}';
 const POST_URL = '{% url "admon_tareas:tablero_detalle" tablero.pk %}';
+// Autocompletado del alta rápida: @usuarios del tablero y / comandos.
+const MENCIONABLES = [{% for p in personas %}{u:'{{ p.user.username|escapejs }}', n:'{{ p.user.get_full_name|default:p.user.username|escapejs }}'}{% if not forloop.last %},{% endif %}{% endfor %}];
+const COMANDOS = [{c:'/etapa', d:'Crear una etapa (grupo)'}, {c:'/hito', d:'Crear como hito (rombo)'}];
 
 // ── Arrastre/redimensión de barras del Gantt ──
 function initGanttDrag(){
@@ -577,37 +581,108 @@ function refrescarLista(fd, cb){
             const doc = new DOMParser().parseFromString(html, 'text/html');
             const nb = doc.querySelector('[data-vista="lista"] tbody');
             const cur = document.querySelector('[data-vista="lista"] tbody');
-            if(nb && cur){ cur.innerHTML = nb.innerHTML; reaplicarColapso();
+            if(nb && cur){ cur.innerHTML = nb.innerHTML; reaplicarColapso(); initQuickAdd();
                 if(g) g.classList.add('hidden'); _procesando = false; if(cb) cb(cur); }
             else { location.reload(); }
         }).catch(() => location.reload());
 }
-function qaKey(e, inp, padreId){
-    if(e.key !== 'Enter') return;
-    e.preventDefault();
+function qaSubmit(inp){
     let v = inp.value.trim();
-    // Comandos: /etapa Nombre (crea etapa), /hito Nombre (crea hito).
-    // @usuario dentro del título autoasigna (lo resuelve el servidor).
     let etapa = false, hito = false;
     let me = v.match(/^\/etapa\b\s*(.*)$/i);
     if(me){ etapa = true; v = me[1].trim(); }
     let mh = v.match(/^\/hito\b\s*(.*)$/i);
     if(mh){ hito = true; v = mh[1].trim(); }
     if(!v) return;
+    const padreId = inp.dataset.padre || '';
     inp.disabled = true;
     const fd = new FormData();
-    if(etapa){
-        fd.append('accion', 'crear_etapa'); fd.append('titulo', v);
-    } else {
+    if(etapa){ fd.append('accion', 'crear_etapa'); fd.append('titulo', v); }
+    else {
         fd.append('accion', 'crear_tarea'); fd.append('titulo', v);
-        fd.append('padre', padreId || '');
+        fd.append('padre', padreId);
         if(hito) fd.append('es_hito', '1');
     }
     fd.append('csrfmiddlewaretoken', CSRF);
     refrescarLista(fd, function(cur){
-        // Con padre (etapa/subtarea): el cuadro se cierra tras crear (queda oculto
-        // al re-renderizar). En el nivel raíz, el input del pie sigue enfocado.
         if(!padreId){ const b = cur.querySelector('tr:last-child input'); if(b) b.focus(); }
+    });
+}
+// ── Autocompletado @usuario y /comando en el alta rápida ──
+let _acItems = [], _acIdx = -1, _acInput = null, _acMode = null, _acStart = 0;
+function qaAutoRender(){
+    const box = document.getElementById('qaAuto');
+    if(!_acItems.length){ box.classList.add('hidden'); return; }
+    box.innerHTML = _acItems.map((it, i) => {
+        const on = i === _acIdx ? 'bg-brand/10 text-brand' : 'text-slate-700 hover:bg-slate-50';
+        const cont = _acMode === 'm'
+            ? `<b>@${it.u}</b> <span class="text-slate-400 text-xs">${it.n}</span>`
+            : `<b>${it.c}</b> <span class="text-slate-400 text-xs">${it.d}</span>`;
+        return `<div class="qa-ac-item px-3 py-1.5 text-sm cursor-pointer ${on}" data-i="${i}">${cont}</div>`;
+    }).join('');
+    const r = _acInput.getBoundingClientRect();
+    box.style.left = r.left + 'px';
+    box.style.top = (r.bottom + 4) + 'px';
+    box.style.width = Math.min(300, Math.max(220, r.width * 0.6)) + 'px';
+    box.classList.remove('hidden');
+    box.querySelectorAll('.qa-ac-item').forEach(el => {
+        el.addEventListener('mousedown', e => { e.preventDefault(); qaAutoSelect(parseInt(el.dataset.i)); });
+    });
+}
+function qaAutoClose(){ _acItems = []; _acIdx = -1; document.getElementById('qaAuto').classList.add('hidden'); }
+function qaAutoUpdate(inp){
+    _acInput = inp;
+    const before = inp.value.slice(0, inp.selectionStart);
+    if(before[0] === '/' && before.indexOf(' ') === -1){
+        const q = before.slice(1).toLowerCase();
+        _acMode = 'c'; _acStart = 0;
+        _acItems = COMANDOS.filter(c => c.c.slice(1).indexOf(q) === 0);
+        _acIdx = _acItems.length ? 0 : -1; qaAutoRender(); return;
+    }
+    const at = before.lastIndexOf('@');
+    if(at >= 0){
+        const token = before.slice(at + 1);
+        if(!/\s/.test(token)){
+            const q = token.toLowerCase();
+            _acMode = 'm'; _acStart = at;
+            _acItems = MENCIONABLES.filter(p => p.u.toLowerCase().includes(q) || p.n.toLowerCase().includes(q)).slice(0, 8);
+            _acIdx = _acItems.length ? 0 : -1; qaAutoRender(); return;
+        }
+    }
+    qaAutoClose();
+}
+function qaAutoSelect(i){
+    const it = _acItems[i]; if(!it || !_acInput) return;
+    const val = _acInput.value, caret = _acInput.selectionStart;
+    if(_acMode === 'm'){
+        _acInput.value = val.slice(0, _acStart) + '@' + it.u + ' ' + val.slice(caret);
+        const pos = _acStart + it.u.length + 2;
+        _acInput.setSelectionRange(pos, pos);
+    } else {
+        _acInput.value = it.c + ' ' + val.slice(caret);
+        const pos = it.c.length + 1;
+        _acInput.setSelectionRange(pos, pos);
+    }
+    qaAutoClose(); _acInput.focus();
+}
+function qaKeydown(e){
+    const box = document.getElementById('qaAuto');
+    const abierto = !box.classList.contains('hidden') && _acItems.length && _acInput === e.target;
+    if(abierto){
+        if(e.key === 'ArrowDown'){ e.preventDefault(); _acIdx = (_acIdx + 1) % _acItems.length; qaAutoRender(); return; }
+        if(e.key === 'ArrowUp'){ e.preventDefault(); _acIdx = (_acIdx - 1 + _acItems.length) % _acItems.length; qaAutoRender(); return; }
+        if(e.key === 'Enter' || e.key === 'Tab'){ e.preventDefault(); qaAutoSelect(_acIdx < 0 ? 0 : _acIdx); return; }
+        if(e.key === 'Escape'){ e.preventDefault(); qaAutoClose(); return; }
+    }
+    if(e.key === 'Enter'){ e.preventDefault(); qaSubmit(e.target); }
+}
+function initQuickAdd(){
+    document.querySelectorAll('.qa-input').forEach(inp => {
+        if(inp.dataset.ac) return;
+        inp.dataset.ac = '1';
+        inp.addEventListener('input', () => qaAutoUpdate(inp));
+        inp.addEventListener('keydown', qaKeydown);
+        inp.addEventListener('blur', () => setTimeout(qaAutoClose, 150));
     });
 }
 function toggleAsignar(id){
@@ -752,6 +827,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') cerrarTarea(); });
 (function(){
     try { const v = localStorage.getItem('tareas_vista_'+TAB_PK); if(v && v!=='lista') cambiarVista(v); } catch(e){}
     initGanttDrag();
+    initQuickAdd();
     const p=new URLSearchParams(location.search).get('t'); if(p) abrirTarea(p);
 })();
 </script>
