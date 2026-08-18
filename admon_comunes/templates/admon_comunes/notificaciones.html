@@ -1,0 +1,39 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% block title %}Notificaciones{% endblock %}
+{% block main_content %}
+<div class="max-w-3xl mx-auto p-8">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Notificaciones</h1>
+            <p class="text-slate-500 mt-1 font-medium text-sm">{{ no_leidas }} sin leer · {{ pagina.paginator.count }} en total</p>
+        </div>
+        {% if no_leidas %}
+        <a href="{% url 'admon_comunes:marcar_leidas' %}" class="bg-white border border-slate-200 text-slate-500 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:-translate-y-0.5 transition-all"><i class="fa-solid fa-check-double mr-1"></i> Marcar todas leídas</a>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        {% for n in pagina %}
+        <a href="{% url 'admon_comunes:abrir_notificacion' n.id %}" class="flex gap-3 px-5 py-4 hover:bg-slate-50 border-b border-slate-50 last:border-0 {% if not n.leida %}bg-brand/5{% endif %}">
+            <span class="w-9 h-9 rounded-full flex-none flex items-center justify-center {% if not n.leida %}bg-brand/10 text-brand{% else %}bg-slate-100 text-slate-400{% endif %}"><i class="fa-solid {{ n.icono|default:'fa-bell' }} text-sm"></i></span>
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold text-slate-700 leading-tight">{{ n.titulo }}</p>
+                {% if n.mensaje %}<p class="text-xs text-slate-400 mt-0.5">{{ n.mensaje }}</p>{% endif %}
+                <p class="text-[10px] text-slate-300 mt-1">hace {{ n.creada_en|timesince }}{% if n.actor %} · {{ n.actor.get_full_name|default:n.actor.username }}{% endif %}</p>
+            </div>
+            {% if not n.leida %}<span class="w-2 h-2 rounded-full bg-rose-500 flex-none mt-2"></span>{% endif %}
+        </a>
+        {% empty %}
+        <p class="px-5 py-16 text-center text-slate-300 italic">No tienes notificaciones.</p>
+        {% endfor %}
+    </div>
+
+    {% if pagina.has_other_pages %}
+    <div class="flex items-center justify-center gap-3 mt-5 text-xs font-black uppercase tracking-widest text-slate-400">
+        {% if pagina.has_previous %}<a href="?p={{ pagina.previous_page_number }}" class="hover:text-brand">← Anteriores</a>{% endif %}
+        <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if pagina.has_next %}<a href="?p={{ pagina.next_page_number }}" class="hover:text-brand">Siguientes →</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

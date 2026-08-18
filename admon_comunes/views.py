@@ -18,6 +18,18 @@ def abrir_notificacion(request, pk):
 
 
 @login_required
+def lista_notificaciones(request):
+    """Historial completo de notificaciones del usuario (con paginación)."""
+    from django.core.paginator import Paginator
+    from django.shortcuts import render
+    qs = Notificacion.objects.filter(usuario=request.user).select_related('actor')
+    pagina = Paginator(qs, 30).get_page(request.GET.get('p'))
+    return render(request, 'admon_comunes/notificaciones.html', {
+        'pagina': pagina, 'no_leidas': qs.filter(leida=False).count(), 'seccion': '',
+    })
+
+
+@login_required
 def marcar_todas_leidas(request):
     """Marca todas las del usuario como leídas."""
     Notificacion.objects.filter(usuario=request.user, leida=False).update(

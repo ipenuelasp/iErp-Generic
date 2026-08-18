@@ -135,7 +135,7 @@
                             <span class="text-sm {% if t.es_resumen %}font-black text-slate-800{% else %}font-bold text-slate-600{% endif %}">{% if t.es_hito %}<i class="fa-solid fa-diamond text-violet-500 text-[10px] mr-1"></i>{% endif %}{{ t.titulo }}</span>
                             <span class="text-[10px] font-mono text-slate-300">{{ t.folio }}</span>
                             {% if t.espera %}<span class="text-[9px] font-black uppercase text-rose-500" title="Espera a: {{ t.espera|join:', ' }}"><i class="fa-solid fa-lock mr-0.5"></i>espera {{ t.espera|join:", " }}</span>{% endif %}
-                            {% if not t.es_bloqueante %}<button type="button" onclick="event.stopPropagation(); abrirCrear('{{ t.id }}')" title="Agregar subtarea" class="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-black text-brand uppercase tracking-wide hover:underline whitespace-nowrap ml-1"><i class="fa-solid fa-plus"></i> subtarea</button>{% endif %}
+                            {% if not t.es_bloqueante %}<button type="button" onclick="event.stopPropagation(); toggleQuickAdd({{ t.id }})" title="Agregar subtarea" class="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-black text-brand uppercase tracking-wide hover:underline whitespace-nowrap ml-1"><i class="fa-solid fa-plus"></i> subtarea</button>{% endif %}
                         </div>
                     </td>
                     <td class="px-4 py-3" onclick="event.stopPropagation()">
@@ -187,6 +187,16 @@
                     </td>
                     <td class="px-4 py-3 text-[11px] font-bold text-slate-400 whitespace-nowrap">{{ t.fecha_fin_plan|date:"d/m/Y"|default:"—" }}</td>
                 </tr>
+                {% if not t.es_bloqueante %}
+                <tr id="qa-{{ t.id }}" class="hidden bg-slate-50/60 border-b border-slate-100">
+                    <td></td>
+                    <td colspan="6" class="px-4 py-2">
+                        <input type="text" placeholder="↳ Subtarea… (escribe y presiona Enter)" onkeydown="qaKey(event, this, '{{ t.id }}')"
+                               style="margin-left:{{ t.nivel|add:t.nivel }}0px"
+                               class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-brand">
+                    </td>
+                </tr>
+                {% endif %}
                 {% endif %}
                 {% empty %}
                 <tr><td colspan="7" class="px-8 py-16 text-center text-slate-400 italic">Este tablero aún no tiene tareas. Crea la primera con <b>Nueva tarea</b> o una <b>Etapa</b>.</td></tr>
