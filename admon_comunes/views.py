@@ -22,7 +22,11 @@ def lista_notificaciones(request):
     """Historial completo de notificaciones del usuario (con paginación)."""
     from django.core.paginator import Paginator
     from django.shortcuts import render
+    from django.db.models import Q
     qs = Notificacion.objects.filter(usuario=request.user).select_related('actor')
+    empresa = getattr(request, 'empresa', None)
+    if empresa:
+        qs = qs.filter(Q(empresa=empresa) | Q(empresa__isnull=True))
     pagina = Paginator(qs, 30).get_page(request.GET.get('p'))
     return render(request, 'admon_comunes/notificaciones.html', {
         'pagina': pagina, 'no_leidas': qs.filter(leida=False).count(), 'seccion': '',

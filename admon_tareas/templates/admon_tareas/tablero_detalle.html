@@ -188,12 +188,14 @@
                     <td class="px-4 py-3 text-[11px] font-bold text-slate-400 whitespace-nowrap">{{ t.fecha_fin_plan|date:"d/m/Y"|default:"—" }}</td>
                 </tr>
                 {% if not t.es_bloqueante %}
-                <tr id="qa-{{ t.id }}" class="hidden bg-slate-50/60 border-b border-slate-100">
+                <tr id="qa-{{ t.id }}" class="hidden border-b border-slate-50">
                     <td></td>
-                    <td colspan="6" class="px-4 py-2">
-                        <input type="text" placeholder="↳ Subtarea… (escribe y presiona Enter)" onkeydown="qaKey(event, this, '{{ t.id }}')"
-                               style="margin-left:{{ t.nivel|add:t.nivel }}0px"
-                               class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none focus:border-brand">
+                    <td colspan="6" class="px-4 pb-2 pt-0.5">
+                        <div class="flex items-center gap-1.5" style="margin-left:{{ t.nivel|add:t.nivel }}4px">
+                            <span class="text-slate-300 text-xs">↳</span>
+                            <input type="text" placeholder="Subtarea… (Enter para agregar)" onkeydown="qaKey(event, this, '{{ t.id }}')"
+                                   class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] outline-none focus:border-brand focus:bg-white">
+                        </div>
                     </td>
                 </tr>
                 {% endif %}
