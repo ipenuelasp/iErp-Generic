@@ -229,3 +229,6 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'TI Grupo Gonza <ti@ph
 ERROR_NOTIFY_EMAIL = os.environ.get('ERROR_NOTIFY_EMAIL', 'ipenuelas@phanalytics.com.mx')
 # Correo que recibe los mensajes del formulario de contacto de la landing.
 CONTACTO_EMAIL = os.environ.get('CONTACTO_EMAIL', 'contacto@phanalytics.com.mx')
+# Enviar también por correo cada notificación in-app (Resend). Apagado por
+# defecto: se enciende poniendo NOTIF_EMAIL=True en el entorno.
+NOTIF_EMAIL_ENABLED = os.environ.get('NOTIF_EMAIL', 'False') == 'True'

@@ -128,9 +128,31 @@ class Notificacion(models.Model):
     @classmethod
     def crear(cls, *, usuario, titulo, mensaje='', url='', tipo='GENERAL',
               icono='', empresa=None, actor=None):
-        """Crea una notificación. No te notifica a ti mismo (actor == usuario)."""
+        """Crea una notificación. No te notifica a ti mismo (actor == usuario).
+        Si NOTIF_EMAIL_ENABLED está encendido, además la manda por correo."""
         if usuario is None or (actor is not None and actor.id == usuario.id):
             return None
-        return cls.objects.create(
+        n = cls.objects.create(
             usuario=usuario, empresa=empresa, tipo=tipo, titulo=titulo[:180],
             mensaje=(mensaje or '')[:500], url=url[:300], icono=icono, actor=actor)
+        cls._enviar_email(n)
+        return n
+
+    @staticmethod
+    def _enviar_email(n):
+        from django.conf import settings
+        if not getattr(settings, 'NOTIF_EMAIL_ENABLED', False):
+            return
+        email = (getattr(n.usuario, 'email', '') or '').strip()
+        if not email:
+            return
+        try:
+            from admon_empresas.emails import send_plain
+            base = (getattr(settings, 'BASE_DOMAIN', '') or '').strip()
+            slug = getattr(getattr(n.empresa, 'cliente', None), 'slug_instancia', None)
+            raiz = f"https://{slug}.{base}" if (base and slug) else settings.SITE_URL
+            link = f"{raiz}{n.url}" if n.url else raiz
+            cuerpo = f"{n.mensaje}\n\n{link}" if n.mensaje else link
+            send_plain(subject=f"[iErp] {n.titulo}", text=cuerpo, to=email)
+        except Exception as e:
+            print(f"[NOTIF EMAIL ERROR] {e}")
