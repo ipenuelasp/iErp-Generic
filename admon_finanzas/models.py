@@ -227,6 +227,17 @@ class FacturaCliente(models.Model):
         return {'PENDIENTE_FACTURAR': 'amber', 'PARCIAL_FACTURAR': 'blue',
                 'FACTURADA': 'emerald'}[self.estado_facturacion]
 
+    def folios_fiscales(self):
+        """Etiquetas de los CFDI emitidos para mostrar en listas: serie-folio si
+        existe, si no los últimos 8 del folio fiscal (UUID). Compatibilidad con
+        el UUID único antiguo guardado en la propia CxC."""
+        etiquetas = [c.etiqueta_fiscal for c in self.cfdis.all() if c.etiqueta_fiscal]
+        if etiquetas:
+            return etiquetas
+        if self.uuid_cfdi:
+            return ['…' + self.uuid_cfdi[-8:]]
+        return []
+
     @property
     def estado_envio(self):
         """Si las facturas se enviaron al cliente por correo. NA si no hay nada que enviar."""
@@ -318,6 +329,17 @@ class CfdiCliente(models.Model):
     def necesita_complemento(self):
         """PPD (pago en parcialidades/diferido) exige un REP una vez cobrado."""
         return self.metodo_pago == 'PPD' and self.esta_pagada and not self.tiene_complemento
+
+    @property
+    def etiqueta_fiscal(self):
+        """Para mostrar en listas: serie-folio si está capturado; si no, los
+        últimos 8 caracteres del folio fiscal (UUID)."""
+        sf = (self.serie_folio or '').strip()
+        if sf:
+            return sf
+        if self.uuid:
+            return '…' + self.uuid[-8:]
+        return ''
 
     def __str__(self):
         return f"{self.uuid} — {self.factura.folio}"
