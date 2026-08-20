@@ -23,7 +23,7 @@ lista.querystring, lista.clear_url (url base para limpiar).{% endcomment %}
             <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{{ f.label }}</label>
             {% if f.tipo == 'date' %}
             <input type="date" name="{{ f.name }}" value="{{ f.val }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-[11px] font-bold text-slate-700">
-            {% elif f.tipo == 'multiselect' %}
+            {% else %}
             <div class="relative ms-filtro" data-name="{{ f.name }}">
                 <button type="button" class="ms-toggle w-full flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700">
                     <span class="ms-label truncate" data-todos="{{ f.todos|default:'Todos' }}">{% if f.sel %}{{ f.sel|length }} seleccionado{{ f.sel|length|pluralize }}{% else %}{{ f.todos|default:"Todos" }}{% endif %}</span>
@@ -47,11 +47,6 @@ lista.querystring, lista.clear_url (url base para limpiar).{% endcomment %}
                     </div>
                 </div>
             </div>
-            {% else %}
-            <select name="{{ f.name }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700">
-                <option value="">{{ f.todos|default:"Todos" }}</option>
-                {% for val, lbl in f.opciones %}<option value="{{ val }}" {% if f.sel == val|stringformat:'s' %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
-            </select>
             {% endif %}
         </div>
         {% endfor %}

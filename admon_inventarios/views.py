@@ -548,14 +548,18 @@ class ExistenciasView(LoginRequiredMixin, View):
         page_obj, per_page, querystring = listas.paginar(request, stock, listas.DEFAULT_PER_PAGE)
 
         almacenes = Almacen.objects.filter(sucursal=sucursal, activo=True).order_by('nombre')
+        sel_alm = [v for v in request.GET.getlist('almacen') if v]
+        alm_map = {str(a.id): a.nombre for a in almacenes}
         lista = {
             'placeholder': 'Buscar por producto o SKU...',
             'q': f.get('q', ''),
             'filtros': [{
-                'name': 'almacen', 'label': 'Almacén', 'tipo': 'select',
+                'name': 'almacen', 'label': 'Almacén', 'tipo': 'multiselect',
                 'opciones': [(a.id, a.nombre) for a in almacenes], 'todos': 'Todos',
-                'sel': (request.GET.get('almacen') or '').strip(),
+                'sel': sel_alm,
             }],
+            'pills': [{'name': 'almacen', 'value': v, 'label': 'Almacén',
+                       'text': alm_map.get(str(v), v)} for v in sel_alm],
             'per_page': per_page,
             'per_page_opciones': listas.PER_PAGE_OPCIONES,
             'querystring': querystring,

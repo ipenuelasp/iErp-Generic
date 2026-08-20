@@ -47,14 +47,10 @@ def aplicar_filtros(request, qs, *, search_header=(), detail_model=None,
             cond |= Exists(det)
         qs = qs.filter(cond)
 
-    for param, campo in (exactos or {}).items():
-        val = (request.GET.get(param) or '').strip()
-        f[param] = val
-        if val:
-            qs = qs.filter(**{campo: val})
-
-    # Filtros multi-selección: uno, varios o todos (param repetido en el GET).
-    for param, campo in (multiples or {}).items():
+    # Filtros de igualdad, ahora multi-selección por defecto (uno, varios o
+    # todos: el param puede venir repetido en el GET). Con un solo valor se
+    # comporta igual que antes. `multiples` es un alias del mismo mecanismo.
+    for param, campo in {**(exactos or {}), **(multiples or {})}.items():
         vals = [v.strip() for v in request.GET.getlist(param) if v.strip()]
         f[param] = vals
         if vals:
@@ -136,16 +132,14 @@ def construir(request, qs, *, placeholder='', search_header=(), detail_model=Non
         spec = dict(spec)
         if spec.get('tipo') == 'date':
             spec['val'] = (request.GET.get(spec['name']) or '').strip()
-        elif spec.get('tipo') == 'multiselect':
-            # Multi-selección: lista de valores (uno, varios o todos).
+        else:
+            # Todo lo que no sea fecha es multi-selección (uno, varios o todos).
             sel = [v.strip() for v in request.GET.getlist(spec['name']) if v.strip()]
             spec['sel'] = sel
             opt_map = {str(v): l for v, l in spec.get('opciones', [])}
             for v in sel:
                 pills.append({'name': spec['name'], 'value': v,
                               'label': spec['label'], 'text': opt_map.get(str(v), v)})
-        else:
-            spec['sel'] = (request.GET.get(spec['name']) or '').strip()
         ui.append(spec)
 
     lista = {
