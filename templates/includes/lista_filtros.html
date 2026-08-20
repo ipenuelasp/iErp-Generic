@@ -23,6 +23,21 @@ lista.querystring, lista.clear_url (url base para limpiar).{% endcomment %}
             <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{{ f.label }}</label>
             {% if f.tipo == 'date' %}
             <input type="date" name="{{ f.name }}" value="{{ f.val }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-[11px] font-bold text-slate-700">
+            {% elif f.tipo == 'multiselect' %}
+            <div class="relative ms-filtro" data-name="{{ f.name }}">
+                <button type="button" class="ms-toggle w-full flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700">
+                    <span class="ms-label truncate" data-todos="{{ f.todos|default:'Todos' }}">{% if f.sel %}{{ f.sel|length }} seleccionado{{ f.sel|length|pluralize }}{% else %}{{ f.todos|default:"Todos" }}{% endif %}</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 ml-2"></i>
+                </button>
+                <div class="ms-panel hidden absolute z-30 mt-1 w-full max-h-56 overflow-auto bg-white border border-slate-200 rounded-xl shadow-lg p-2 space-y-0.5">
+                    {% for val, lbl in f.opciones %}
+                    <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-[11px] font-bold text-slate-600">
+                        <input type="checkbox" name="{{ f.name }}" value="{{ val }}" class="ms-check accent-brand" {% if val|stringformat:'s' in f.sel %}checked{% endif %}>
+                        <span class="truncate">{{ lbl }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
             {% else %}
             <select name="{{ f.name }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700">
                 <option value="">{{ f.todos|default:"Todos" }}</option>
@@ -38,4 +53,59 @@ lista.querystring, lista.clear_url (url base para limpiar).{% endcomment %}
             </select>
         </div>
     </div>
+
+    {% if lista.pills %}
+    <div class="flex flex-wrap gap-2 pt-1">
+        {% for p in lista.pills %}
+        <span class="inline-flex items-center gap-1.5 bg-brand/10 text-brand text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
+            {{ p.label }}: {{ p.text }}
+            <button type="button" class="ms-pill-x hover:text-rose-500 transition-colors" data-name="{{ p.name }}" data-value="{{ p.value }}" title="Quitar filtro"><i class="fa-solid fa-xmark"></i></button>
+        </span>
+        {% endfor %}
+    </div>
+    {% endif %}
 </form>
+
+<script>
+(function () {
+    // Dropdowns multi-selección (uno, varios o todos) con pills de filtro activo.
+    document.querySelectorAll('.ms-filtro').forEach(function (box) {
+        var toggle = box.querySelector('.ms-toggle');
+        var panel = box.querySelector('.ms-panel');
+        var label = box.querySelector('.ms-label');
+        var todos = label.dataset.todos || 'Todos';
+        function refresh() {
+            var checked = box.querySelectorAll('.ms-check:checked');
+            if (!checked.length) {
+                label.textContent = todos;
+            } else if (checked.length === 1) {
+                label.textContent = checked[0].nextElementSibling.textContent.trim();
+            } else {
+                label.textContent = checked.length + ' seleccionados';
+            }
+        }
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            document.querySelectorAll('.ms-panel').forEach(function (p) { if (p !== panel) p.classList.add('hidden'); });
+            panel.classList.toggle('hidden');
+        });
+        box.querySelectorAll('.ms-check').forEach(function (chk) {
+            chk.addEventListener('change', refresh);
+        });
+        refresh();
+    });
+    // Cerrar paneles al hacer clic fuera.
+    document.addEventListener('click', function () {
+        document.querySelectorAll('.ms-panel').forEach(function (p) { p.classList.add('hidden'); });
+    });
+    // Quitar un filtro desde su pill: destilda el checkbox y aplica.
+    document.querySelectorAll('.ms-pill-x').forEach(function (x) {
+        x.addEventListener('click', function () {
+            var name = x.dataset.name, value = x.dataset.value;
+            var chk = document.querySelector('.ms-check[name="' + name + '"][value="' + value + '"]');
+            if (chk) chk.checked = false;
+            x.closest('form').submit();
+        });
+    });
+})();
+</script>

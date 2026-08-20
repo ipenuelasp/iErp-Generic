@@ -1017,14 +1017,16 @@ class CuentasPorCobrarView(LoginRequiredMixin, View):
         qs = FacturaCliente.objects.filter(empresa=empresa).select_related(
             'cliente', 'moneda', 'pedido').prefetch_related('aplicaciones', 'cfdis')
 
-        # Filtro de facturación: "con factura" = tiene UUID/XML único o algún CFDI ligado.
+        # Filtro de facturación (multi): "con factura" = tiene UUID/XML único o
+        # algún CFDI ligado. Seleccionar ambos (o ninguno) = sin filtro.
         from django.db.models import Q, Case, When, Value, IntegerField
         facturada_q = Q(uuid_cfdi__gt='') | Q(archivo_xml__gt='') | Q(cfdis__isnull=False)
-        f_fact = (request.GET.get('facturacion') or '').strip()
-        if f_fact == 'si':
-            qs = qs.filter(facturada_q).distinct()
-        elif f_fact == 'no':
-            qs = qs.exclude(facturada_q)
+        f_fact = [v for v in request.GET.getlist('facturacion') if v]
+        if f_fact and set(f_fact) != {'si', 'no'}:
+            if 'si' in f_fact:
+                qs = qs.filter(facturada_q).distinct()
+            elif 'no' in f_fact:
+                qs = qs.exclude(facturada_q)
 
         # Por defecto ocultamos las canceladas (salvo que se filtren explícitamente)
         if (request.GET.get('estado') or '').strip() != 'CANCELADA':
@@ -1043,14 +1045,15 @@ class CuentasPorCobrarView(LoginRequiredMixin, View):
             search_header=('folio', 'uuid_cfdi', 'cliente__nombre_fiscal',
                            'cliente__nombre_comercial', 'notas'),
             date_field='fecha_emision',
-            exactos={'estado': 'estado', 'cliente': 'cliente_id'},
+            multiples={'estado': 'estado', 'cliente': 'cliente_id'},
             filtros_ui=[
-                {'name': 'estado', 'label': 'Estado', 'tipo': 'select',
-                 'opciones': FacturaCliente.ESTADO_CHOICES},
-                {'name': 'cliente', 'label': 'Cliente', 'tipo': 'select',
+                {'name': 'estado', 'label': 'Estado', 'tipo': 'multiselect',
+                 'opciones': FacturaCliente.ESTADO_CHOICES, 'todos': 'Todos'},
+                {'name': 'cliente', 'label': 'Cliente', 'tipo': 'multiselect',
                  'opciones': [(c.id, str(c)) for c in
-                              Cliente.objects.filter(empresa=empresa).order_by('nombre_fiscal')]},
-                {'name': 'facturacion', 'label': 'Facturación', 'tipo': 'select',
+                              Cliente.objects.filter(empresa=empresa).order_by('nombre_fiscal')],
+                 'todos': 'Todos'},
+                {'name': 'facturacion', 'label': 'Facturación', 'tipo': 'multiselect',
                  'opciones': [('si', 'Facturado'), ('no', 'Sin factura')],
                  'todos': 'Todas'},
                 {'name': 'desde', 'label': 'Desde', 'tipo': 'date'},

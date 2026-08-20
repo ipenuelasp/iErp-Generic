@@ -17,7 +17,7 @@ PER_PAGE_OPCIONES = (25, 50, 100, 200)
 
 
 def aplicar_filtros(request, qs, *, search_header=(), detail_model=None,
-                    detail_search=(), date_field=None, exactos=None):
+                    detail_search=(), date_field=None, exactos=None, multiples=None):
     """Aplica búsqueda de texto, filtros exactos y rango de fechas a `qs`.
 
     - search_header: campos del encabezado para `q` (lookups icontains).
@@ -52,6 +52,13 @@ def aplicar_filtros(request, qs, *, search_header=(), detail_model=None,
         f[param] = val
         if val:
             qs = qs.filter(**{campo: val})
+
+    # Filtros multi-selección: uno, varios o todos (param repetido en el GET).
+    for param, campo in (multiples or {}).items():
+        vals = [v.strip() for v in request.GET.getlist(param) if v.strip()]
+        f[param] = vals
+        if vals:
+            qs = qs.filter(**{f'{campo}__in': vals}).distinct()
 
     if date_field:
         desde = (request.GET.get('desde') or '').strip()
@@ -98,7 +105,7 @@ def paginar(request, qs, default_per_page=DEFAULT_PER_PAGE):
 
 
 def construir(request, qs, *, placeholder='', search_header=(), detail_model=None,
-              detail_search=(), date_field=None, exactos=None, filtros_ui=None,
+              detail_search=(), date_field=None, exactos=None, multiples=None, filtros_ui=None,
               sum_fields=(), default_per_page=DEFAULT_PER_PAGE, clear_url='',
               export_nombre='export', export_columnas=None, export_order=None):
     """Orquesta filtros + totales + paginación + export en una sola llamada.
@@ -111,7 +118,8 @@ def construir(request, qs, *, placeholder='', search_header=(), detail_model=Non
     """
     qs, f = aplicar_filtros(
         request, qs, search_header=search_header, detail_model=detail_model,
-        detail_search=detail_search, date_field=date_field, exactos=exactos)
+        detail_search=detail_search, date_field=date_field, exactos=exactos,
+        multiples=multiples)
 
     agg = totales(qs, sum_fields)
 
@@ -123,13 +131,21 @@ def construir(request, qs, *, placeholder='', search_header=(), detail_model=Non
 
     # Rellena valor seleccionado en cada filtro UI desde el request
     ui = []
+    pills = []
     for spec in (filtros_ui or []):
         spec = dict(spec)
-        val = (request.GET.get(spec['name']) or '').strip()
         if spec.get('tipo') == 'date':
-            spec['val'] = val
+            spec['val'] = (request.GET.get(spec['name']) or '').strip()
+        elif spec.get('tipo') == 'multiselect':
+            # Multi-selección: lista de valores (uno, varios o todos).
+            sel = [v.strip() for v in request.GET.getlist(spec['name']) if v.strip()]
+            spec['sel'] = sel
+            opt_map = {str(v): l for v, l in spec.get('opciones', [])}
+            for v in sel:
+                pills.append({'name': spec['name'], 'value': v,
+                              'label': spec['label'], 'text': opt_map.get(str(v), v)})
         else:
-            spec['sel'] = val
+            spec['sel'] = (request.GET.get(spec['name']) or '').strip()
         ui.append(spec)
 
     lista = {
@@ -140,6 +156,7 @@ def construir(request, qs, *, placeholder='', search_header=(), detail_model=Non
         'per_page_opciones': PER_PAGE_OPCIONES,
         'querystring': querystring,
         'clear_url': clear_url,
+        'pills': pills,
     }
     return {'export': None, 'page_obj': page_obj, 'totales': agg,
             'lista': lista, 'qs': qs}
