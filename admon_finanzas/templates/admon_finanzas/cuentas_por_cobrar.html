@@ -100,6 +100,15 @@
                         {% else %}
                         <span class="inline-flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-500"><i class="fa-regular fa-clock text-[10px]"></i> Sin factura</span>
                         {% endif %}
+                        {% with folios=f.folios_fiscales %}
+                        {% if folios %}
+                        <div class="mt-1 flex flex-col items-center gap-0.5">
+                            {% for fol in folios %}
+                            <span class="text-[9px] font-bold text-slate-500 font-mono leading-tight" title="Serie-folio o últimos 8 del folio fiscal (UUID)">{{ fol }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {% endwith %}
                         {% if f.estado_envio != 'NA' %}
                         <div class="mt-1 text-[8px] font-black uppercase tracking-widest text-{{ f.color_envio }}-600"><i class="fa-solid fa-paper-plane mr-1"></i>{{ f.estado_envio_display }}</div>
                         {% endif %}
