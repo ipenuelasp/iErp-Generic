@@ -29,13 +29,22 @@ lista.querystring, lista.clear_url (url base para limpiar).{% endcomment %}
                     <span class="ms-label truncate" data-todos="{{ f.todos|default:'Todos' }}">{% if f.sel %}{{ f.sel|length }} seleccionado{{ f.sel|length|pluralize }}{% else %}{{ f.todos|default:"Todos" }}{% endif %}</span>
                     <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 ml-2"></i>
                 </button>
-                <div class="ms-panel hidden absolute z-30 mt-1 w-full max-h-56 overflow-auto bg-white border border-slate-200 rounded-xl shadow-lg p-2 space-y-0.5">
-                    {% for val, lbl in f.opciones %}
-                    <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-[11px] font-bold text-slate-600">
-                        <input type="checkbox" name="{{ f.name }}" value="{{ val }}" class="ms-check accent-brand" {% if val|stringformat:'s' in f.sel %}checked{% endif %}>
-                        <span class="truncate">{{ lbl }}</span>
-                    </label>
-                    {% endfor %}
+                <div class="ms-panel hidden absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg p-2">
+                    <div class="flex items-center justify-between px-1 pb-1.5 mb-1 border-b border-slate-100">
+                        <button type="button" class="ms-all text-[10px] font-black uppercase tracking-widest text-brand hover:underline">Seleccionar todo</button>
+                        <button type="button" class="ms-none text-[10px] font-black uppercase tracking-widest text-slate-400 hover:underline">Limpiar</button>
+                    </div>
+                    {% if f.opciones|length > 8 %}
+                    <input type="text" class="ms-search w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[11px] font-bold text-slate-600 mb-1" placeholder="Buscar...">
+                    {% endif %}
+                    <div class="ms-options max-h-56 overflow-auto space-y-0.5">
+                        {% for val, lbl in f.opciones %}
+                        <label class="ms-opt flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-[11px] font-bold text-slate-600">
+                            <input type="checkbox" name="{{ f.name }}" value="{{ val }}" class="ms-check accent-brand" {% if val|stringformat:'s' in f.sel %}checked{% endif %}>
+                            <span class="ms-opt-label truncate">{{ lbl }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
             {% else %}
@@ -89,8 +98,32 @@ lista.querystring, lista.clear_url (url base para limpiar).{% endcomment %}
             document.querySelectorAll('.ms-panel').forEach(function (p) { if (p !== panel) p.classList.add('hidden'); });
             panel.classList.toggle('hidden');
         });
+        // Clic DENTRO del panel no cierra el dropdown (seleccionar varios seguido).
+        panel.addEventListener('click', function (e) { e.stopPropagation(); });
         box.querySelectorAll('.ms-check').forEach(function (chk) {
             chk.addEventListener('change', refresh);
+        });
+        // Seleccionar todo (respeta el buscador) / Limpiar.
+        var allBtn = box.querySelector('.ms-all');
+        var noneBtn = box.querySelector('.ms-none');
+        if (allBtn) allBtn.addEventListener('click', function () {
+            box.querySelectorAll('.ms-opt').forEach(function (opt) {
+                if (opt.style.display !== 'none') { var c = opt.querySelector('.ms-check'); if (c) c.checked = true; }
+            });
+            refresh();
+        });
+        if (noneBtn) noneBtn.addEventListener('click', function () {
+            box.querySelectorAll('.ms-check').forEach(function (c) { c.checked = false; });
+            refresh();
+        });
+        // Buscador de opciones (listas largas, p. ej. Cliente).
+        var search = box.querySelector('.ms-search');
+        if (search) search.addEventListener('input', function () {
+            var term = search.value.toLowerCase();
+            box.querySelectorAll('.ms-opt').forEach(function (opt) {
+                var t = opt.querySelector('.ms-opt-label').textContent.toLowerCase();
+                opt.style.display = t.indexOf(term) >= 0 ? '' : 'none';
+            });
         });
         refresh();
     });
