@@ -98,6 +98,12 @@
                         <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">—</span>
                         {% elif f.esta_facturada %}
                         <span class="inline-flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600"><i class="fa-solid fa-file-invoice text-[10px]"></i> Facturado</span>
+                        {% elif f.enviado_a_facturar_en %}
+                        <span class="inline-flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-600" title="Enviado al contador, en espera de que lo facture"><i class="fa-solid fa-paper-plane text-[10px]"></i> Enviado a facturar</span>
+                        <div class="mt-1 text-[8px] font-bold text-slate-400">
+                            {{ f.enviado_a_facturar_en|date:"d/m/Y" }} ·
+                            <button type="button" onclick="reenviarUno('{{ f.pk }}')" class="text-brand font-black uppercase tracking-widest hover:underline">Reenviar</button>
+                        </div>
                         {% else %}
                         <span class="inline-flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-500"><i class="fa-regular fa-clock text-[10px]"></i> Sin factura</span>
                         {% endif %}
@@ -183,6 +189,13 @@ function abrirModalFacturar() {
     if (!n) { alert('Selecciona al menos una cuenta por cobrar para facturar.'); return; }
     document.getElementById('selCountModal').innerText = n;
     document.getElementById('modalFacturar').classList.remove('hidden');
+}
+function reenviarUno(pk) {
+    document.querySelectorAll('.chkCxC').forEach(c => c.checked = false);
+    const el = document.querySelector('.chkCxC[value="' + pk + '"]');
+    if (el) el.checked = true;
+    updCount();
+    abrirModalFacturar();
 }
 function cerrarModalFacturar() {
     document.getElementById('modalFacturar').classList.add('hidden');
