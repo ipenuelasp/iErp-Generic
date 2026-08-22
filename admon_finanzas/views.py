@@ -1113,18 +1113,66 @@ class ExcelFacturacionView(LoginRequiredMixin, View):
         if not ctx:
             return redirect('home')
         empresa, _sucursal = ctx
-        import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment
-        from django.utils import timezone as _tz
+        return self._procesar(request, empresa, request.GET.getlist('ids'),
+                              accion='descargar', correo='', cc_yo=False)
 
-        ids = request.GET.getlist('ids')
-        cxcs = (FacturaCliente.objects.filter(empresa=empresa, id__in=ids)
-                .exclude(estado='CANCELADA')
-                .select_related('cliente', 'moneda', 'pedido')
-                .prefetch_related('pedido__detalles__producto'))
+    def post(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, _sucursal = ctx
+        return self._procesar(
+            request, empresa, request.POST.getlist('ids'),
+            accion=(request.POST.get('accion') or 'descargar'),
+            correo=(request.POST.get('correo') or '').strip(),
+            cc_yo=(request.POST.get('cc_yo') == '1'))
+
+    def _procesar(self, request, empresa, ids, *, accion, correo, cc_yo):
+        wb, cxcs = self._construir_wb(empresa, ids)
         if not cxcs:
             messages.warning(request, "Selecciona al menos una cuenta por cobrar para facturar.")
             return redirect('admon_finanzas:cuentas_por_cobrar')
+        from django.utils import timezone as _tz
+        fname = f"por_facturar_{_tz.now():%Y%m%d_%H%M}.xlsx"
+
+        if accion == 'enviar':
+            if not correo:
+                messages.error(request, "Escribe el correo de destino para enviar la facturación.")
+                return redirect('admon_finanzas:cuentas_por_cobrar')
+            from io import BytesIO
+            from admon_empresas.emails import send_html
+            buf = BytesIO(); wb.save(buf)
+            cc = [request.user.email] if (cc_yo and request.user.email) else None
+            ok = send_html(
+                subject=f"Facturación por generar — {empresa.nombre_fiscal}",
+                template='admon_finanzas/emails/facturar.html',
+                context={'empresa': empresa, 'n': len(cxcs),
+                         'remitente': request.user.get_full_name() or request.user.username},
+                to=correo, cc=cc,
+                attachments=[{'filename': fname, 'content': buf.getvalue()}])
+            if ok:
+                extra = f" (con copia a {request.user.email})" if cc else ""
+                messages.success(request, f"Excel de facturación enviado a {correo}{extra}.")
+            else:
+                messages.error(request, "No se pudo enviar el correo. Descarga el archivo o revisa la configuración de Resend.")
+            return redirect('admon_finanzas:cuentas_por_cobrar')
+
+        resp = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        resp['Content-Disposition'] = f'attachment; filename="{fname}"'
+        wb.save(resp)
+        return resp
+
+    def _construir_wb(self, empresa, ids):
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+
+        cxcs = list(FacturaCliente.objects.filter(empresa=empresa, id__in=ids)
+                    .exclude(estado='CANCELADA')
+                    .select_related('cliente', 'moneda', 'pedido')
+                    .prefetch_related('pedido__detalles__producto'))
+        if not cxcs:
+            return None, []
 
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -1189,12 +1237,7 @@ class ExcelFacturacionView(LoginRequiredMixin, View):
             for col in (9, 10, 12, 13):
                 row[col-1].number_format = '#,##0.00'
 
-        resp = HttpResponse(
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        resp['Content-Disposition'] = (
-            f'attachment; filename="por_facturar_{_tz.now():%Y%m%d_%H%M}.xlsx"')
-        wb.save(resp)
-        return resp
+        return wb, cxcs
 
 
 class FacturaClienteDetalleView(LoginRequiredMixin, View):

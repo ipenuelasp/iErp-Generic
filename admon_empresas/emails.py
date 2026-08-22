@@ -73,20 +73,23 @@ def send_plain(subject, text, to, attachments=None, reply_to=None):
         return False
 
 
-def send_html(subject, template, context, to, request=None, attachments=None):
+def send_html(subject, template, context, to, request=None, attachments=None, cc=None):
     """Envía un correo HTML via Resend. Retorna True si fue exitoso.
-    `attachments`: lista opcional de dicts {'filename': str, 'content': bytes}."""
+    `attachments`: lista opcional de dicts {'filename': str, 'content': bytes}.
+    `cc`: correo (o lista) en copia."""
     try:
         html_content = render_to_string(template, context)
         text_content = strip_tags(html_content)
         resend.api_key = settings.RESEND_API_KEY
         payload = {
             'from': settings.DEFAULT_FROM_EMAIL,
-            'to': [to],
+            'to': [to] if isinstance(to, str) else list(to),
             'subject': subject,
             'html': html_content,
             'text': text_content,
         }
+        if cc:
+            payload['cc'] = [cc] if isinstance(cc, str) else list(cc)
         if attachments:
             import base64
             payload['attachments'] = [

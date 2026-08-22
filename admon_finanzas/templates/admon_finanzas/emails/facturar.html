@@ -1,0 +1,12 @@
+<div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 20px; padding: 40px;">
+    <h2 style="color: #1e2d4f;">Facturación por generar</h2>
+    <p>Hola,</p>
+    <p>Se adjunta el archivo de Excel con el detalle de <strong>{{ n }}</strong>
+       cuenta{{ n|pluralize:"s" }} por cobrar de <strong>{{ empresa.nombre_fiscal }}</strong>
+       que están listas para facturar.</p>
+    <div style="background: #f8fafc; padding: 16px 20px; border-radius: 15px; margin: 20px 0; font-size: 13px; color: #64748b;">
+        <p style="margin: 4px 0;">📎 Archivo adjunto: detalle partida por partida (SKU, importe, IVA, total).</p>
+        <p style="margin: 4px 0;">Enviado por: <strong>{{ remitente }}</strong>.</p>
+    </div>
+    <p style="color: #94a3b8; font-size: 12px;">Este correo se generó automáticamente desde iErp.</p>
+</div>

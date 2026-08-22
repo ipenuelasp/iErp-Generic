@@ -50,13 +50,14 @@
 
     {% include "includes/lista_filtros.html" %}
 
-    <form method="get" action="{% url 'admon_finanzas:facturar_xlsx' %}" data-no-once target="_blank">
+    <form method="post" action="{% url 'admon_finanzas:facturar_xlsx' %}" data-no-once>
+    {% csrf_token %}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div class="flex items-center gap-3">
             <button type="button" onclick="selPendientes()" class="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-white border border-slate-200 px-4 py-2.5 rounded-xl hover:border-brand"><i class="fa-regular fa-square-check mr-1"></i> Seleccionar pendientes de facturar</button>
             <span id="selCount" class="text-[10px] font-black uppercase tracking-widest text-slate-400">0 seleccionadas</span>
         </div>
-        <button type="submit" class="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-200 hover:-translate-y-0.5 transition-transform"><i class="fa-solid fa-file-excel mr-1"></i> Generar Excel para facturar</button>
+        <button type="button" onclick="abrirModalFacturar()" class="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-200 hover:-translate-y-0.5 transition-transform"><i class="fa-solid fa-file-excel mr-1"></i> Generar Excel para facturar</button>
     </div>
 
     <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
@@ -132,6 +133,34 @@
             </tfoot>
         </table>
     </div>
+
+    <!-- Modal: generar / enviar facturación -->
+    <div id="modalFacturar" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onclick="cerrarModalFacturar()">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8" onclick="event.stopPropagation()">
+            <div class="flex items-center gap-3 mb-1">
+                <div class="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600"><i class="fa-solid fa-file-excel"></i></div>
+                <h3 class="text-lg font-black text-slate-800">Generar facturación</h3>
+            </div>
+            <p class="text-xs text-slate-400 font-bold mb-5"><span id="selCountModal">0</span> cuenta(s) por cobrar seleccionada(s)</p>
+
+            <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Correo de destino</label>
+            <input type="email" name="correo" value="{{ empresa.email_contador|default:'' }}"
+                   placeholder="contador@empresa.com"
+                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-brand focus:border-brand outline-none">
+            <p class="text-[10px] text-slate-400 mt-1">Por defecto, el correo del contador configurado en la empresa.</p>
+
+            <label class="flex items-center gap-2 mt-4 text-sm font-bold text-slate-600 {% if not user.email %}opacity-50{% endif %}">
+                <input type="checkbox" name="cc_yo" value="1" class="accent-brand" {% if not user.email %}disabled{% endif %}>
+                Copia a: <span class="font-mono text-slate-500">{{ user.email|default:"(tu usuario no tiene correo)" }}</span>
+            </label>
+
+            <div class="flex flex-col gap-2 mt-7">
+                <button type="submit" name="accion" value="enviar" class="w-full bg-brand text-white px-6 py-3 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:opacity-90 transition-all"><i class="fa-solid fa-paper-plane mr-1.5"></i> Generar y enviar por correo</button>
+                <button type="submit" name="accion" value="descargar" class="w-full bg-slate-100 text-slate-600 px-6 py-3 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-200 transition-all"><i class="fa-solid fa-download mr-1.5"></i> Solo generar archivo</button>
+                <button type="button" onclick="cerrarModalFacturar()" class="w-full text-slate-400 px-6 py-2 font-black text-[10px] uppercase tracking-widest hover:text-slate-600">Cancelar</button>
+            </div>
+        </div>
+    </div>
     </form>
 
     {% include "includes/lista_paginacion.html" %}
@@ -149,5 +178,15 @@ function selPendientes() {
     document.querySelectorAll('.chkCxC').forEach(c => c.checked = (c.dataset.facturada === '0'));
     updCount();
 }
+function abrirModalFacturar() {
+    const n = document.querySelectorAll('.chkCxC:checked').length;
+    if (!n) { alert('Selecciona al menos una cuenta por cobrar para facturar.'); return; }
+    document.getElementById('selCountModal').innerText = n;
+    document.getElementById('modalFacturar').classList.remove('hidden');
+}
+function cerrarModalFacturar() {
+    document.getElementById('modalFacturar').classList.add('hidden');
+}
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') cerrarModalFacturar(); });
 </script>
 {% endblock %}
