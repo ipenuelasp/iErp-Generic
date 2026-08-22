@@ -73,10 +73,11 @@ def send_plain(subject, text, to, attachments=None, reply_to=None):
         return False
 
 
-def send_html(subject, template, context, to, request=None, attachments=None, cc=None):
+def send_html(subject, template, context, to, request=None, attachments=None, cc=None, reply_to=None):
     """Envía un correo HTML via Resend. Retorna True si fue exitoso.
     `attachments`: lista opcional de dicts {'filename': str, 'content': bytes}.
-    `cc`: correo (o lista) en copia."""
+    `cc`: correo (o lista) en copia.
+    `reply_to`: correo (o lista) al que responder."""
     try:
         html_content = render_to_string(template, context)
         text_content = strip_tags(html_content)
@@ -90,6 +91,8 @@ def send_html(subject, template, context, to, request=None, attachments=None, cc
         }
         if cc:
             payload['cc'] = [cc] if isinstance(cc, str) else list(cc)
+        if reply_to:
+            payload['reply_to'] = [reply_to] if isinstance(reply_to, str) else list(reply_to)
         if attachments:
             import base64
             payload['attachments'] = [

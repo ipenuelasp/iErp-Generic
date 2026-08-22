@@ -1149,8 +1149,13 @@ class ExcelFacturacionView(LoginRequiredMixin, View):
                 context={'empresa': empresa, 'n': len(cxcs),
                          'remitente': request.user.get_full_name() or request.user.username},
                 to=correo, cc=cc,
+                reply_to=(request.user.email or None),
                 attachments=[{'filename': fname, 'content': buf.getvalue()}])
             if ok:
+                # Marca las CxC como "enviado a facturar" (estado intermedio).
+                from django.utils import timezone as _tz2
+                FacturaCliente.objects.filter(id__in=[c.id for c in cxcs]).update(
+                    enviado_a_facturar_en=_tz2.now())
                 extra = f" (con copia a {request.user.email})" if cc else ""
                 messages.success(request, f"Excel de facturación enviado a {correo}{extra}.")
             else:

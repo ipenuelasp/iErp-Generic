@@ -124,6 +124,9 @@ class FacturaCliente(models.Model):
 
     # Envío al cliente (CxC legacy sin CFDIs hijos)
     enviado_en = models.DateTimeField(null=True, blank=True)
+    # Cuándo se envió esta CxC al contador para que la facture (Excel por correo).
+    # Marca el estado intermedio "Enviado a facturar" mientras no tenga CFDI.
+    enviado_a_facturar_en = models.DateTimeField(null=True, blank=True)
 
     # CFDI emitido al cliente
     archivo_xml = models.FileField(upload_to='cfdi/cobrar/xml/', null=True, blank=True)
