@@ -1,0 +1,83 @@
+{% extends "admon_empresas/dashboard.html" %}
+{% load humanize %}
+
+{% block main_content %}
+<div class="max-w-screen-2xl mx-auto p-8">
+
+    <div class="mb-8">
+        <h1 class="text-3xl font-black text-slate-800 tracking-tight italic uppercase">Rentabilidad por grupo</h1>
+        <p class="text-slate-500 mt-2 font-medium">Qué grupos dejan más, en <span class="text-brand">{{ empresa.nombre_fiscal }}</span></p>
+    </div>
+
+    <!-- Filtros -->
+    <form method="get" class="bg-white rounded-[2rem] shadow-lg shadow-slate-200/40 border border-slate-100 p-6 mb-6">
+        <div class="flex flex-col md:flex-row gap-4 md:items-end">
+            <div>
+                <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Base</label>
+                <div class="inline-flex bg-slate-100 rounded-xl p-1">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="base" value="facturado" class="hidden peer" {% if base != 'cobrado' %}checked{% endif %}>
+                        <span class="block px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest text-slate-500 peer-checked:bg-white peer-checked:text-brand peer-checked:shadow">Facturado</span>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="base" value="cobrado" class="hidden peer" {% if base == 'cobrado' %}checked{% endif %}>
+                        <span class="block px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest text-slate-500 peer-checked:bg-white peer-checked:text-brand peer-checked:shadow">Cobrado</span>
+                    </label>
+                </div>
+            </div>
+            <div>
+                <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Desde</label>
+                <input type="date" name="desde" value="{{ desde }}" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[11px] font-bold text-slate-700">
+            </div>
+            <div>
+                <label class="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Hasta</label>
+                <input type="date" name="hasta" value="{{ hasta }}" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[11px] font-bold text-slate-700">
+            </div>
+            <button type="submit" class="bg-brand text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest"><i class="fa-solid fa-filter mr-1"></i> Filtrar</button>
+        </div>
+        {% if base == 'cobrado' %}
+        <p class="text-[10px] text-amber-600 font-bold mt-3"><i class="fa-solid fa-circle-info mr-1"></i> Base cobrado: la utilidad se estima prorrateando cada cobro al margen de los grupos de su pedido.</p>
+        {% endif %}
+    </form>
+
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50">
+                <tr class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">
+                    <th class="px-8 py-5 font-black">Grupo</th>
+                    <th class="px-6 py-5 font-black text-right">Venta</th>
+                    <th class="px-6 py-5 font-black text-right">Costo</th>
+                    <th class="px-6 py-5 font-black text-right">Utilidad</th>
+                    <th class="px-8 py-5 font-black text-right">Margen</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for f in filas %}
+                <tr class="hover:bg-slate-50/80 transition">
+                    <td class="px-8 py-4 text-xs font-black text-slate-700">{{ f.grupo }}</td>
+                    <td class="px-6 py-4 text-right text-xs font-bold text-slate-600">${{ f.venta|floatformat:2|intcomma }}</td>
+                    <td class="px-6 py-4 text-right text-xs font-bold text-slate-400">${{ f.costo|floatformat:2|intcomma }}</td>
+                    <td class="px-6 py-4 text-right text-xs font-black {% if f.utilidad >= 0 %}text-emerald-600{% else %}text-rose-500{% endif %}">${{ f.utilidad|floatformat:2|intcomma }}</td>
+                    <td class="px-8 py-4 text-right">
+                        <span class="inline-flex px-3 py-1 rounded-full text-[10px] font-black {% if f.margen >= 30 %}bg-emerald-50 text-emerald-600{% elif f.margen >= 10 %}bg-amber-50 text-amber-600{% else %}bg-rose-50 text-rose-500{% endif %}">{{ f.margen|floatformat:1 }}%</span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-8 py-14 text-center text-slate-400 italic text-sm">Sin movimientos en el periodo y base seleccionados.</td></tr>
+                {% endfor %}
+            </tbody>
+            {% if filas %}
+            <tfoot class="bg-slate-50 border-t-2 border-slate-100">
+                <tr class="text-slate-800">
+                    <td class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Totales</td>
+                    <td class="px-6 py-4 text-right font-black text-sm">${{ tot_venta|floatformat:2|intcomma }}</td>
+                    <td class="px-6 py-4 text-right font-bold text-sm text-slate-500">${{ tot_costo|floatformat:2|intcomma }}</td>
+                    <td class="px-6 py-4 text-right font-black text-sm text-emerald-600">${{ tot_util|floatformat:2|intcomma }}</td>
+                    <td class="px-8 py-4 text-right font-black text-sm">{{ tot_margen|floatformat:1 }}%</td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% endblock %}

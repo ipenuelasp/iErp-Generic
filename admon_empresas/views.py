@@ -239,6 +239,29 @@ def _dashboard_data(request):
                                if p.tipo == 'EGRESO' and p.id not in personales), D('0'))
         d['flujo_neto_mes'] = d['cobrado_mes'] - d['pagado_mes']
 
+        # Utilidad COBRADA del mes (estimada): prorratea cada cobro al margen del
+        # pedido de su CxC (el cobro no trae el costo pegado; es una estimación).
+        from admon_finanzas.models import AplicacionPago
+        aps_mes = AplicacionPago.objects.filter(
+            pago__empresa=empresa, pago__tipo='INGRESO',
+            pago__fecha__gte=mes_ini, factura_cliente__isnull=False,
+        ).select_related('factura_cliente__pedido').prefetch_related(
+            'factura_cliente__pedido__detalles__producto')
+        util_cob = D('0')
+        for ap in aps_mes:
+            ped = ap.factura_cliente.pedido if ap.factura_cliente_id else None
+            if not ped:
+                continue
+            pv = pc = D('0')
+            for l in ped.detalles.all():
+                lq = l.cantidad_entregada or l.cantidad or D('0')
+                pv += lq * l.precio_unitario
+                pc += lq * (l.producto.costo_unitario or D('0'))
+            if pv > 0:
+                util_cob += (ap.monto_aplicado or D('0')) * ((pv - pc) / pv)
+        d['util_cobrada_mes'] = util_cob
+        d['margen_cobrado_mes'] = (util_cob / d['cobrado_mes'] * 100) if d['cobrado_mes'] else D('0')
+
         # ---- Antigüedad (aging) de CxC y CxP: por vencer vs vencido por tramos ----
         def _aging(pendientes):
             b = {'por_vencer': D('0'), 'd1_30': D('0'), 'd31_60': D('0'),

@@ -65,6 +65,7 @@ SECCIONES = [
     {'clave': 'finanzas.otros', 'nombre': 'Otros e Impuestos', 'modulo': 'finanzas', 'urls': ['otros_resultados']},
     {'clave': 'finanzas.conciliacion', 'nombre': 'Conciliación SAT', 'modulo': 'finanzas', 'urls': ['conciliacion_sat']},
     {'clave': 'finanzas.estado_resultados', 'nombre': 'Estado de Resultados', 'modulo': 'finanzas', 'urls': ['estado_resultados']},
+    {'clave': 'finanzas.rentabilidad_grupos', 'nombre': 'Rentabilidad por grupo', 'modulo': 'finanzas', 'urls': ['rentabilidad_grupos']},
     # Inventarios
     {'clave': 'inventarios.catalogos', 'nombre': 'Catálogos', 'modulo': 'inventarios', 'urls': ['catalogos_productos']},
     {'clave': 'inventarios.recepciones', 'nombre': 'Recepciones', 'modulo': 'inventarios',

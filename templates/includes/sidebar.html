@@ -150,6 +150,12 @@
             <i class="fa-solid fa-file-invoice-dollar mr-3"></i> Estado de Resultados
         </a>
         {% endif %}
+        {% if 'finanzas.rentabilidad_grupos' not in secciones_ocultas %}
+        <a href="{% url 'admon_finanzas:rentabilidad_grupos' %}"
+           class="block p-3 rounded-xl flex items-center transition-all {% if request.resolver_match.url_name == 'rentabilidad_grupos' %}bg-brand text-white shadow-lg shadow-brand/20{% else %}hover:bg-slate-800 text-slate-400{% endif %}">
+            <i class="fa-solid fa-chart-pie mr-3"></i> Rentabilidad por grupo
+        </a>
+        {% endif %}
     </div>
     {% endif %}
 

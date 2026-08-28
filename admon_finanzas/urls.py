@@ -32,4 +32,5 @@ urlpatterns = [
 
     # Reportes
     path('estado-resultados/', views.EstadoResultadosView.as_view(), name='estado_resultados'),
+    path('rentabilidad-grupos/', views.RentabilidadGruposView.as_view(), name='rentabilidad_grupos'),
 ]
