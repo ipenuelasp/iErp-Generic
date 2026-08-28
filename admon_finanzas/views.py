@@ -1690,6 +1690,100 @@ class RegistrarCobroView(LoginRequiredMixin, View):
 # --------------------------------------------------------------------------
 # ESTADO DE RESULTADOS (Fase 1: utilidad bruta por periodo)
 # --------------------------------------------------------------------------
+class RentabilidadGruposView(LoginRequiredMixin, View):
+    """Rentabilidad por grupo de producto en un rango de fechas, en dos bases:
+    - 'facturado' (devengado): sobre lo entregado (pedidos ENTREGADO/parcial).
+    - 'cobrado' (caja): prorratea cada cobro a los grupos del pedido de su CxC
+      por participación de venta, y aplica el margen de cada línea (ESTIMADO)."""
+    template_name = 'admon_finanzas/rentabilidad_grupos.html'
+
+    def get(self, request):
+        ctx = _contexto(request)
+        if not ctx:
+            return redirect('home')
+        empresa, _sucursal = ctx
+        from datetime import date
+        D = decimal.Decimal
+
+        hoy = date.today()
+        desde = (request.GET.get('desde') or date(hoy.year, hoy.month, 1).isoformat()).strip()
+        hasta = (request.GET.get('hasta') or hoy.isoformat()).strip()
+        base = (request.GET.get('base') or 'facturado').strip()
+        if base not in ('facturado', 'cobrado'):
+            base = 'facturado'
+
+        grupos = {}  # nombre_grupo -> {'venta': D, 'costo': D}
+
+        def _bucket(prod):
+            nombre = str(prod.grupo) if prod.grupo_id else 'Sin grupo'
+            return grupos.setdefault(nombre, {'venta': D('0'), 'costo': D('0')})
+
+        if base == 'facturado':
+            from admon_ventas.models import DetallePedido
+            dets = DetallePedido.objects.filter(
+                pedido__empresa=empresa,
+                pedido__estado__in=['ENTREGADO', 'ENTREGADO_PARCIAL'],
+                pedido__fecha_emision__gte=desde,
+                pedido__fecha_emision__lte=hasta,
+            ).select_related('producto', 'producto__grupo')
+            for det in dets:
+                qty = det.cantidad_entregada or D('0')
+                if qty <= 0:
+                    continue
+                g = _bucket(det.producto)
+                g['venta'] += qty * det.precio_unitario
+                g['costo'] += qty * (det.producto.costo_unitario or D('0'))
+        else:
+            # Cobrado: prorratea cada aplicación de un cobro (INGRESO) a los
+            # grupos del pedido de su CxC. Estimación (el cobro no trae el costo).
+            from .models import AplicacionPago, Pago
+            aps = AplicacionPago.objects.filter(
+                pago__empresa=empresa, pago__tipo=Pago.TIPO_INGRESO,
+                pago__fecha__gte=desde, pago__fecha__lte=hasta,
+                factura_cliente__isnull=False,
+            ).select_related('factura_cliente__pedido')
+            for ap in aps:
+                ped = ap.factura_cliente.pedido if ap.factura_cliente_id else None
+                if not ped:
+                    continue
+                lineas = list(ped.detalles.select_related('producto', 'producto__grupo'))
+                ped_venta = sum(((l.cantidad_entregada or l.cantidad or D('0')) * l.precio_unitario
+                                 for l in lineas), D('0'))
+                if ped_venta <= 0:
+                    continue
+                collected = ap.monto_aplicado or D('0')
+                for l in lineas:
+                    lq = l.cantidad_entregada or l.cantidad or D('0')
+                    lv = lq * l.precio_unitario
+                    if lv <= 0:
+                        continue
+                    lc = lq * (l.producto.costo_unitario or D('0'))
+                    venta_cob = collected * (lv / ped_venta)
+                    margen_ratio = (lv - lc) / lv
+                    util_cob = venta_cob * margen_ratio
+                    g = _bucket(l.producto)
+                    g['venta'] += venta_cob
+                    g['costo'] += (venta_cob - util_cob)
+
+        filas = []
+        tot_venta = tot_costo = D('0')
+        for nombre, v in grupos.items():
+            util = v['venta'] - v['costo']
+            margen = (util / v['venta'] * 100) if v['venta'] else D('0')
+            filas.append({'grupo': nombre, 'venta': v['venta'], 'costo': v['costo'],
+                          'utilidad': util, 'margen': margen})
+            tot_venta += v['venta']; tot_costo += v['costo']
+        filas.sort(key=lambda x: x['utilidad'], reverse=True)
+        tot_util = tot_venta - tot_costo
+
+        return render(request, self.template_name, {
+            'empresa': empresa, 'seccion': 'finanzas',
+            'filas': filas, 'base': base, 'desde': desde, 'hasta': hasta,
+            'tot_venta': tot_venta, 'tot_costo': tot_costo, 'tot_util': tot_util,
+            'tot_margen': (tot_util / tot_venta * 100) if tot_venta else D('0'),
+        })
+
+
 class EstadoResultadosView(LoginRequiredMixin, View):
     """Estado de resultados simplificado: Ventas netas − Costo de ventas =
     Utilidad bruta, por rango de fechas, con desglose mensual. Base: lo
